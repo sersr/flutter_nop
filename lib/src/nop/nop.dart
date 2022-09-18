@@ -327,15 +327,15 @@ class _NopState<C> extends State<Nop<C>> with NopListenerHandle {
   @override
   Widget build(BuildContext context) {
     final child = NopPreInit(
-      child: widget.child,
       builder: widget.builder,
       builders: widget.builders,
       init: _init,
       initTypes: widget.initTypes,
       initTypesUnique: widget.initTypesUnique,
+      child: widget.child,
     );
 
-    return _NopScoop(child: child, state: this);
+    return _NopScoop(state: this, child: child);
   }
 
   static dynamic _init(Type t, context, {bool shared = true}) {

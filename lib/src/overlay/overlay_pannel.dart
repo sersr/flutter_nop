@@ -65,7 +65,7 @@ class CurvedAnimationWidget extends StatefulWidget {
   final Widget Function(BuildContext context, Animation<double> animation)
       builder;
   @override
-  _CurvedAnimationWidgetState createState() => _CurvedAnimationWidgetState();
+  State<CurvedAnimationWidget> createState() => _CurvedAnimationWidgetState();
 }
 
 class _CurvedAnimationWidgetState extends State<CurvedAnimationWidget> {

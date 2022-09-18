@@ -10,9 +10,9 @@ typedef SnackbarDelegate = OverlayMixinDelegate;
 typedef BannerDelegate = OverlayMixinDelegate;
 typedef ToastDelegate = OverlayMixinDelegate;
 
-late final _snackBarToken = Object();
-late final _bannelToken = Object();
-late final _toastToken = Object();
+final _snackBarToken = Object();
+final _bannelToken = Object();
+final _toastToken = Object();
 
 extension OverlayExt on NavInterface {
   SnackbarDelegate snackBar(
@@ -243,9 +243,9 @@ OverlayMixinDelegate showOverlay(
         };
       }
 
-      VoidCallback? _onTap;
+      VoidCallback? onTapCallback;
       if (onTap != null) {
-        _onTap = () {
+        onTapCallback = () {
           onTap(self.owner);
         };
       }
@@ -257,7 +257,7 @@ OverlayMixinDelegate showOverlay(
         right: position == NopOverlayPosition.left ? null : right,
         bottom: position == NopOverlayPosition.top ? null : bottom,
         transition: localTransition,
-        onTap: _onTap,
+        onTap: onTapCallback,
         builder: (context) {
           Widget child = OverlayWidget(
             content: content,

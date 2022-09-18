@@ -200,11 +200,11 @@ mixin GetTypePointers {
 
   static Type Function(Type t) getAlias = Nav.getAlias;
 
-  static _Factory getFactory = Nav.getArg;
+  static GetFactory getFactory = Nav.getArg;
 
-  static _Factory? _factory;
+  static GetFactory? _factory;
 
-  static _Factory get _get {
+  static GetFactory get _get {
     if (_factory != null) return _factory!;
     assert(Log.w('init once.'));
     return _factory ??= getFactory;
@@ -215,4 +215,4 @@ mixin GetTypePointers {
   }
 }
 
-typedef _Factory<T> = BuildFactory<T> Function(Type t);
+typedef GetFactory<T> = BuildFactory<T> Function(Type t);

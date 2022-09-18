@@ -1,3 +1,4 @@
+/// inject dependencies
 export 'src/nop/dependences_mixin.dart';
 export 'src/nop/nop.dart';
 export 'src/nop/nop_dependencies.dart';
