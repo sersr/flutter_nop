@@ -251,9 +251,10 @@ class NopRoute {
       if (route != null) return route;
     }
 
-    return NopRouteBuilder(
-        route: current,
-        settings: settings.copyWith(name: pathName, arguments: query));
+    return null;
+    // return NopRouteBuilder(
+    //     route: current,
+    //     settings: settings.copyWith(name: pathName, arguments: query));
   }
 }
 
