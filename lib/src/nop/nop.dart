@@ -280,8 +280,11 @@ class _NopState<C> extends State<Nop<C>> with NopListenerHandle {
   }
 
   void _addListener(t, NopListener listener) {
-    listener.add(this);
-    _caches[GetTypePointers.getAlias(t)] = listener;
+    t = GetTypePointers.getAlias(t);
+    if (!_caches.containsKey(t)) {
+      listener.add(this);
+      _caches[t] = listener;
+    }
   }
 
   @override
