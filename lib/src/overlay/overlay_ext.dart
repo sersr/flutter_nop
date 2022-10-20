@@ -22,11 +22,12 @@ extension OverlayExt on NavInterface {
     Duration delayDuration = Duration.zero,
     bool? closeOndismissed,
     Color? color,
+    Object? key,
     bool autoShow = true,
   }) =>
       showOverlay(
         content,
-        showKey: _snackBarToken,
+        showKey: key ?? _snackBarToken,
         duration: duration,
         animationDuration: animationDuration,
         delayDuration: delayDuration,
@@ -43,6 +44,7 @@ extension OverlayExt on NavInterface {
     Duration delayDuration = Duration.zero,
     Color? color,
     bool autoShow = true,
+    Object? key,
     BorderRadius? radius = const BorderRadius.all(Radius.circular(8)),
   }) {
     return showOverlay(
@@ -51,7 +53,7 @@ extension OverlayExt on NavInterface {
       right: 8,
       left: 8,
       margin: const EdgeInsets.only(top: 8),
-      showKey: _bannelToken,
+      showKey: key ?? _bannelToken,
       duration: duration,
       animationDuration: animationDuration,
       delayDuration: delayDuration,
@@ -70,13 +72,14 @@ extension OverlayExt on NavInterface {
     Color? color,
     double bottomPadding = 80.0,
     EdgeInsets? padding,
+    Object? key,
     bool? closeOndismissed,
     bool autoShow = true,
   }) {
     return showOverlay(
       Container(padding: padding, child: content),
       duration: duration,
-      showKey: _toastToken,
+      showKey: key ?? _toastToken,
       radius: radius,
       color: color,
       top: null,
@@ -153,7 +156,7 @@ Widget _buildMaterialDialogTransitions(
   );
 }
 
-extension Content on BuildContext {
+extension Context on BuildContext {
   bool get isDarkMode {
     return Theme.of(this).brightness == Brightness.dark;
   }
