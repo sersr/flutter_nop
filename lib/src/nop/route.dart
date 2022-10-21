@@ -77,16 +77,50 @@ class NopRoute {
   final String name;
   final String fullName;
   final List<NopRoute> children;
-  final Widget Function(BuildContext context, dynamic arguments) builder;
+  final Widget Function(BuildContext context, dynamic arguments, Object? group)
+      builder;
   final String desc;
+  final NopRoute Function()? _groupOwner;
+  final String groupKey;
 
   const NopRoute({
     required this.name,
     required this.fullName,
     required this.builder,
+    NopRoute Function()? groupOwner,
+    String? groupKey,
     this.children = const [],
     this.desc = '',
-  });
+  })  : groupKey = groupKey ?? defaultGroupKey,
+        _groupOwner = groupOwner;
+
+  NopRoute? get groupOwner {
+    return _groupOwner?.call();
+  }
+
+  static const defaultGroupKey = 'nopIsMain';
+
+  bool get isCurrent {
+    return identical(groupOwner, this);
+  }
+
+  String? get groupName {
+    if (isCurrent) {
+      return fullName;
+    }
+    return groupOwner?.fullName;
+  }
+
+  static final groupIds = <NopRoute, int>{};
+
+  static int _incGroupId(NopRoute route) {
+    final id = groupIds[route] ?? 0;
+    return groupIds[route] = id + 1;
+  }
+
+  static int getGroupId(NopRoute route) {
+    return groupIds.putIfAbsent(route, () => 0);
+  }
 
   static List<Route<dynamic>> onGenInitRoutes(
       String name, Route<dynamic>? Function(String name) genRoute) {
@@ -242,7 +276,7 @@ class NopRoute {
     if (pathName == current.fullName) {
       return NopRouteBuilder(
           route: current,
-          settings: settings.copyWith(name: pathName, arguments: query));
+          settings: NopRouteSettings(name: pathName, arguments: query));
     }
 
     for (var child in current.children) {
@@ -260,15 +294,84 @@ class NopRoute {
 
 class NopRouteBuilder {
   final NopRoute route;
-  final RouteSettings settings;
-  NopRouteBuilder({required this.route, required this.settings});
+  final NopRouteSettings _settings;
+
+  NopRouteBuilder({required this.route, required NopRouteSettings settings})
+      : _settings = settings;
+
+  NopRouteSettings? _cache;
+
+  NopRouteSettings get settings {
+    if (_cache != null) return _cache!;
+
+    NopRouteSettings settings = _settings;
+
+    if (route.groupOwner != null) {
+      final isMain = settings.isMain(route);
+      Object? group;
+
+      if (isMain != true) {
+        if (isMain is String) {
+          group = isMain;
+        } else if (isMain == false) {
+          int id;
+          if (!route.isCurrent) {
+            id = NopRoute.getGroupId(route.groupOwner!);
+          } else {
+            id = NopRoute._incGroupId(route.groupOwner!);
+          }
+
+          group = '${route.groupName}_$id';
+        }
+
+        if (group != null) {
+          settings = settings.copyWith(group: group);
+        }
+      }
+    }
+    return _cache = settings;
+  }
 
   Widget builder(BuildContext context) {
-    return route.builder(context, settings.arguments);
+    return route.builder(context, settings.arguments, settings.group);
   }
 
   MaterialPageRoute? get wrapMaterial {
     return MaterialPageRoute(builder: builder, settings: settings);
+  }
+}
+
+class NopRouteSettings extends RouteSettings {
+  const NopRouteSettings({
+    super.name,
+    super.arguments,
+    this.group,
+  });
+  final Object? group;
+
+  @override
+  NopRouteSettings copyWith({
+    String? name,
+    Object? arguments,
+    Object? group,
+  }) {
+    return NopRouteSettings(
+      name: name ?? this.name,
+      arguments: arguments ?? this.arguments,
+      group: group ?? this.group,
+    );
+  }
+
+  dynamic isMain(NopRoute route) {
+    if (arguments is! Map) return false;
+
+    try {
+      final isMain = (arguments as Map).remove(route.groupKey);
+      if (isMain == null) return false;
+      return isMain;
+    } catch (_) {}
+
+    return false;
   }
 }
 

@@ -99,8 +99,9 @@ mixin NopListenerHandle {
 }
 
 abstract class NopListener {
-  NopListener(this.data);
+  NopListener(this.data, this.group);
   final dynamic data;
+  final Object? group;
 
   NopShareScope scope = NopShareScope.shared;
 
@@ -165,9 +166,9 @@ abstract class NopListener {
 
     for (var i in _subNopListeners.entries) {
       final t = GetTypePointers.getAlias(i.key);
-      if (first.findCurrentTypeArg(t) != null) continue;
+      if (first.findCurrentTypeArg(t, null) != null) continue;
       final subListener = i.value;
-      first.addListener(t, subListener);
+      first.addListener(t, subListener, null);
 
       if (first is! NopDependencies) subListener.onDependenceAdd(first);
     }
@@ -185,10 +186,10 @@ abstract class NopListener {
       if (owner.shared) {
         assert(owner._dependenceTree.isNotEmpty);
         listener ??= GetTypePointers.defaultGetNopListener(
-            t, owner._dependenceTree.first);
+            t, owner._dependenceTree.first, null);
       }
       if (listener != null) {
-        owner.addListener(t, listener);
+        owner.addListener(t, listener, null);
         assert(owner.scope.index >= listener.scope.index);
       }
     }
@@ -205,10 +206,10 @@ abstract class NopListener {
       listener = owner.handle?.findTypeListener(t);
       if (owner._dependenceTree.isNotEmpty) {
         listener ??= GetTypePointers.defaultFindNopListener(
-            t, owner._dependenceTree.first);
+            t, owner._dependenceTree.first, null);
       }
       if (listener != null) {
-        owner.addListener(t, listener);
+        owner.addListener(t, listener, null);
         assert(owner.scope.index >= listener.scope.index);
       }
     }
@@ -216,7 +217,7 @@ abstract class NopListener {
     return listener;
   }
 
-  void addListener(Type t, NopListener listener) {
+  void addListener(Type t, NopListener listener, Object? group) {
     if (_subNopListeners.containsKey(t)) return;
     _subNopListeners[t] = listener;
     final sync = _syncTypePointers;
@@ -224,8 +225,8 @@ abstract class NopListener {
       _updateDependence();
       return;
     }
-    if (sync.findCurrentTypeArg(t) != null) return;
-    sync.addListener(t, listener);
+    if (sync.findCurrentTypeArg(t, group) != null) return;
+    sync.addListener(t, listener, group);
 
     if (sync is! NopDependencies) listener.onDependenceAdd(sync);
   }
@@ -250,12 +251,15 @@ enum NopShareScope {
   /// 当前`Page`中共享
   page,
 
+  /// group
+  group,
+
   /// 不共享，独立的
   unique,
 }
 
 class NopListenerDefault extends NopListener {
-  NopListenerDefault(dynamic data) : super(data);
+  NopListenerDefault(dynamic data, Object? group) : super(data, group);
   final Set<NopListenerHandle> _handles = {};
 
   @override

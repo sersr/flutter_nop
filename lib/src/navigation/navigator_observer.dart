@@ -79,19 +79,19 @@ class NavObserver extends NavigatorObserver {
   @override
   void didPop(Route route, Route? previousRoute) {
     _currentRoute = previousRoute;
-    assert(Log.i('${route.settings.name}'));
+    assert(Log.i(route.settings.name));
   }
 
   @override
   void didPush(Route route, Route? previousRoute) {
     _currentRoute = route;
-    assert(Log.i('${route.settings.name}'));
+    assert(Log.i(route.settings.name));
   }
 
   @override
   void didRemove(Route route, Route? previousRoute) {
     _currentRoute = previousRoute;
-    assert(Log.i('${route.settings.name}'));
+    assert(Log.i(route.settings.name));
   }
 
   @override

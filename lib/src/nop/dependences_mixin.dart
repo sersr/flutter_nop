@@ -9,63 +9,84 @@ import 'nop_listener.dart';
 /// [GetTypePointers]
 mixin GetTypePointers {
   final _pointers = HashMap<Type, NopListener>();
+
   Iterable<NopListener> get listeners => _pointers.values;
   GetTypePointers? get parent;
   GetTypePointers? get child;
 
-  bool get isEmpty => _pointers.isEmpty;
+  final _pointersGroup = HashMap<Object, HashMap<Type, NopListener>>();
 
-  NopListener getType<T>({bool shared = true}) {
-    return _getTypeArg(T, shared);
+  void visiteNoListener(void Function(NopListener item) visitor) {
+    for (var item in listeners) {
+      visitor(item);
+    }
+    for (var group in _pointersGroup.entries) {
+      for (var item in group.value.entries) {
+        visitor(item.value);
+      }
+    }
   }
 
-  NopListener getTypeArg(Type t, {bool shared = true}) {
-    return _getTypeArg(t, shared);
+  bool get isEmpty => _pointers.isEmpty;
+
+  NopListener getType<T>(Object groupName, {bool shared = true}) {
+    return _getTypeArg(T, shared, groupName);
+  }
+
+  NopListener getTypeArg(Type t, Object? groupName, {bool shared = true}) {
+    return _getTypeArg(t, shared, groupName);
   }
 
   /// shared == false, 不保存引用
-  NopListener _getTypeArg(Type t, bool shared) {
+  NopListener _getTypeArg(Type t, bool shared, Object? groupName) {
     t = getAlias(t);
-    var listener = _findTypeArgSet(t);
-    listener ??= _createListenerArg(t, shared);
+    var listener = _findTypeArgSet(t, groupName);
+    listener ??= _createListenerArg(t, shared, groupName);
     return listener;
   }
 
-  NopListener? _findTypeArgSet(Type t) {
-    var listener = _findCurrentTypeArg(t);
-    listener ??= _findTypeOtherElement(t);
+  NopListener? _findTypeArgSet(Type t, Object? groupName) {
+    var listener = _findCurrentTypeArg(t, groupName);
+    listener ??= _findTypeOtherElement(t, groupName);
     if (listener != null && !_pointers.containsKey(t)) {
-      assert(Log.w('sharedxx, create: $t'));
-      addListener(t, listener);
+      assert(Log.w('shared, create: $t'));
+      addListener(t, listener, groupName);
     }
 
     return listener;
   }
 
-  NopListener createListenerArg(Type t, {bool shared = true}) {
+  NopListener createListenerArg(Type t, Object? groupName,
+      {bool shared = true}) {
     t = getAlias(t);
 
-    return _createListenerArg(t, shared);
+    return _createListenerArg(t, shared, groupName);
   }
 
-  NopListener _createListenerArg(Type t, bool shared) {
-    var listener = createArg(t, shared: shared);
+  NopListener _createListenerArg(Type t, bool shared, Object? groupName) {
+    var listener = createArg(t, shared: shared, groupName);
 
     assert(!_pointers.containsKey(t), t);
 
     assert(Log.w('shared: $shared, create: $t'));
-    if (shared) addListener(t, listener); // 只有共享才会添加到共享域中
+    if (shared || groupName != null) {
+      addListener(t, listener, groupName);
+    } // 只有共享才会添加到共享域中
     return listener;
   }
 
-  void addListener(Type t, NopListener listener) {
+  void addListener(Type t, NopListener listener, Object? groupName) {
     t = getAlias(t);
+    if (groupName != null) {
+      _pointersGroup.putIfAbsent(groupName, () => HashMap())[t] = listener;
+      return;
+    }
     assert(!_pointers.containsKey(t), t);
     _pointers[t] = listener;
   }
 
-  NopListener? findType<T>() {
-    return _findTypeElement(getAlias(T));
+  NopListener? findType<T>(Object? groupName) {
+    return _findTypeElement(getAlias(T), groupName);
   }
 
   bool contains(GetTypePointers other) {
@@ -97,44 +118,53 @@ mixin GetTypePointers {
     }
   }
 
-  NopListener? _findTypeElement(Type t) {
+  NopListener? _findTypeElement(Type t, Object? groupName) {
     NopListener? listener;
 
-    visitElement(
-        (current) => (listener = current._findCurrentTypeArg(t)) != null);
+    visitElement((current) =>
+        (listener = current._findCurrentTypeArg(t, groupName)) != null);
 
     return listener;
   }
 
-  NopListener? findTypeArg(Type t) {
-    return _findTypeElement(getAlias(t));
+  NopListener? findTypeArg(Type t, Object? groupName) {
+    return _findTypeElement(getAlias(t), groupName);
   }
 
-  NopListener? findTypeArgOther(Type t) {
-    return _findTypeOtherElement(getAlias(t));
+  NopListener? findTypeArgOther(Type t, Object? groupName) {
+    return _findTypeOtherElement(getAlias(t), groupName);
   }
 
-  NopListener? _findTypeOtherElement(Type t) {
+  NopListener? _findTypeOtherElement(Type t, Object? groupName) {
     NopListener? listener;
 
     visitOtherElement((current) {
       assert(current != this);
-      return (listener = current._findCurrentTypeArg(t)) != null;
+      return (listener = current._findCurrentTypeArg(t, groupName)) != null;
     });
 
     return listener;
   }
 
-  NopListener? _findCurrentTypeArg(Type t) {
+  NopListener? _findCurrentTypeArg(Type t, Object? groupName) {
+    if (groupName != null) {
+      return _pointersGroup[groupName]?[t];
+    }
     return _pointers[t];
   }
 
-  NopListener? findCurrentTypeArg(Type t) {
-    return _pointers[getAlias(t)];
+  NopListener? findCurrentTypeArg(Type t, Object? groupName) {
+    t = getAlias(t);
+    if (groupName != null) {
+      return _pointersGroup[groupName]?[t];
+    }
+    return _pointers[t];
   }
 
-  static NopListener Function(dynamic data) nopListenerCreater = _defaultCreate;
-  static NopListener _defaultCreate(dynamic data) => NopListenerDefault(data);
+  static NopListener Function(dynamic data, Object? groupName)
+      nopListenerCreater = _defaultCreate;
+  static NopListener _defaultCreate(dynamic data, Object? group) =>
+      NopListenerDefault(data, group);
   static GetTypePointers? _globalDependences;
   static GetTypePointers globalDependences =
       _globalDependences ??= NopDependencies();
@@ -147,51 +177,56 @@ mixin GetTypePointers {
     }
   }
 
-  static NopListener defaultGetNopListener(Type t, GetTypePointers? current,
+  static NopListener defaultGetNopListener(
+      Type t, GetTypePointers? current, Object? groupName,
       {bool shared = true}) {
     NopListener? listener;
-    if (shared) {
-      listener = current?.findCurrentTypeArg(t);
+    if (shared || groupName != null) {
+      listener = current?.findCurrentTypeArg(t, groupName);
       if (listener == null) {
-        listener = current?.findTypeArgOther(t);
+        listener = current?.findTypeArgOther(t, groupName);
         // 全局查找
-        listener ??= globalDependences.findTypeArg(t);
+        listener ??= globalDependences.findTypeArg(t, groupName);
         if (listener != null) {
-          current?.addListener(t, listener);
+          current?.addListener(t, listener, groupName);
         }
       }
     }
 
     if (listener == null && current != null) {
       // 页面创建
-      listener = current.createListenerArg(t, shared: shared);
+      listener = current.createListenerArg(t, groupName, shared: shared);
       assert(listener.shared == shared);
     }
     assert(listener != null ||
         Log.w('Global Scope: create $t Object', position: 6));
-    return listener ?? globalDependences.getTypeArg(t);
+    return listener ?? globalDependences.getTypeArg(t, groupName);
   }
 
-  static NopListener? defaultFindNopListener(Type t, GetTypePointers? current) {
-    var listener = current?.findCurrentTypeArg(t);
-    listener ??= current?.findTypeArgOther(t);
+  static NopListener? defaultFindNopListener(
+      Type t, GetTypePointers? current, Object? groupName) {
+    var listener = current?.findCurrentTypeArg(t, groupName);
+    listener ??= current?.findTypeArgOther(t, groupName);
     // 全局查找
-    listener ??= globalDependences.findTypeArg(t);
+    listener ??= globalDependences.findTypeArg(t, groupName);
     return listener;
   }
 
   static NopListener createUniqueListener(dynamic data) {
-    final listener = nopListenerCreater(data);
+    final listener = nopListenerCreater(data, null);
     listener.scope = NopShareScope.unique;
     return listener;
   }
 
-  static NopListener createArg(Type t, {bool shared = true}) {
+  static NopListener createArg(Type t, Object? groupName,
+      {bool shared = true}) {
     final factory = _get(t);
     final data = factory();
-    final listener = nopListenerCreater(data);
+    final listener = nopListenerCreater(data, groupName);
     if (shared) {
       listener.scope = NopShareScope.shared;
+    } else if (groupName != null) {
+      listener.scope = NopShareScope.group;
     } else {
       listener.scope = NopShareScope.page;
     }
@@ -210,8 +245,8 @@ mixin GetTypePointers {
     return _factory ??= getFactory;
   }
 
-  static NopListener create<T>({bool shared = true}) {
-    return createArg(T, shared: shared);
+  static NopListener create<T>(Object? groupName, {bool shared = true}) {
+    return createArg(T, shared: shared, groupName);
   }
 }
 

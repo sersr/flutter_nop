@@ -38,9 +38,11 @@ class Nop<C> extends StatefulWidget {
     this.builders,
     this.create,
     this.initTypes = const [],
-    this.initTypesUnique = const [],
+    this.isOwner = true,
   })  : value = null,
         isPage = false,
+        group = null,
+        initTypesUnique = const [],
         super(key: key);
 
   const Nop.value({
@@ -50,10 +52,14 @@ class Nop<C> extends StatefulWidget {
     this.builder,
     this.builders,
     this.initTypes = const [],
-    this.initTypesUnique = const [],
+    this.isOwner = true,
   })  : create = null,
         isPage = false,
+        group = null,
+        initTypesUnique = const [],
         super(key: key);
+
+  final bool isOwner;
 
   /// stricted mode.
   static bool stricted = true;
@@ -73,9 +79,11 @@ class Nop<C> extends StatefulWidget {
     this.builders,
     this.initTypes = const [],
     this.initTypesUnique = const [],
+    this.group,
   })  : create = null,
         isPage = true,
         value = null,
+        isOwner = true,
         super(key: key);
 
   final Widget child;
@@ -86,6 +94,7 @@ class Nop<C> extends StatefulWidget {
   final List<Type> initTypesUnique;
   final C? value;
   final bool isPage;
+  final Object? group;
 
   static bool print = false;
 
@@ -96,7 +105,7 @@ class Nop<C> extends StatefulWidget {
     } else {
       assert(
           Log.e('Nop.page not found. You need to use Nop.page()') && stricted);
-      final listener = GetTypePointers.defaultGetNopListener(T, null);
+      final listener = GetTypePointers.defaultGetNopListener(T, null, null);
       return listener.data;
     }
   }
@@ -106,9 +115,10 @@ class Nop<C> extends StatefulWidget {
     return nop.state.findTypeArg<T>();
   }
 
-  static T? find<T>() {
-    NopListener? listener = GetTypePointers.globalDependences.findType<T>();
-    listener ??= _NopState.currentDependences?.findType<T>();
+  static T? find<T>({Object? group}) {
+    NopListener? listener =
+        GetTypePointers.globalDependences.findType<T>(group);
+    listener ??= _NopState.currentDependences?.findType<T>(group);
     return listener?.data;
   }
 
@@ -181,7 +191,18 @@ class _NopState<C> extends State<Nop<C>> with NopListenerHandle {
     final pageDependence = pageState?.dependences;
 
     assert(listener == null || pageState != this);
-    return GetTypePointers.defaultFindNopListener(t, pageDependence);
+    return GetTypePointers.defaultFindNopListener(
+      t,
+      pageDependence,
+      getGroup(t),
+    );
+  }
+
+  Object? getGroup(Type t) {
+    if (widget.initTypesUnique.contains(GetTypePointers.getAlias(t))) {
+      return widget.group;
+    }
+    return null;
   }
 
   NopListener getOrCreateDependence(Type t, {bool shared = true}) {
@@ -196,6 +217,7 @@ class _NopState<C> extends State<Nop<C>> with NopListenerHandle {
       t,
       pageDependence,
       shared: shared,
+      getGroup(t),
     );
 
     // 如果不是共享那么在 page 添加一个监听引用
@@ -222,7 +244,7 @@ class _NopState<C> extends State<Nop<C>> with NopListenerHandle {
       final data = widget.create!(context);
       if (data != null) {
         final listener = GetTypePointers.createUniqueListener(data);
-
+        setLocalListener(listener);
         return listener;
       }
     }
@@ -281,10 +303,9 @@ class _NopState<C> extends State<Nop<C>> with NopListenerHandle {
 
   void _addListener(t, NopListener listener) {
     t = GetTypePointers.getAlias(t);
-    if (!_caches.containsKey(t)) {
-      listener.add(this);
-      _caches[t] = listener;
-    }
+    if (_caches.containsKey(t)) return;
+    listener.add(this);
+    _caches[t] = listener;
   }
 
   @override
@@ -302,12 +323,22 @@ class _NopState<C> extends State<Nop<C>> with NopListenerHandle {
     _initState();
   }
 
+  NopListener? _local;
+
   bool isPage = false;
   void _initState() {
     if (widget.value != null) {
       final listener = GetTypePointers.createUniqueListener(widget.value);
+      // _addListener(C, listener);
+      setLocalListener(listener);
+    }
+  }
 
-      _addListener(C, listener);
+  void setLocalListener(NopListener listener) {
+    assert(_local == null);
+    _local = _caches[GetTypePointers.getAlias(C)] = listener;
+    if (widget.isOwner) {
+      listener.add(this);
     }
   }
 
@@ -322,6 +353,9 @@ class _NopState<C> extends State<Nop<C>> with NopListenerHandle {
 
   void _dispose() {
     for (var item in _caches.values) {
+      if (item == _local && !widget.isOwner) {
+        continue;
+      }
       item.remove(this);
     }
     _caches.clear();

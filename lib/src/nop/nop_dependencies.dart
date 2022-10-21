@@ -64,17 +64,17 @@ class NopDependencies with GetTypePointers {
   }
 
   @override
-  void addListener(Type t, NopListener listener) {
-    super.addListener(t, listener);
+  void addListener(Type t, NopListener listener, Object? groupName) {
+    super.addListener(t, listener, groupName);
     listener.onDependenceAdd(this);
   }
 
   void _remove() {
     parent = null;
     child = null;
-    for (var item in listeners) {
+    visiteNoListener((item) {
       item.onDependenceRemove(this);
-    }
+    });
   }
 
   @override
