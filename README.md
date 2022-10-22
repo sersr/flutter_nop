@@ -58,7 +58,7 @@ file: routes.dart;
     }
 
 ```
-run: dart run build_runner build  
+run: flutter pub run build_runner build  
 将会生成 routes.g.dart 文件  
 ```dart
     class Routes {

@@ -23,10 +23,10 @@ class Routes {
     name: '/page02',
     fullName: '/page02',
     groupOwner: () => page02,
-    groupKey: 'nopIsMain',
+    groupKey: 'groupId',
     children: [page03],
     builder: (context, arguments, group) => Nop.page(
-      initTypesUnique: const [UniqueController],
+      groupList: const [UniqueController],
       group: group,
       child: Page02(),
     ),
@@ -36,9 +36,9 @@ class Routes {
     name: '/page03',
     fullName: '/page02/page03',
     groupOwner: () => page02,
-    groupKey: 'nopIsMain',
+    groupKey: 'groupId',
     builder: (context, arguments, group) => Nop.page(
-      initTypesUnique: const [UniqueController],
+      groupList: const [UniqueController],
       group: group,
       child: Page03(),
     ),
@@ -55,18 +55,20 @@ class NavRoutes {
   }
 
   static NopRouteAction<T> page02<T>(
-      {BuildContext? context, bool nopIsMain = false}) {
+      {BuildContext? context, groupId /* bool or String */}) {
+    groupId ??= NopRoute.getGroupIdFromBuildContext(context);
     return NopRouteAction(
         context: context,
         route: Routes.page02,
-        arguments: {'nopIsMain': nopIsMain});
+        arguments: {'groupId': groupId});
   }
 
   static NopRouteAction<T> page03<T>(
-      {BuildContext? context, bool nopIsMain = false}) {
+      {BuildContext? context, groupId /* bool or String */}) {
+    groupId ??= NopRoute.getGroupIdFromBuildContext(context);
     return NopRouteAction(
         context: context,
         route: Routes.page03,
-        arguments: {'nopIsMain': nopIsMain});
+        arguments: {'groupId': groupId});
   }
 }

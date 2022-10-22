@@ -1,3 +1,8 @@
+
+## 2.1.0
+
+* shared group impletation
+
 ## 2.0.1-beta.01
 
 * feature: shared group (experimental)

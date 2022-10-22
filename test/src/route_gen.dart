@@ -40,7 +40,7 @@ class UniqueController {}
   pages: [
     RouteItem(
       page: Page02,
-      preInitUnique: [UniqueController],
+      groupList: [UniqueController],
       pages: [
         RouteItem(page: Page03),
       ],

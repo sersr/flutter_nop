@@ -7,29 +7,25 @@ import 'dependences_mixin.dart';
 import 'nop_dependencies.dart';
 import 'nop_listener.dart';
 import 'nop_pre_init.dart';
+import 'route.dart';
 import 'typedef.dart';
 
 extension GetType on BuildContext {
-  /// [shared] 即使为 false, 也会在[Nop.page]中共享
-  T getType<T>() {
+  /// [group] shared group
+  T getType<T>({Object? group}) {
     return Nop.of(this);
   }
 
-  T? findType<T>() {
+  T? findType<T>({Object? group}) {
     return Nop.findwithContext(this);
   }
 
-  T? getTypeOr<T>() {
+  T? getTypeOr<T>({Object? group}) {
     return Nop.maybeOf(this);
   }
 }
 
-/// 当前共享对象的存储位置
-/// page: 指定一个 虚拟 page,并不是所谓的页面，是一片区域；
-/// 在一个页面中可以有多个区域，每个区域单独管理，由[shared]指定是否共享；
-/// 在全局中有一个依赖链表，里面的对象都是共享的；
-/// 在查找过程中，会在当前 page 依赖添加一个引用，即使是从其他 page 依赖获取的；
-/// 如果没有 page，那么创建的对象只在特定的上下文共享
+/// state manager
 class Nop<C> extends StatefulWidget {
   const Nop({
     Key? key,
@@ -37,12 +33,12 @@ class Nop<C> extends StatefulWidget {
     this.builder,
     this.builders,
     this.create,
-    this.initTypes = const [],
+    this.list = const [],
     this.isOwner = true,
   })  : value = null,
         isPage = false,
         group = null,
-        initTypesUnique = const [],
+        groupList = const [],
         super(key: key);
 
   const Nop.value({
@@ -51,34 +47,25 @@ class Nop<C> extends StatefulWidget {
     required this.child,
     this.builder,
     this.builders,
-    this.initTypes = const [],
+    this.list = const [],
     this.isOwner = true,
   })  : create = null,
         isPage = false,
         group = null,
-        initTypesUnique = const [],
+        groupList = const [],
         super(key: key);
 
-  final bool isOwner;
-
   /// stricted mode.
-  static bool stricted = true;
+  static bool stricted = false;
 
-  /// page 共享域
-  /// shared == false, 也会共享
-  /// page 与 page 之间存在隔离
-  ///
-  /// 每个 page 都有一个 [NopDependencies] 依赖节点
-  /// [NopDependencies] : 只保存引用，不添加监听，监听由[_NopState]管理
-  /// page 释放会自动移除 依赖节点
-  /// [NopListener] : 管理监听对象，当没有监听者时释放
+  /// a virtual page
   const Nop.page({
     Key? key,
     required this.child,
     this.builder,
     this.builders,
-    this.initTypes = const [],
-    this.initTypesUnique = const [],
+    this.list = const [],
+    this.groupList = const [],
     this.group,
   })  : create = null,
         isPage = true,
@@ -90,46 +77,42 @@ class Nop<C> extends StatefulWidget {
   final NopWidgetBuilder? builder;
   final List<NopWidgetBuilder>? builders;
   final C Function(BuildContext context)? create;
-  final List<Type> initTypes;
-  final List<Type> initTypesUnique;
+  final List<Type> list;
+  final List<Type> groupList;
   final C? value;
   final bool isPage;
   final Object? group;
 
+  /// the owner of the state object
+  final bool isOwner;
+
   static bool print = false;
 
-  static T of<T>(BuildContext context) {
+  static T of<T>(BuildContext context, {Object? group}) {
     final nop = context.dependOnInheritedWidgetOfExactType<_NopScoop>();
     if (nop != null) {
-      return nop.state.getType<T>();
+      return nop.state.getType<T>(group);
     } else {
-      assert(
-          Log.e('Nop.page not found. You need to use Nop.page()') && stricted);
+      assert(Log.e('Nop.page not found. You need to use Nop.page()') && stricted);
       final listener = GetTypePointers.defaultGetNopListener(T, null, null);
       return listener.data;
     }
   }
 
-  static T? findwithContext<T>(BuildContext context) {
+  static T? findwithContext<T>(BuildContext context, {Object? group}) {
     final nop = context.dependOnInheritedWidgetOfExactType<_NopScoop>()!;
-    return nop.state.findTypeArg<T>();
+    return nop.state.findTypeArg<T>(group);
   }
 
   static T? find<T>({Object? group}) {
-    NopListener? listener =
-        GetTypePointers.globalDependences.findType<T>(group);
+    NopListener? listener = GetTypePointers.globalDependences.findType<T>(group);
     listener ??= _NopState.currentDependences?.findType<T>(group);
     return listener?.data;
   }
 
-  static T? maybeOf<T>(BuildContext context) {
+  static T? maybeOf<T>(BuildContext context, {Object? group}) {
     final nop = context.dependOnInheritedWidgetOfExactType<_NopScoop>();
-    return nop?.state.getType<T>();
-  }
-
-  static _NopState? _maybeOf(BuildContext context) {
-    final nop = context.dependOnInheritedWidgetOfExactType<_NopScoop>();
-    return nop?.state;
+    return nop?.state.getType<T>(group);
   }
 
   /// 链表会自动管理生命周期
@@ -138,11 +121,9 @@ class Nop<C> extends StatefulWidget {
     GetTypePointers.clear();
   }
 
-  /// 内部使用
-  /// [t] 是 [T] 类型
-  static dynamic _ofType(Type t, BuildContext context, {bool shared = true}) {
-    final nop = context.dependOnInheritedWidgetOfExactType<_NopScoop>()!;
-    return nop.state.getTypeArg(t, shared: shared);
+  static _NopState? _maybeOf(BuildContext context) {
+    final nop = context.dependOnInheritedWidgetOfExactType<_NopScoop>();
+    return nop?.state;
   }
 
   @override
@@ -150,106 +131,30 @@ class Nop<C> extends StatefulWidget {
 }
 
 class _NopState<C> extends State<Nop<C>> with NopListenerHandle {
-  final _caches = HashMap<Type, NopListener>();
+  final _caches = <Object?, HashMap<Type, NopListener>>{};
+
+  bool containsKey(Object? group, Type t) {
+    return _caches[group]?.containsKey(t) ?? false;
+  }
+
+  void setLocalListener(NopListener listener, bool isOwner, Object? group) {
+    assert(_local == null);
+    _local = _caches.putIfAbsent(
+        group, GetTypePointers.createHashMap)[GetTypePointers.getAlias(C)] = listener;
+    if (isOwner) listener.add(this);
+  }
+
+  NopListener? getListener(Type t, Object? group) {
+    return _caches.putIfAbsent(group, GetTypePointers.createHashMap)[GetTypePointers.getAlias(t)];
+  }
+
+  void _addListener(t, Object? group, NopListener listener) {
+    t = GetTypePointers.getAlias(t);
+    listener.add(this);
+    _caches.putIfAbsent(group, GetTypePointers.createHashMap)[t] = listener;
+  }
+
   late final dependences = NopDependencies();
-
-  T getType<T>({bool shared = true}) {
-    return getTypeListener(T, shared: shared).data;
-  }
-
-  T? findTypeArg<T>() {
-    return findTypeListener(T)?.data;
-  }
-
-  @override
-  NopListener getTypeListener(Type t, {bool shared = true}) {
-    var listener = _getOrCreateCurrent(t);
-
-    if (listener == null) {
-      listener = getOrCreateDependence(t, shared: shared);
-      _addListener(t, listener);
-    }
-
-    assert(!Nop.print || Log.i('get $t', position: 3));
-
-    return listener;
-  }
-
-  dynamic getTypeArg(Type t, {bool shared = true}) {
-    var listener = getTypeListener(t, shared: shared);
-    return listener.data;
-  }
-
-  @override
-  NopListener? findTypeListener(Type t) {
-    NopListener? listener = _getOrCreateCurrent(t);
-    if (listener != null) return listener;
-
-    final pageState = getPageNopState(this);
-
-    listener = pageState?.getListener(t);
-    final pageDependence = pageState?.dependences;
-
-    assert(listener == null || pageState != this);
-    return GetTypePointers.defaultFindNopListener(
-      t,
-      pageDependence,
-      getGroup(t),
-    );
-  }
-
-  Object? getGroup(Type t) {
-    if (widget.initTypesUnique.contains(GetTypePointers.getAlias(t))) {
-      return widget.group;
-    }
-    return null;
-  }
-
-  NopListener getOrCreateDependence(Type t, {bool shared = true}) {
-    final pageState = getPageNopState(this);
-
-    NopListener? listener = pageState?.getListener(t);
-    final pageDependence = pageState?.dependences;
-
-    assert(listener == null || pageState != this);
-
-    listener ??= GetTypePointers.defaultGetNopListener(
-      t,
-      pageDependence,
-      shared: shared,
-      getGroup(t),
-    );
-
-    // 如果不是共享那么在 page 添加一个监听引用
-    if (!shared && pageState != null) {
-      pageState._addListener(t, listener);
-    }
-    return listener;
-  }
-
-  NopListener? _getOrCreateCurrent(Type t) {
-    var listener = getListener(t);
-
-    if (listener == null) {
-      listener = _create(t);
-      if (listener != null) {
-        _addListener(t, listener);
-      }
-    }
-    return listener;
-  }
-
-  NopListener? _create(Type t) {
-    if (widget.create != null && t == C) {
-      final data = widget.create!(context);
-      if (data != null) {
-        final listener = GetTypePointers.createUniqueListener(data);
-        setLocalListener(listener);
-        return listener;
-      }
-    }
-    return null;
-  }
 
   static NopDependencies? currentDependences;
 
@@ -297,15 +202,58 @@ class _NopState<C> extends State<Nop<C>> with NopListenerHandle {
     return state;
   }
 
-  NopListener? getListener(Type t) {
-    return _caches[GetTypePointers.getAlias(t)];
+  /// export
+  T getType<T>(Object? group) {
+    return getTypeListener(T, group).data;
   }
 
-  void _addListener(t, NopListener listener) {
-    t = GetTypePointers.getAlias(t);
-    if (_caches.containsKey(t)) return;
-    listener.add(this);
-    _caches[t] = listener;
+  T? findTypeArg<T>(Object? group) {
+    return findTypeListener(T, group)?.data;
+  }
+
+  /// ---
+
+  @override
+  NopListener getTypeListener(Type t, Object? group) {
+    group ??= getGroup(t);
+    var listener = getListener(t, group);
+
+    if (listener == null) {
+      listener = getOrCreateDependence(t, group);
+      _addListener(t, group, listener);
+    }
+
+    assert(!Nop.print || Log.i('get $t', position: 3));
+
+    return listener;
+  }
+
+  @override
+  NopListener? findTypeListener(Type t, Object? group) {
+    group ??= getGroup(t);
+    NopListener? listener = getListener(t, group);
+    if (listener != null) return listener;
+
+    final pageState = getPageNopState(this);
+
+    listener = pageState?.getListener(t, group);
+    final pageDependence = pageState?.dependences;
+
+    assert(listener == null || pageState != this);
+    return GetTypePointers.defaultFindNopListener(t, pageDependence, group);
+  }
+
+  NopListener getOrCreateDependence(Type t, Object? group) {
+    final pageState = getPageNopState(this);
+
+    NopListener? listener = pageState?.getListener(t, group);
+    final pageDependence = pageState?.dependences;
+
+    assert(listener == null || pageState != this);
+
+    listener ??= GetTypePointers.defaultGetNopListener(t, pageDependence, group);
+
+    return listener;
   }
 
   @override
@@ -313,70 +261,104 @@ class _NopState<C> extends State<Nop<C>> with NopListenerHandle {
     if (mounted) setState(() {});
   }
 
+  Object? _group;
+
+  Object? getGroup(Type t) {
+    if (widget.groupList.contains(GetTypePointers.getAlias(t))) {
+      return _group;
+    }
+    return null;
+  }
+
+  bool isPage = false;
+  NopListener? _local;
+
   @override
   void initState() {
     super.initState();
     isPage = widget.isPage;
+    _group = widget.group;
+  }
+
+  void _initData(dynamic data) {
+    if (data != null) {
+      var listener = NopLifeCycle.checkIsNopLisenter(data);
+      if (listener != null) {
+        setLocalListener(listener, true, null);
+        return;
+      }
+      listener = GetTypePointers.createUniqueListener(data);
+      setLocalListener(listener, widget.isOwner, null);
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _initOnce();
+  }
+
+  bool _init = false;
+  void _initOnce() {
+    if (_init) return;
+    _init = true;
+
     if (isPage) {
-      push(dependences, parent: getPageNopState(this)?.dependences);
+      final parent = Nop._maybeOf(context);
+      push(dependences, parent: parent == null ? null : getPageNopState(parent)?.dependences);
     }
-    _initState();
-  }
 
-  NopListener? _local;
+    // get groupId from settings
+    if (_group == null) {
+      final settings = ModalRoute.of(context)?.settings;
+      if (settings is NopRouteSettings) {
+        _group = settings.group;
+      }
+    }
 
-  bool isPage = false;
-  void _initState() {
+    // init
     if (widget.value != null) {
-      final listener = GetTypePointers.createUniqueListener(widget.value);
-      // _addListener(C, listener);
-      setLocalListener(listener);
-    }
-  }
-
-  void setLocalListener(NopListener listener) {
-    assert(_local == null);
-    _local = _caches[GetTypePointers.getAlias(C)] = listener;
-    if (widget.isOwner) {
-      listener.add(this);
+      _initData(widget.value);
+    } else if (widget.create != null && !_caches.containsKey(GetTypePointers.getAlias(C))) {
+      final data = widget.create!(context);
+      _initData(data);
     }
   }
 
   @override
   void dispose() {
     _dispose();
-    if (isPage) {
-      pop(dependences);
-    }
+    if (isPage) pop(dependences);
     super.dispose();
   }
 
   void _dispose() {
-    for (var item in _caches.values) {
-      if (item == _local && !widget.isOwner) {
-        continue;
+    for (var group in _caches.values) {
+      for (var item in group.values) {
+        if (item == _local && !widget.isOwner) {
+          continue;
+        }
+        item.remove(this);
       }
-      item.remove(this);
     }
     _caches.clear();
   }
+
+  dynamic _initType(Type t, _, group) => getTypeListener(t, group).data;
 
   @override
   Widget build(BuildContext context) {
     final child = NopPreInit(
       builder: widget.builder,
       builders: widget.builders,
-      init: _init,
-      initTypes: widget.initTypes,
-      initTypesUnique: widget.initTypesUnique,
+      init: _initType,
+      group: widget.group,
+      list: widget.list,
+      groupList: widget.groupList,
       child: widget.child,
     );
 
     return _NopScoop(state: this, child: child);
-  }
-
-  static dynamic _init(Type t, context, {bool shared = true}) {
-    return Nop._ofType(t, context, shared: shared);
   }
 }
 

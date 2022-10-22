@@ -1,3 +1,5 @@
+import 'dart:collection';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:nop/nop.dart';
@@ -9,14 +11,6 @@ mixin NopLifeCycle {
   @mustCallSuper
   void nopInit() {
     assert(mounted);
-    final parents = attachToParents ?? const [];
-    if (parents.isNotEmpty) {
-      final listener = _listener!;
-      for (var type in parents) {
-        final parent = listener.getListener(type);
-        parent.addSubListener(nopType, listener);
-      }
-    }
   }
 
   Type get nopType => runtimeType;
@@ -24,40 +18,32 @@ mixin NopLifeCycle {
   @mustCallSuper
   void nopDispose() {
     assert(!mounted);
-    final parents = attachToParents ?? const [];
-    if (parents.isNotEmpty) {
-      final listener = _listener!;
-      for (var type in parents) {
-        final parent = listener.getListener(type);
-        parent.removeSubListener(nopType, listener);
-      }
-    }
   }
 
   NopListener? _listener;
 
-  List<Type>? _parents;
-  List<Type>? get attachToParents => _parents ??= null;
-
   bool get mounted => _listener != null && _listener!.mounted;
 
   /// 自动创建对象
-  T getType<T>() {
+  T getType<T>({Object? group}) {
     assert(mounted);
-    return _listener!.getType<T>();
+    return _listener!.getType<T>(group: group);
   }
 
   /// 查找已存在的共享对象，不会创建对象
-  T? getTypeOrNull<T>() {
+  T? getTypeOrNull<T>({Object? group}) {
     assert(mounted);
-    return _listener!.getTypeOrNull<T>();
+    return _listener!.getTypeOrNull<T>(group: group);
   }
 
   void onDisposeStart() {}
   void onDisposeCancel() {}
 
   static void autoInit(Object lifeCycle, NopListener listener) {
-    assert(Log.w('init: ${lifeCycle.runtimeType}'));
+    assert(Log.w(lifeCycle is NopLifeCycle
+        ? '${GetTypePointers.getGroupName(listener.group)}: ${lifeCycle.runtimeType}'
+        : '${lifeCycle.runtimeType}'));
+
     if (lifeCycle is NopLifeCycle) {
       if (lifeCycle._listener == null) {
         lifeCycle._listener = listener;
@@ -66,22 +52,23 @@ mixin NopLifeCycle {
     }
   }
 
-  static void disopseStart(Object lifeCycle) {
-    assert(Log.w('dispose: ${lifeCycle.runtimeType}'));
+  static void disposeStart(Object lifeCycle) {
     if (lifeCycle is NopLifeCycle) {
       lifeCycle.onDisposeStart();
     }
   }
 
-  static void disopseCancel(Object lifeCycle) {
-    assert(Log.w('dispose: ${lifeCycle.runtimeType}'));
+  static void disposeCancel(Object lifeCycle) {
     if (lifeCycle is NopLifeCycle) {
       lifeCycle.onDisposeCancel();
     }
   }
 
-  static void autoDispse(Object lifeCycle) {
-    assert(Log.w('dispose: ${lifeCycle.runtimeType}'));
+  static void autoDispose(Object lifeCycle) {
+    assert(Log.w(lifeCycle is NopLifeCycle
+        ? '${GetTypePointers.getGroupName(lifeCycle._listener?.group)}: ${lifeCycle.runtimeType}'
+        : '${lifeCycle.runtimeType}'));
+
     if (lifeCycle is NopLifeCycle) {
       lifeCycle.nopDispose();
       lifeCycle._listener = null;
@@ -89,13 +76,20 @@ mixin NopLifeCycle {
       lifeCycle.dispose();
     }
   }
+
+  static NopListener? checkIsNopLisenter(dynamic data) {
+    if (data is NopLifeCycle) {
+      return data._listener;
+    }
+    return null;
+  }
 }
 
 mixin NopListenerHandle {
   void update();
   bool get mounted;
-  NopListener getTypeListener(Type t);
-  NopListener? findTypeListener(Type t);
+  NopListener getTypeListener(Type t, Object? group);
+  NopListener? findTypeListener(Type t, Object? group);
 }
 
 abstract class NopListener {
@@ -105,14 +99,11 @@ abstract class NopListener {
 
   NopShareScope scope = NopShareScope.shared;
 
-  bool get shared => scope == NopShareScope.shared;
-
   NopListenerHandle? get handle;
-  bool get mounted =>
-      _dependenceTree.isNotEmpty || handle != null && handle!.mounted;
+  bool get mounted => _dependenceTree.isNotEmpty || handle != null && handle!.mounted;
 
-  T getType<T>() => getTypeArg(T);
-  T? getTypeOrNull<T>() => findType(T)?.data;
+  T getType<T>({Object? group}) => getTypeArg(T, group: group);
+  T? getTypeOrNull<T>({Object? group}) => findType(T, group: group)?.data;
 
   void remove(NopListenerHandle key);
 
@@ -122,28 +113,30 @@ abstract class NopListener {
 
   void onRemove();
 
-  dynamic getTypeArg(Type t) {
+  dynamic getTypeArg(Type t, {Object? group}) {
     assert(mounted);
-    return getListener(t).data;
+    return getListener(t, group: group).data;
   }
 
-  NopListener getListener(Type t) {
-    return getTypeDefault(t, this);
+  NopListener getListener(Type t, {Object? group}) {
+    return getTypeDefault(t, this, group);
   }
 
-  NopListener? findType(Type t) {
-    return getTypeOrNullDefault(t, this);
+  NopListener? findType(Type t, {Object? group}) {
+    return getTypeOrNullDefault(t, this, group);
   }
 
-  final Map<Type, NopListener> _subNopListeners = <Type, NopListener>{};
-  final Map<Type, NopListener> _attachNopListeners = <Type, NopListener>{};
+  final _dependenceGroups = <Object?, HashMap<Type, NopListener>>{};
   final _dependenceTree = <GetTypePointers>[];
 
   void onDependenceAdd(GetTypePointers value) {
     if (_dependenceTree.contains(value)) return;
     _dependenceTree.add(value);
 
-    assert(Log.w('add: ${data.runtimeType} ${_dependenceTree.length}'));
+    assert(Log.w(data is NopLifeCycle
+        ? '${GetTypePointers.getGroupName(data._listener?.group)}:'
+            ' ${data.runtimeType} length: ${_dependenceTree.length}'
+        : '${data.runtimeType} length: ${_dependenceTree.length}'));
     _updateDependence();
   }
 
@@ -164,52 +157,44 @@ abstract class NopListener {
     final first = _dependenceTree.first;
     if (first == _syncTypePointers) return;
 
-    for (var i in _subNopListeners.entries) {
-      final t = GetTypePointers.getAlias(i.key);
-      if (first.findCurrentTypeArg(t, null) != null) continue;
-      final subListener = i.value;
-      first.addListener(t, subListener, null);
+    for (var group in _dependenceGroups.entries) {
+      for (var entry in group.value.entries) {
+        final t = GetTypePointers.getAlias(entry.key);
+        if (first.findCurrentTypeArg(t, group.key) != null) continue;
+        final subListener = entry.value;
+        first.addListener(t, subListener, group.key);
 
-      if (first is! NopDependencies) subListener.onDependenceAdd(first);
+        if (first is! NopDependencies) subListener.onDependenceAdd(first);
+      }
     }
     _syncTypePointers = first;
   }
 
-  static NopListener getTypeDefault(Type t, NopListener owner) {
+  static NopListener getTypeDefault(Type t, NopListener owner, Object? group) {
     t = GetTypePointers.getAlias(t);
 
-    NopListener? listener = owner._subNopListeners[t];
-    listener ??= owner._attachNopListeners[t];
+    NopListener? listener = owner._dependenceGroups[group]?[t];
 
     if (listener == null) {
-      listener = owner.handle?.getTypeListener(t);
-      if (owner.shared) {
-        assert(owner._dependenceTree.isNotEmpty);
-        listener ??= GetTypePointers.defaultGetNopListener(
-            t, owner._dependenceTree.first, null);
-      }
-      if (listener != null) {
-        owner.addListener(t, listener, null);
-        assert(owner.scope.index >= listener.scope.index);
-      }
+      listener = owner.handle?.getTypeListener(t, group);
+      assert(owner._dependenceTree.isNotEmpty);
+      listener ??= GetTypePointers.defaultGetNopListener(t, owner._dependenceTree.first, group);
+      owner.addListener(t, listener, group);
+      assert(owner.scope.index >= listener.scope.index);
     }
 
-    return listener!;
+    return listener;
   }
 
-  static NopListener? getTypeOrNullDefault(Type t, NopListener owner) {
+  static NopListener? getTypeOrNullDefault(Type t, NopListener owner, Object? group) {
     t = GetTypePointers.getAlias(t);
 
-    NopListener? listener = owner._subNopListeners[t];
-    listener ??= owner._attachNopListeners[t];
+    NopListener? listener = owner._dependenceGroups[group]?[t];
     if (listener == null) {
-      listener = owner.handle?.findTypeListener(t);
-      if (owner._dependenceTree.isNotEmpty) {
-        listener ??= GetTypePointers.defaultFindNopListener(
-            t, owner._dependenceTree.first, null);
-      }
+      listener = owner.handle?.findTypeListener(t, group);
+      listener ??= GetTypePointers.defaultFindNopListener(t, owner._dependenceTree.first, group);
       if (listener != null) {
-        owner.addListener(t, listener, null);
+        owner.addListener(t, listener, group);
         assert(owner.scope.index >= listener.scope.index);
       }
     }
@@ -218,8 +203,8 @@ abstract class NopListener {
   }
 
   void addListener(Type t, NopListener listener, Object? group) {
-    if (_subNopListeners.containsKey(t)) return;
-    _subNopListeners[t] = listener;
+    if (_dependenceGroups.containsKey(t)) return;
+    _dependenceGroups.putIfAbsent(group, () => HashMap())[t] = listener;
     final sync = _syncTypePointers;
     if (sync == null) {
       _updateDependence();
@@ -230,28 +215,17 @@ abstract class NopListener {
 
     if (sync is! NopDependencies) listener.onDependenceAdd(sync);
   }
-
-  void addSubListener(Type t, NopListener listener) {
-    if (_attachNopListeners.containsKey(t)) return;
-    _attachNopListeners[t] = listener;
-  }
-
-  void removeSubListener(Type t, NopListener listener) {
-    _attachNopListeners.remove(t);
-  }
 }
 
 /// 指定共享范围
-/// 低级的共享域可以通过 [NopListener.attachToParents] 让高级的共享域访问
+/// 低级的共享域可以通过 [NopListener.list] 让高级的共享域访问
 /// 低级共享域可以任意使用高级共享域
 enum NopShareScope {
   /// 全局或路由链表共享
   shared,
 
-  /// 当前`Page`中共享
-  page,
-
-  /// group
+  /// shared group
+  /// 共享组
   group,
 
   /// 不共享，独立的
@@ -268,13 +242,11 @@ class NopListenerDefault extends NopListener {
     return null;
   }
 
-  bool get canDisposed => canRemoved && isEmpty;
-
   @override
   void onRemove() {
-    if (!canDisposed) return;
+    if (mounted) return;
     if (_secheduled) return;
-    NopLifeCycle.disopseStart(data);
+    NopLifeCycle.disposeStart(data);
     SchedulerBinding.instance.addPostFrameCallback((_) {
       _secheduled = false;
       _onRemove();
@@ -283,12 +255,12 @@ class NopListenerDefault extends NopListener {
   }
 
   void _onRemove() {
-    if (!canDisposed) {
-      NopLifeCycle.disopseCancel(data);
+    if (mounted) {
+      NopLifeCycle.disposeCancel(data);
       return;
     }
     _dispose = true;
-    NopLifeCycle.autoDispse(data);
+    NopLifeCycle.autoDispose(data);
     _init = false;
   }
 

@@ -72,7 +72,7 @@ class NopDependencies with GetTypePointers {
   void _remove() {
     parent = null;
     child = null;
-    visiteNoListener((item) {
+    visitListener((_, item) {
       item.onDependenceRemove(this);
     });
   }
