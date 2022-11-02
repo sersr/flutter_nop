@@ -201,25 +201,27 @@ class NopRoute {
     Object? arguments,
   }) {
     final action = getActions(context);
-    return action.pushNamedAndRemoveUntil(context, fullName, predicate);
+    return action.pushNamedAndRemoveUntil(context, fullName, predicate, arguments: arguments);
   }
 
   static FutureOr<String?> restorablePushNamed(BuildContext? context,
       {required String fullName, Object? arguments}) {
     final action = getActions(context);
-    return action.restorablePushNamed(context, fullName);
+    return action.restorablePushNamed(context, fullName, arguments: arguments);
   }
 
   static FutureOr<String?> restorablePopAndPushNamed<R extends Object>(BuildContext? context,
       {required String fullName, Object? arguments, R? result}) {
     final action = getActions(context);
-    return action.restorablePopAndPushNamed(context, fullName, result: result);
+    return action.restorablePopAndPushNamed(context, fullName,
+        result: result, arguments: arguments);
   }
 
   static FutureOr<String?> restorablePushReplacementNamed<R extends Object>(BuildContext? context,
       {required String fullName, Object? arguments, R? result}) {
     final action = getActions(context);
-    return action.restorablePushReplacementNamed(context, fullName, result: result);
+    return action.restorablePushReplacementNamed(context, fullName,
+        result: result, arguments: arguments);
   }
 
   static FutureOr<String?> restorablePushNamedAndRemoveUntil(
@@ -229,7 +231,8 @@ class NopRoute {
     Object? arguments,
   }) {
     final action = getActions(context);
-    return action.restorablePushNamedAndRemoveUntil(context, fullName, predicate);
+    return action.restorablePushNamedAndRemoveUntil(context, fullName, predicate,
+        arguments: arguments);
   }
 
   NopRouteBuilder? onMatch(RouteSettings settings) {
@@ -324,25 +327,27 @@ class NopRouteSettings extends RouteSettings {
     if (route.groupOwner == null) return null;
 
     Object? group;
-
+    dynamic groupId;
     try {
-      final groupId = arguments.remove(route.groupKey);
-      // global
-      if (groupId == true) return null;
+      groupId = arguments[route.groupKey];
+    } catch (_) {
+      Log.w('ss...$_');
+    }
+    // global
+    if (groupId == true) return null;
 
-      if (groupId is String) {
-        group = groupId;
+    if (groupId == false || groupId == null) {
+      int id;
+      if (!route.isCurrent) {
+        id = NopRoute.getGroupId(route.groupOwner!);
       } else {
-        int id;
-        if (!route.isCurrent) {
-          id = NopRoute.getGroupId(route.groupOwner!);
-        } else {
-          id = NopRoute._incGroupId(route.groupOwner!);
-        }
-
-        group = '${route.groupName}_$id';
+        id = NopRoute._incGroupId(route.groupOwner!);
       }
-    } catch (_) {}
+
+      group = '${route.groupName}_$id';
+    } else {
+      group = groupId;
+    }
 
     return group;
   }
@@ -507,7 +512,7 @@ class NavigationNavActions extends NavigationActions {
   Future<T?> pushNamedAndRemoveUntil<T extends Object?>(
       BuildContext? context, String name, RoutePredicate predicate,
       {Object? arguments}) {
-    return pushNamedAndRemoveUntilCallback(name, predicate);
+    return pushNamedAndRemoveUntilCallback(name, predicate, arguments: arguments);
   }
 
   @override
