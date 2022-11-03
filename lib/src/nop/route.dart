@@ -103,16 +103,22 @@ class NopRoute {
     return groupOwner?.fullName;
   }
 
-  static final groupIds = <NopRoute, int>{};
+  // static final groupIds = <NopRoute, int>{};
 
-  static int _incGroupId(NopRoute route) {
-    final id = groupIds[route] ?? 0;
-    return groupIds[route] = id + 1;
-  }
+  static int _routeId = 0;
+  static int get _incGroupId => _routeId += 1;
+  // static int _incGroupId(NopRoute route) {
+  //   final id = groupIds[route] ?? 0;
+  //   return groupIds[route] = id + 1;
+  // }
 
-  static int getGroupId(NopRoute route) {
-    return groupIds.putIfAbsent(route, () => 0);
-  }
+  // static int getGroupId(NopRoute route) {
+  //   return groupIds.putIfAbsent(route, () => 0);
+  // }
+
+  // static void deleteGroupId(NopRoute route) {
+  //   groupIds.remove(route);
+  // }
 
   static Object? getGroupIdFromBuildContext(BuildContext? context) {
     if (context == null) return null;
@@ -329,21 +335,13 @@ class NopRouteSettings extends RouteSettings {
     Object? group;
     dynamic groupId;
     try {
-      groupId = arguments[route.groupKey];
-    } catch (_) {
-      Log.w('ss...$_');
-    }
+      groupId = arguments.remove(route.groupKey);
+    } catch (_) {}
     // global
-    if (groupId == true) return null;
+    if (groupId == true || groupId == null) return null;
 
-    if (groupId == false || groupId == null) {
-      int id;
-      if (!route.isCurrent) {
-        id = NopRoute.getGroupId(route.groupOwner!);
-      } else {
-        id = NopRoute._incGroupId(route.groupOwner!);
-      }
-
+    if (groupId == false) {
+      int id = NopRoute._incGroupId;
       group = '${route.groupName}_$id';
     } else {
       group = groupId;
