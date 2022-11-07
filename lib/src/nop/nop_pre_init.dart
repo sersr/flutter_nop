@@ -9,10 +9,10 @@ class NopPreInit extends StatefulWidget {
     this.builder,
     this.builders,
     this.group,
-    required this.init,
+    @Deprecated('will be removed.') required this.init,
     required this.child,
-    this.list = const [],
-    this.groupList = const [],
+    @Deprecated('will be removed.') this.list = const [],
+    @Deprecated('will be removed.') this.groupList = const [],
   }) : super(key: key);
 
   final NopWidgetBuilder? builder;
@@ -36,20 +36,20 @@ class _NopPreInitState extends State<NopPreInit> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (!_initFirst) {
-      _initFirst = true;
-      _init(widget.groupList, widget.group);
-      _init(widget.list, null);
-    }
+    // if (!_initFirst) {
+    //   _initFirst = true;
+    //   _init(widget.groupList, widget.group);
+    //   _init(widget.list, null);
+    // }
   }
 
-  bool _initFirst = false;
+  // bool _initFirst = false;
 
-  void _init(List<Type> types, Object? group) {
-    for (var item in types) {
-      widget.init(item, context, group);
-    }
-  }
+  // void _init(List<Type> types, Object? group) {
+  //   for (var item in types) {
+  //     widget.init(item, context, group);
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
