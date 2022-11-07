@@ -34,7 +34,7 @@ class Nop<C> extends StatefulWidget {
     this.builders,
     this.create,
     @Deprecated('will be removed.') this.list = const [],
-    this.isOwner = true,
+    @Deprecated('will be removed.') this.isOwner = true,
   })  : value = null,
         isPage = false,
         group = null,
@@ -48,7 +48,7 @@ class Nop<C> extends StatefulWidget {
     this.builder,
     this.builders,
     @Deprecated('will be removed.') this.list = const [],
-    this.isOwner = true,
+    @Deprecated('will be removed.') this.isOwner = true,
   })  : create = null,
         isPage = false,
         group = null,
@@ -86,7 +86,7 @@ class Nop<C> extends StatefulWidget {
   /// the owner of the state object
   final bool isOwner;
 
-  static bool print = false;
+  static bool printEnabled = false;
 
   static T of<T>(BuildContext context, {Object? group}) {
     final nop = context.dependOnInheritedWidgetOfExactType<_NopScoop>();
@@ -139,12 +139,12 @@ class _NopState<C> extends State<Nop<C>> with NopListenerHandle {
     return _caches[group]?.containsKey(t) ?? false;
   }
 
-  void setLocalListener(NopListener listener, bool isOwner, Object? group) {
+  void setLocalListener(NopListener listener, Object? group) {
     assert(_local == null);
     _local = _caches.putIfAbsent(
             group, GetTypePointers.createHashMap)[GetTypePointers.getAlias(C)] =
         listener;
-    if (isOwner) listener.add(this);
+    listener.add(this);
   }
 
   NopListener? getListener(Type t, Object? group) {
@@ -227,7 +227,7 @@ class _NopState<C> extends State<Nop<C>> with NopListenerHandle {
       _addListener(t, group, listener);
     }
 
-    assert(!Nop.print || Log.i('get $t', position: 3));
+    assert(!Nop.printEnabled || Log.i('get $t', position: 3));
 
     return listener;
   }
@@ -287,13 +287,8 @@ class _NopState<C> extends State<Nop<C>> with NopListenerHandle {
 
   void _initData(dynamic data) {
     if (data != null) {
-      var listener = NopLifeCycle.checkIsNopLisenter(data);
-      if (listener != null) {
-        setLocalListener(listener, true, null);
-        return;
-      }
-      listener = GetTypePointers.createUniqueListener(data);
-      setLocalListener(listener, widget.isOwner, null);
+      final listener = GetTypePointers.createUniqueListener(data);
+      setLocalListener(listener, null);
     }
   }
 

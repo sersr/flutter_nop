@@ -10,7 +10,7 @@ typedef Cs = ChangeScoop;
 class ChangeScoop extends StatefulWidget {
   const ChangeScoop(this.builder, {Key? key}) : super(key: key);
   final Widget Function() builder;
-
+  static bool printEnabled = true;
   @override
   State<ChangeScoop> createState() => _ChangeScoopState();
 }
@@ -20,7 +20,8 @@ class _ChangeScoopState extends State<ChangeScoop> {
 
   void addListener(AutoListenChangeNotifierMixin listenable) {
     if (_listenables.contains(listenable)) return;
-    assert(Log.i('${listenable.runtimeType} added', position: 3));
+    assert(!ChangeScoop.printEnabled ||
+        Log.i('${listenable.runtimeType} added', position: 3));
     _listenables.add(listenable);
     listenable.addListener(_listen);
   }

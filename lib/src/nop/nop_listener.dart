@@ -8,6 +8,8 @@ import '../../nop_state.dart';
 
 /// 自动管理生命周期
 mixin NopLifeCycle {
+  static final _caches = <Object, NopListener>{};
+
   @mustCallSuper
   void nopInit() {
     assert(mounted);
@@ -40,6 +42,9 @@ mixin NopLifeCycle {
   void onDisposeCancel() {}
 
   static void autoInit(Object lifeCycle, NopListener listener) {
+    if (lifeCycle is! NopLifeCycle) {
+      _caches[lifeCycle] = listener;
+    }
     assert(Log.w(lifeCycle is NopLifeCycle
         ? '${GetTypePointers.getGroupName(listener.group)}: ${lifeCycle.runtimeType}'
         : '${lifeCycle.runtimeType}'));
@@ -65,6 +70,9 @@ mixin NopLifeCycle {
   }
 
   static void autoDispose(Object lifeCycle) {
+    if (lifeCycle is! NopLifeCycle) {
+      _caches.remove(lifeCycle);
+    }
     assert(Log.w(lifeCycle is NopLifeCycle
         ? '${GetTypePointers.getGroupName(lifeCycle._listener?.group)}: ${lifeCycle.runtimeType}'
         : '${lifeCycle.runtimeType}'));
@@ -81,7 +89,7 @@ mixin NopLifeCycle {
     if (data is NopLifeCycle) {
       return data._listener;
     }
-    return null;
+    return _caches[data];
   }
 }
 
@@ -100,7 +108,8 @@ abstract class NopListener {
   NopShareScope scope = NopShareScope.shared;
 
   NopListenerHandle? get handle;
-  bool get mounted => _dependenceTree.isNotEmpty || handle != null && handle!.mounted;
+  bool get mounted =>
+      _dependenceTree.isNotEmpty || handle != null && handle!.mounted;
 
   T getType<T>({Object? group}) => getTypeArg(T, group: group);
   T? getTypeOrNull<T>({Object? group}) => findType(T, group: group)?.data;
@@ -144,6 +153,11 @@ abstract class NopListener {
 
   void onDependenceRemove(GetTypePointers value) {
     final result = _dependenceTree.remove(value);
+    assert(Log.w(data is NopLifeCycle
+        ? '${GetTypePointers.getGroupName(data._listener?.group)}:'
+            ' ${data.runtimeType} length: ${_dependenceTree.length}'
+        : '${data.runtimeType} length: ${_dependenceTree.length}'));
+
     if (_dependenceTree.isEmpty) {
       onRemove();
       return;
@@ -178,7 +192,8 @@ abstract class NopListener {
     if (listener == null) {
       listener = owner.handle?.getTypeListener(t, group);
       assert(owner._dependenceTree.isNotEmpty);
-      listener ??= GetTypePointers.defaultGetNopListener(t, owner._dependenceTree.first, group);
+      listener ??= GetTypePointers.defaultGetNopListener(
+          t, owner._dependenceTree.first, group);
       owner.addListener(t, listener, group);
       assert(owner.scope.index >= listener.scope.index);
     }
@@ -186,13 +201,15 @@ abstract class NopListener {
     return listener;
   }
 
-  static NopListener? getTypeOrNullDefault(Type t, NopListener owner, Object? group) {
+  static NopListener? getTypeOrNullDefault(
+      Type t, NopListener owner, Object? group) {
     t = GetTypePointers.getAlias(t);
 
     NopListener? listener = owner._dependenceGroups[group]?[t];
     if (listener == null) {
       listener = owner.handle?.findTypeListener(t, group);
-      listener ??= GetTypePointers.defaultFindNopListener(t, owner._dependenceTree.first, group);
+      listener ??= GetTypePointers.defaultFindNopListener(
+          t, owner._dependenceTree.first, group);
       if (listener != null) {
         owner.addListener(t, listener, group);
         assert(owner.scope.index >= listener.scope.index);
