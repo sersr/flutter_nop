@@ -118,7 +118,6 @@ extension OverlayExt on NavInterface {
     String? barrierLabel,
     bool useSafeArea = true,
     RouteSettings? routeSettings,
-    RouteSettings? settings,
     CapturedThemes? themes,
   }) {
     final route = RawDialogRoute<T>(
@@ -136,14 +135,17 @@ extension OverlayExt on NavInterface {
       barrierLabel: barrierLabel,
       transitionDuration: const Duration(milliseconds: 300),
       transitionBuilder: _buildMaterialDialogTransitions,
-      settings: settings,
+      settings: routeSettings,
     );
     return push(route);
   }
 }
 
-Widget _buildMaterialDialogTransitions(BuildContext context, Animation<double> animation,
-    Animation<double> secondaryAnimation, Widget child) {
+Widget _buildMaterialDialogTransitions(
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child) {
   return FadeTransition(
     opacity: CurvedAnimation(
       parent: animation,
@@ -163,16 +165,20 @@ Tween<Offset>? _getOffsetFrom(NopOverlayPosition position) {
   Tween<Offset>? offset;
   switch (position) {
     case NopOverlayPosition.top:
-      offset = Tween(begin: const Offset(0.0, -1.0), end: const Offset(0.0, 0.0));
+      offset =
+          Tween(begin: const Offset(0.0, -1.0), end: const Offset(0.0, 0.0));
       break;
     case NopOverlayPosition.left:
-      offset = Tween(begin: const Offset(-1.0, 0.0), end: const Offset(0.0, 0.0));
+      offset =
+          Tween(begin: const Offset(-1.0, 0.0), end: const Offset(0.0, 0.0));
       break;
     case NopOverlayPosition.bottom:
-      offset = Tween(begin: const Offset(0.0, 1.0), end: const Offset(0.0, 0.0));
+      offset =
+          Tween(begin: const Offset(0.0, 1.0), end: const Offset(0.0, 0.0));
       break;
     case NopOverlayPosition.right:
-      offset = Tween(begin: const Offset(1.0, 0.0), end: const Offset(0.0, 0.0));
+      offset =
+          Tween(begin: const Offset(1.0, 0.0), end: const Offset(0.0, 0.0));
       break;
     default:
   }
@@ -198,7 +204,9 @@ OverlayMixinDelegate showOverlay(
   bool autoShow = true,
   void Function(OverlayMixin owner)? onTap,
   Widget Function(BuildContext context, Widget child)? builder,
-  Widget Function(Widget child, UserGestureController<OverlayPannelBuilder> controller)? transition,
+  Widget Function(
+          Widget child, UserGestureController<OverlayPannelBuilder> controller)?
+      transition,
 }) {
   final offset = _getOffsetFrom(position);
 
@@ -271,7 +279,8 @@ OverlayMixinDelegate showOverlay(
     },
   );
 
-  final overlay = OverlayMixinDelegate(controller, animationDuration, delayDuration: delayDuration);
+  final overlay = OverlayMixinDelegate(controller, animationDuration,
+      delayDuration: delayDuration);
   if (autoShow) overlay.show();
   return overlay;
 }
