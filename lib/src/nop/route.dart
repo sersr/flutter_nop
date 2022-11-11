@@ -28,17 +28,24 @@ mixin NopRouteActionMixin<T> {
   BuildContext? get context;
 
   Future<T?> get go {
-    return NopRoute.pushNamed(context: context, fullName: route.fullName, arguments: arguments);
+    return NopRoute.pushNamed(
+        context: context, fullName: route.fullName, arguments: arguments);
   }
 
   Future<T?> popAndGo({Object? result}) {
     return NopRoute.popAndPushNamed(
-        context: context, fullName: route.fullName, result: result, arguments: arguments);
+        context: context,
+        fullName: route.fullName,
+        result: result,
+        arguments: arguments);
   }
 
   Future<T?> goReplacement({Object? result}) {
     return NopRoute.pushReplacementNamed(
-        context: context, fullName: route.fullName, result: result, arguments: arguments);
+        context: context,
+        fullName: route.fullName,
+        result: result,
+        arguments: arguments);
   }
 
   Future<T?> goAndRemoveUntil(bool Function(Route<dynamic>) predicate) {
@@ -47,7 +54,8 @@ mixin NopRouteActionMixin<T> {
   }
 
   FutureOr<String?> get goRs {
-    return NopRoute.restorablePushNamed(context, fullName: route.fullName, arguments: arguments);
+    return NopRoute.restorablePushNamed(context,
+        fullName: route.fullName, arguments: arguments);
   }
 
   FutureOr<String?> popAndGoRs({Object? result}) {
@@ -70,7 +78,8 @@ class NopRoute {
   final String name;
   final String fullName;
   final List<NopRoute> children;
-  final Widget Function(BuildContext context, dynamic arguments, Object? group) builder;
+  final Widget Function(BuildContext context, dynamic arguments, Object? group)
+      builder;
   final String desc;
   final NopRoute Function()? _groupOwner;
   final String groupKey;
@@ -127,8 +136,8 @@ class NopRoute {
       if (settings is NopRouteSettings) {
         return settings.group;
       }
-      assert(
-          settings == null || Log.e('settings <${settings.runtimeType}> is not NopRouteSettings'));
+      assert(settings == null ||
+          Log.e('settings <${settings.runtimeType}> is not NopRouteSettings'));
     } catch (_) {}
 
     return null;
@@ -164,8 +173,10 @@ class NopRoute {
     pushNamedAndRemoveUntilCallback: Navigator.pushNamedAndRemoveUntil,
     restorablePushNamedCallback: Navigator.restorablePushNamed,
     restorablePopAndPushNamedCallback: Navigator.restorablePopAndPushNamed,
-    restorablePushReplacementNamedCallback: Navigator.restorablePushReplacementNamed,
-    restorablePushNamedAndRemoveUntilCallback: Navigator.restorablePushNamedAndRemoveUntil,
+    restorablePushReplacementNamedCallback:
+        Navigator.restorablePushReplacementNamed,
+    restorablePushNamedAndRemoveUntilCallback:
+        Navigator.restorablePushNamedAndRemoveUntil,
   );
   static NavigationActions navigationWithoutContext = NavigationNavActions(
     pushNamedCallabck: Nav.pushNamed,
@@ -175,7 +186,8 @@ class NopRoute {
     restorablePopAndPushNamedCallback: Nav.restorablePopAndPushNamed,
     restorablePushNamedCallback: Nav.restorablePushNamed,
     restorablePushReplacementNamedCallback: Nav.restorablePushReplacementNamed,
-    restorablePushNamedAndRemoveUntilCallback: Nav.restorablePushNamedAndRemoveUntil,
+    restorablePushNamedAndRemoveUntilCallback:
+        Nav.restorablePushNamedAndRemoveUntil,
   );
 
   static NavigationActions getActions(BuildContext? context) {
@@ -189,15 +201,23 @@ class NopRoute {
   }
 
   static Future<T?> popAndPushNamed<T extends Object?, R extends Object?>(
-      {required String fullName, BuildContext? context, R? result, Object? arguments}) {
+      {required String fullName,
+      BuildContext? context,
+      R? result,
+      Object? arguments}) {
     final action = getActions(context);
-    return action.popAndPushNamed(context, fullName, result: result, arguments: arguments);
+    return action.popAndPushNamed(context, fullName,
+        result: result, arguments: arguments);
   }
 
   static Future<T?> pushReplacementNamed<T extends Object?, R extends Object?>(
-      {required String fullName, BuildContext? context, R? result, Object? arguments}) {
+      {required String fullName,
+      BuildContext? context,
+      R? result,
+      Object? arguments}) {
     final action = getActions(context);
-    return action.pushReplacementNamed(context, fullName, result: result, arguments: arguments);
+    return action.pushReplacementNamed(context, fullName,
+        result: result, arguments: arguments);
   }
 
   static Future<T?> pushNamedAndRemoveUntil<T extends Object?>(
@@ -207,7 +227,8 @@ class NopRoute {
     Object? arguments,
   }) {
     final action = getActions(context);
-    return action.pushNamedAndRemoveUntil(context, fullName, predicate, arguments: arguments);
+    return action.pushNamedAndRemoveUntil(context, fullName, predicate,
+        arguments: arguments);
   }
 
   static FutureOr<String?> restorablePushNamed(BuildContext? context,
@@ -216,15 +237,21 @@ class NopRoute {
     return action.restorablePushNamed(context, fullName, arguments: arguments);
   }
 
-  static FutureOr<String?> restorablePopAndPushNamed<R extends Object>(BuildContext? context,
-      {required String fullName, Object? arguments, R? result}) {
+  static FutureOr<String?> restorablePopAndPushNamed<R extends Object>(
+      BuildContext? context,
+      {required String fullName,
+      Object? arguments,
+      R? result}) {
     final action = getActions(context);
     return action.restorablePopAndPushNamed(context, fullName,
         result: result, arguments: arguments);
   }
 
-  static FutureOr<String?> restorablePushReplacementNamed<R extends Object>(BuildContext? context,
-      {required String fullName, Object? arguments, R? result}) {
+  static FutureOr<String?> restorablePushReplacementNamed<R extends Object>(
+      BuildContext? context,
+      {required String fullName,
+      Object? arguments,
+      R? result}) {
     final action = getActions(context);
     return action.restorablePushReplacementNamed(context, fullName,
         result: result, arguments: arguments);
@@ -237,7 +264,8 @@ class NopRoute {
     Object? arguments,
   }) {
     final action = getActions(context);
-    return action.restorablePushNamedAndRemoveUntil(context, fullName, predicate,
+    return action.restorablePushNamedAndRemoveUntil(
+        context, fullName, predicate,
         arguments: arguments);
   }
 
@@ -252,13 +280,14 @@ class NopRoute {
       }
     }
 
-    final arguments = query ?? settings.arguments as Map<dynamic, dynamic>? ?? const {};
+    final arguments =
+        query ?? settings.arguments as Map<dynamic, dynamic>? ?? const {};
 
     return _onMatch(this, settings, pathName, arguments);
   }
 
-  static NopRouteBuilder? _onMatch(
-      NopRoute current, RouteSettings settings, String pathName, Map<dynamic, dynamic>? query) {
+  static NopRouteBuilder? _onMatch(NopRoute current, RouteSettings settings,
+      String pathName, Map<dynamic, dynamic>? query) {
     if (!pathName.contains(current.fullName)) return null;
 
     if (pathName == current.fullName) {
@@ -351,11 +380,13 @@ class NopRouteSettings extends RouteSettings {
   }
 }
 
-typedef PushNamedNative = Future<T?> Function<T>(BuildContext context, String name,
-    {Object? arguments});
-typedef PopAndPushNative = Future<T?> Function<T, R>(BuildContext context, String name,
+typedef PushNamedNative = Future<T?>
+    Function<T>(BuildContext context, String name, {Object? arguments});
+typedef PopAndPushNative = Future<T?> Function<T, R>(
+    BuildContext context, String name,
     {Object? arguments, R? result});
-typedef PushReplaceNative = Future<T?> Function<T, R>(BuildContext context, String name,
+typedef PushReplaceNative = Future<T?> Function<T, R>(
+    BuildContext context, String name,
     {Object? arguments, R? result});
 typedef PushAndRemoveUntilNative = Future<T?> Function<T extends Object?>(
   BuildContext context,
@@ -363,11 +394,13 @@ typedef PushAndRemoveUntilNative = Future<T?> Function<T extends Object?>(
   RoutePredicate predicate, {
   Object? arguments,
 });
-typedef RePushNamedNative = String Function<T>(BuildContext context, String name,
-    {Object? arguments});
-typedef RePopAndPushNative = String Function<T, R>(BuildContext context, String name,
+typedef RePushNamedNative = String
+    Function<T>(BuildContext context, String name, {Object? arguments});
+typedef RePopAndPushNative = String Function<T, R>(
+    BuildContext context, String name,
     {Object? arguments, R? result});
-typedef RePushReplaceNative = String Function<T, R>(BuildContext context, String name,
+typedef RePushReplaceNative = String Function<T, R>(
+    BuildContext context, String name,
     {Object? arguments, R? result});
 typedef RePushAndRemoveUntilNative = String Function<T extends Object?>(
   BuildContext context,
@@ -399,37 +432,44 @@ class NavigationNativeActions extends NavigationActions {
   final PushAndRemoveUntilNative pushNamedAndRemoveUntilCallback;
 
   @override
-  Future<T?> pushNamed<T>(BuildContext? context, String name, {Object? arguments}) {
+  Future<T?> pushNamed<T>(BuildContext? context, String name,
+      {Object? arguments}) {
     return pushNamedCallabck(context!, name, arguments: arguments);
   }
 
   @override
   Future<T?> popAndPushNamed<T, R>(BuildContext? context, String name,
       {Object? arguments, R? result}) {
-    return popAndPushNamedCallabck(context!, name, arguments: arguments, result: result);
+    return popAndPushNamedCallabck(context!, name,
+        arguments: arguments, result: result);
   }
 
   @override
   Future<T?> pushReplacementNamed<T, R>(BuildContext? context, String name,
       {Object? arguments, R? result}) {
-    return pushReplacementNamedCallabck(context!, name, arguments: arguments, result: result);
+    return pushReplacementNamedCallabck(context!, name,
+        arguments: arguments, result: result);
   }
 
   @override
   Future<T?> pushNamedAndRemoveUntil<T extends Object?>(
       BuildContext? context, String name, RoutePredicate predicate,
       {Object? arguments}) {
-    return pushNamedAndRemoveUntilCallback(context!, name, predicate, arguments: arguments);
+    return pushNamedAndRemoveUntilCallback(context!, name, predicate,
+        arguments: arguments);
   }
 
   @override
-  String restorablePopAndPushNamed<R extends Object>(BuildContext? context, String name,
+  String restorablePopAndPushNamed<R extends Object>(
+      BuildContext? context, String name,
       {Object? arguments, R? result}) {
-    return restorablePopAndPushNamedCallback(context!, name, arguments: arguments, result: result);
+    return restorablePopAndPushNamedCallback(context!, name,
+        arguments: arguments, result: result);
   }
 
   @override
-  String restorablePushNamed(BuildContext? context, String name, {Object? arguments}) {
+  String restorablePushNamed(BuildContext? context, String name,
+      {Object? arguments}) {
     return restorablePushNamedCallback(context!, name, arguments: arguments);
   }
 
@@ -442,7 +482,8 @@ class NavigationNativeActions extends NavigationActions {
   }
 
   @override
-  String restorablePushReplacementNamed<R extends Object>(BuildContext? context, String name,
+  String restorablePushReplacementNamed<R extends Object>(
+      BuildContext? context, String name,
       {Object? arguments, R? result}) {
     return restorablePushReplacementNamedCallback(context!, name,
         arguments: arguments, result: result);
@@ -450,14 +491,17 @@ class NavigationNativeActions extends NavigationActions {
 }
 
 typedef PushNamed = Future<T?> Function<T>(String name, {Object? arguments});
-typedef PopAndPush = Future<T?> Function<T, R>(String name, {Object? arguments, R? result});
-typedef PushReplace = Future<T?> Function<T, R>(String name, {Object? arguments, R? result});
+typedef PopAndPush = Future<T?> Function<T, R>(String name,
+    {Object? arguments, R? result});
+typedef PushReplace = Future<T?> Function<T, R>(String name,
+    {Object? arguments, R? result});
 typedef PushAndRemoveUntil = Future<T?> Function<T extends Object?>(
   String newRouteName,
   RoutePredicate predicate, {
   Object? arguments,
 });
-typedef RePushNamed = Future<String?> Function(String name, {Object? arguments});
+typedef RePushNamed = Future<String?> Function(String name,
+    {Object? arguments});
 typedef RePopAndPush = Future<String?> Function<R extends Object>(String name,
     {Object? arguments, R? result});
 typedef RePushReplace = Future<String?> Function<R extends Object>(String name,
@@ -490,7 +534,8 @@ class NavigationNavActions extends NavigationActions {
   final RePushAndRemoveUntil restorablePushNamedAndRemoveUntilCallback;
 
   @override
-  Future<T?> pushNamed<T>(BuildContext? context, String name, {Object? arguments}) {
+  Future<T?> pushNamed<T>(BuildContext? context, String name,
+      {Object? arguments}) {
     return pushNamedCallabck(name, arguments: arguments);
   }
 
@@ -503,24 +548,29 @@ class NavigationNavActions extends NavigationActions {
   @override
   Future<T?> pushReplacementNamed<T, R>(BuildContext? context, String name,
       {Object? arguments, R? result}) {
-    return pushReplacementNamedCallabck(name, arguments: arguments, result: result);
+    return pushReplacementNamedCallabck(name,
+        arguments: arguments, result: result);
   }
 
   @override
   Future<T?> pushNamedAndRemoveUntil<T extends Object?>(
       BuildContext? context, String name, RoutePredicate predicate,
       {Object? arguments}) {
-    return pushNamedAndRemoveUntilCallback(name, predicate, arguments: arguments);
+    return pushNamedAndRemoveUntilCallback(name, predicate,
+        arguments: arguments);
   }
 
   @override
-  Future<String?> restorablePopAndPushNamed<R extends Object>(BuildContext? context, String name,
+  Future<String?> restorablePopAndPushNamed<R extends Object>(
+      BuildContext? context, String name,
       {Object? arguments, R? result}) {
-    return restorablePopAndPushNamedCallback(name, arguments: arguments, result: result);
+    return restorablePopAndPushNamedCallback(name,
+        arguments: arguments, result: result);
   }
 
   @override
-  Future<String?> restorablePushNamed(BuildContext? context, String name, {Object? arguments}) {
+  Future<String?> restorablePushNamed(BuildContext? context, String name,
+      {Object? arguments}) {
     return restorablePushNamedCallback(name, arguments: arguments);
   }
 
@@ -528,19 +578,22 @@ class NavigationNavActions extends NavigationActions {
   Future<String?> restorablePushNamedAndRemoveUntil(
       BuildContext? context, String name, RoutePredicate predicate,
       {Object? arguments}) {
-    return restorablePushNamedAndRemoveUntilCallback(name, predicate, arguments: arguments);
+    return restorablePushNamedAndRemoveUntilCallback(name, predicate,
+        arguments: arguments);
   }
 
   @override
   Future<String?> restorablePushReplacementNamed<R extends Object>(
       BuildContext? context, String name,
       {Object? arguments, R? result}) {
-    return restorablePushReplacementNamedCallback(name, arguments: arguments, result: result);
+    return restorablePushReplacementNamedCallback(name,
+        arguments: arguments, result: result);
   }
 }
 
 abstract class NavigationActions {
-  Future<T?> pushNamed<T>(BuildContext? context, String name, {Object? arguments});
+  Future<T?> pushNamed<T>(BuildContext? context, String name,
+      {Object? arguments});
   Future<T?> popAndPushNamed<T, R>(BuildContext? context, String name,
       {Object? arguments, R? result});
   Future<T?> pushReplacementNamed<T, R>(BuildContext? context, String name,
@@ -552,8 +605,10 @@ abstract class NavigationActions {
     RoutePredicate predicate, {
     Object? arguments,
   });
-  FutureOr<String?> restorablePushNamed(BuildContext? context, String name, {Object? arguments});
-  FutureOr<String?> restorablePopAndPushNamed<R extends Object>(BuildContext? context, String name,
+  FutureOr<String?> restorablePushNamed(BuildContext? context, String name,
+      {Object? arguments});
+  FutureOr<String?> restorablePopAndPushNamed<R extends Object>(
+      BuildContext? context, String name,
       {Object? arguments, R? result});
   FutureOr<String?> restorablePushReplacementNamed<R extends Object>(
       BuildContext? context, String name,

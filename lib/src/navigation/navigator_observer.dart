@@ -20,7 +20,8 @@ class NavGlobal extends NavInterface {
 
   Route? get currentRoute => observer._currentRoute;
   String? get currentRouteName => observer._currentRoute?.settings.name;
-  dynamic get currentRouteArguments => observer._currentRoute?.settings.arguments;
+  dynamic get currentRouteArguments =>
+      observer._currentRoute?.settings.arguments;
 
   OverlayState? getOverlay() {
     return observer.overlay;
@@ -89,13 +90,14 @@ class NavObserver extends NavigatorObserver {
 
   @override
   void didRemove(Route route, Route? previousRoute) {
-    _currentRoute = previousRoute;
     assert(Log.i(route.settings.name));
   }
 
   @override
   void didReplace({Route? newRoute, Route? oldRoute}) {
-    _currentRoute = newRoute;
+    if (newRoute != null) {
+      _currentRoute = newRoute;
+    }
     assert(Log.i('${newRoute?.settings.name}  ${oldRoute?.settings.name}'));
   }
 }
@@ -140,7 +142,8 @@ extension NavigatorExt on NavInterface {
     Object? arguments,
     NavigatorStateGetter? navigatorStateGetter,
   }) {
-    final action = NavPushReplacementNamedAction<T, R>(routeName, arguments, result);
+    final action =
+        NavPushReplacementNamedAction<T, R>(routeName, arguments, result);
     _navDelegate(action, navigatorStateGetter);
     return action.result;
   }
@@ -198,7 +201,8 @@ extension NavigatorExt on NavInterface {
     Object? arguments,
     NavigatorStateGetter? navigatorStateGetter,
   }) {
-    final action = NavRestorableReplaceAction(oldRoute, newRouteBuilder, arguments);
+    final action =
+        NavRestorableReplaceAction(oldRoute, newRouteBuilder, arguments);
     _navDelegate(action, navigatorStateGetter);
     return action.result;
   }
@@ -258,7 +262,8 @@ extension NavigatorExt on NavInterface {
 
 typedef NavigatorStateGetter = NavigatorState? Function();
 
-void _navDelegate(NavAction action, NavigatorStateGetter? navigatorStateGetter) {
+void _navDelegate(
+    NavAction action, NavigatorStateGetter? navigatorStateGetter) {
   NavigatorDelegate(action)
     ..navigatorStateGetter = navigatorStateGetter
     ..init();
