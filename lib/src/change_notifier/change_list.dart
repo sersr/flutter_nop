@@ -13,10 +13,16 @@ extension ChangeList<E> on List<E> {
 class ChangeAutoListenList<E> extends ChangeNotifier
     with ListMixin<E>, AutoListenChangeNotifierMixin {
   ChangeAutoListenList(this._value);
-  final List<E> _value;
+  List<E> _value;
   List<E> get value {
     autoListen();
     return _value;
+  }
+
+  set value(List<E> list) {
+    if (_value == list) return;
+    _value = list;
+    notifyListeners();
   }
 
   @override
