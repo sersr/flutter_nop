@@ -132,12 +132,13 @@ class NopRoute {
   static Object? getGroupIdFromBuildContext(BuildContext? context) {
     if (context == null) return null;
     try {
-      final settings = ModalRoute.of(context)?.settings;
-      if (settings is NopRouteSettings) {
+      final route = ModalRoute.of(context);
+      if (route is NopPageRouteMixin) {
+        final settings = (route as NopPageRouteMixin).nopSettings;
+
         return settings.group;
       }
-      assert(settings == null ||
-          Log.e('settings <${settings.runtimeType}> is not NopRouteSettings'));
+      Log.e('route <${route.runtimeType}> is not NopPageRouteMixin.');
     } catch (_) {}
 
     return null;
@@ -294,7 +295,8 @@ class NopRoute {
       final groupId = NopRouteSettings.getGroupId(query, current);
       return NopRouteBuilder(
         route: current,
-        settings: NopRouteSettings(
+        settings: settings,
+        nopSettings: NopRouteSettings(
           name: pathName,
           arguments: query,
           group: groupId,
@@ -318,17 +320,39 @@ class NopRoute {
 
 class NopRouteBuilder {
   final NopRoute route;
-  final NopRouteSettings settings;
+  final NopRouteSettings nopSettings;
+  final RouteSettings settings;
 
-  NopRouteBuilder({required this.route, required this.settings});
+  NopRouteBuilder(
+      {required this.route, required this.nopSettings, required this.settings});
 
   Widget builder(BuildContext context) {
-    return route.builder(context, settings.arguments, settings.group);
+    return route.builder(context, nopSettings.arguments, nopSettings.group);
   }
 
   MaterialPageRoute? get wrapMaterial {
-    return MaterialPageRoute(builder: builder, settings: settings);
+    return NopMaterialPageRoute(
+      builder: builder,
+      nopSettings: nopSettings,
+      settings: settings,
+    );
   }
+}
+
+mixin NopPageRouteMixin {
+  NopRouteSettings get nopSettings;
+}
+
+class NopMaterialPageRoute extends MaterialPageRoute with NopPageRouteMixin {
+  NopMaterialPageRoute({
+    required super.builder,
+    super.fullscreenDialog,
+    super.maintainState,
+    super.settings,
+    required this.nopSettings,
+  });
+  @override
+  final NopRouteSettings nopSettings;
 }
 
 class NopRouteSettings extends RouteSettings {

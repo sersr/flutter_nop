@@ -5,7 +5,7 @@ import 'dart:collection';
 import 'package:flutter/material.dart';
 import 'package:nop/nop.dart';
 
-import 'navigator_getter.dart';
+import '../../flutter_nop.dart';
 
 typedef BuildFactory<T> = T Function();
 
@@ -18,10 +18,12 @@ class NavGlobal extends NavInterface {
 
   final NavObserver observer = NavObserver();
 
-  Route? get currentRoute => observer._currentRoute;
-  String? get currentRouteName => observer._currentRoute?.settings.name;
-  dynamic get currentRouteArguments =>
-      observer._currentRoute?.settings.arguments;
+  Route? get currentRoute => observer.currentRoute;
+
+  NopPageRouteMixin? get nopRoute => observer.nopRoute;
+
+  String? get currentRouteName => observer.currentRouteName;
+  dynamic get currentRouteArguments => observer.currentRouteArguments;
 
   OverlayState? getOverlay() {
     return observer.overlay;
@@ -73,8 +75,29 @@ class NavObserver extends NavigatorObserver {
 
   Route? _currentRoute;
   Route? get currentRoute => _currentRoute;
-  String? get currentRouteName => _currentRoute?.settings.name;
-  dynamic get currentRouteArguments => _currentRoute?.settings.arguments;
+
+  NopPageRouteMixin? get nopRoute {
+    if (_currentRoute is NopPageRouteMixin) {
+      return _currentRoute as NopPageRouteMixin;
+    }
+    return null;
+  }
+
+  String? get currentRouteName {
+    final route = _currentRoute;
+    if (route is NopPageRouteMixin) {
+      return (route as NopPageRouteMixin).nopSettings.name;
+    }
+    return route?.settings.name;
+  }
+
+  dynamic get currentRouteArguments {
+    final route = _currentRoute;
+    if (route is NopPageRouteMixin) {
+      return (route as NopPageRouteMixin).nopSettings.arguments;
+    }
+    return route?.settings.arguments;
+  }
 
   @override
   void didPop(Route route, Route? previousRoute) {
