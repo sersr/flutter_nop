@@ -144,7 +144,7 @@ abstract class NopListener {
     _dependenceTree.add(value);
 
     assert(Log.w(data is NopLifeCycle
-        ? '${GetTypePointers.getGroupName(data._listener?.group)}:'
+        ? '${GetTypePointers.getGroupName(group)}:'
             ' ${data.runtimeType} length: ${_dependenceTree.length}'
         : '${data.runtimeType} length: ${_dependenceTree.length}'));
     _updateDependence();
@@ -155,7 +155,7 @@ abstract class NopListener {
   void onDependenceRemove(GetTypePointers value) {
     final result = _dependenceTree.remove(value);
     assert(Log.w(data is NopLifeCycle
-        ? '${GetTypePointers.getGroupName(data._listener?.group)}:'
+        ? '${GetTypePointers.getGroupName(group)}:'
             ' ${data.runtimeType} length: ${_dependenceTree.length}'
         : '${data.runtimeType} length: ${_dependenceTree.length}'));
 
