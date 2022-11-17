@@ -9,6 +9,7 @@ import '../../nop_state.dart';
 /// 自动管理生命周期
 mixin NopLifeCycle {
   static final _caches = <Object, NopListener>{};
+  Object? get groupId => _listener?.group;
 
   @mustCallSuper
   void nopInit() {
@@ -308,6 +309,10 @@ class NopListenerDefault extends NopListener {
     assert(!_handles.contains(key));
 
     _handles.add(key);
+    final local = data;
+    if (local is Listenable) {
+      local.addListener(key.update);
+    }
     if (!_init) {
       try {
         NopLifeCycle.autoInit(data, this);
@@ -315,10 +320,6 @@ class NopListenerDefault extends NopListener {
         Log.e('${data.runtimeType} init error: $e\n$s', onlyDebug: false);
       }
       _init = true;
-    }
-    final local = data;
-    if (local is Listenable) {
-      local.addListener(key.update);
     }
   }
 }

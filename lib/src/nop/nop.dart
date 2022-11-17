@@ -154,8 +154,8 @@ class _NopState<C> extends State<Nop<C>> with NopListenerHandle {
 
   void _addListener(t, Object? group, NopListener listener) {
     t = GetTypePointers.getAlias(t);
-    listener.add(this);
     _caches.putIfAbsent(group, GetTypePointers.createHashMap)[t] = listener;
+    listener.add(this);
   }
 
   late final dependences = NopDependencies();
