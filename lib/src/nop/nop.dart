@@ -12,16 +12,16 @@ import 'typedef.dart';
 
 extension GetType on BuildContext {
   /// [group] shared group
-  T getType<T>({Object? group}) {
-    return Nop.of(this);
+  T getType<T>({Object? group, bool global = false}) {
+    return Nop.of(this, global: global);
   }
 
-  T? findType<T>({Object? group}) {
-    return Nop.findwithContext(this);
+  T? findType<T>({Object? group, bool global = false}) {
+    return Nop.findwithContext(this, global: global);
   }
 
-  T? getTypeOr<T>({Object? group}) {
-    return Nop.maybeOf(this);
+  T? getTypeOr<T>({Object? group, bool global = false}) {
+    return Nop.maybeOf(this, global: global);
   }
 }
 
@@ -88,10 +88,10 @@ class Nop<C> extends StatefulWidget {
 
   static bool printEnabled = false;
 
-  static T of<T>(BuildContext context, {Object? group}) {
+  static T of<T>(BuildContext context, {Object? group, bool global = false}) {
     final nop = context.dependOnInheritedWidgetOfExactType<_NopScoop>();
     if (nop != null) {
-      return nop.state.getType<T>(group);
+      return nop.state.getType<T>(group, global);
     } else {
       assert(
           Log.e('Nop.page not found. You need to use Nop.page()') && stricted);
@@ -100,9 +100,10 @@ class Nop<C> extends StatefulWidget {
     }
   }
 
-  static T? findwithContext<T>(BuildContext context, {Object? group}) {
+  static T? findwithContext<T>(BuildContext context,
+      {Object? group, bool global = false}) {
     final nop = context.dependOnInheritedWidgetOfExactType<_NopScoop>()!;
-    return nop.state.findTypeArg<T>(group);
+    return nop.state.findTypeArg<T>(group, global);
   }
 
   static T? find<T>({Object? group}) {
@@ -112,9 +113,10 @@ class Nop<C> extends StatefulWidget {
     return listener?.data;
   }
 
-  static T? maybeOf<T>(BuildContext context, {Object? group}) {
+  static T? maybeOf<T>(BuildContext context,
+      {Object? group, bool global = false}) {
     final nop = context.dependOnInheritedWidgetOfExactType<_NopScoop>();
-    return nop?.state.getType<T>(group);
+    return nop?.state.getType<T>(group, global);
   }
 
   /// 链表会自动管理生命周期
@@ -207,19 +209,21 @@ class _NopState<C> extends State<Nop<C>> with NopListenerHandle {
   }
 
   /// export
-  T getType<T>(Object? group) {
-    return getTypeListener(T, group).data;
+  T getType<T>(Object? group, bool global) {
+    return getTypeListener(T, group, global: global).data;
   }
 
-  T? findTypeArg<T>(Object? group) {
-    return findTypeListener(T, group)?.data;
+  T? findTypeArg<T>(Object? group, bool global) {
+    return findTypeListener(T, group, global: global)?.data;
   }
 
   /// ---
 
   @override
-  NopListener getTypeListener(Type t, Object? group) {
-    group ??= getGroup(t);
+  NopListener getTypeListener(Type t, Object? group, {bool global = false}) {
+    if (!global) {
+      group ??= getGroup(t);
+    }
     var listener = getListener(t, group);
 
     if (listener == null) {
@@ -233,8 +237,10 @@ class _NopState<C> extends State<Nop<C>> with NopListenerHandle {
   }
 
   @override
-  NopListener? findTypeListener(Type t, Object? group) {
-    group ??= getGroup(t);
+  NopListener? findTypeListener(Type t, Object? group, {global = false}) {
+    if (!global) {
+      group ??= getGroup(t);
+    }
     NopListener? listener = getListener(t, group);
     if (listener != null) return listener;
 

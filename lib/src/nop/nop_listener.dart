@@ -97,8 +97,8 @@ mixin NopLifeCycle {
 mixin NopListenerHandle {
   void update();
   bool get mounted;
-  NopListener getTypeListener(Type t, Object? group);
-  NopListener? findTypeListener(Type t, Object? group);
+  NopListener getTypeListener(Type t, Object? group, {bool global = false});
+  NopListener? findTypeListener(Type t, Object? group, {bool global = false});
 }
 
 abstract class NopListener {
@@ -191,7 +191,7 @@ abstract class NopListener {
     NopListener? listener = owner._dependenceGroups[group]?[t];
 
     if (listener == null) {
-      listener = owner.handle?.getTypeListener(t, group);
+      listener = owner.handle?.getTypeListener(t, group, global: true);
       assert(owner._dependenceTree.isNotEmpty);
       listener ??= GetTypePointers.defaultGetNopListener(
           t, owner._dependenceTree.first, group);
@@ -208,7 +208,7 @@ abstract class NopListener {
 
     NopListener? listener = owner._dependenceGroups[group]?[t];
     if (listener == null) {
-      listener = owner.handle?.findTypeListener(t, group);
+      listener = owner.handle?.findTypeListener(t, group, global: true);
       listener ??= GetTypePointers.defaultFindNopListener(
           t, owner._dependenceTree.first, group);
       if (listener != null) {
@@ -221,7 +221,7 @@ abstract class NopListener {
   }
 
   void addListener(Type t, NopListener listener, Object? group) {
-    if (_dependenceGroups.containsKey(t)) return;
+    if (_dependenceGroups.containsKey(t) || listener == this) return;
     _dependenceGroups.putIfAbsent(group, () => HashMap())[t] = listener;
     final sync = _syncTypePointers;
     if (sync == null) {
