@@ -99,9 +99,31 @@ class NavObserver extends NavigatorObserver {
     return route?.settings.arguments;
   }
 
+  final Map<Route<dynamic>, Set<NopRouteAware>> _listeners =
+      <Route<dynamic>, Set<NopRouteAware>>{};
+  void subscribe(NopRouteAware routeAware, Route<dynamic> route) {
+    final Set<NopRouteAware> subscribers =
+        _listeners.putIfAbsent(route, () => <NopRouteAware>{});
+    if (subscribers.add(routeAware)) {}
+  }
+
+  void unsubscribe(NopRouteAware routeAware) {
+    final routes = _listeners.keys.toList();
+    for (final route in routes) {
+      final Set<NopRouteAware>? subscribers = _listeners[route];
+      if (subscribers != null) {
+        subscribers.remove(routeAware);
+        if (subscribers.isEmpty) {
+          _listeners.remove(route);
+        }
+      }
+    }
+  }
+
   @override
   void didPop(Route route, Route? previousRoute) {
     _currentRoute = previousRoute;
+    _pop(route, previousRoute);
     assert(Log.i(route.settings.name));
   }
 
@@ -113,6 +135,7 @@ class NavObserver extends NavigatorObserver {
 
   @override
   void didRemove(Route route, Route? previousRoute) {
+    _pop(route, previousRoute);
     assert(Log.i(route.settings.name));
   }
 
@@ -123,6 +146,22 @@ class NavObserver extends NavigatorObserver {
     }
     assert(Log.i('${newRoute?.settings.name}  ${oldRoute?.settings.name}'));
   }
+
+  void _pop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    final subscribers = _listeners[route]?.toList();
+
+    if (subscribers != null) {
+      for (final routeAware in subscribers) {
+        routeAware.didPop();
+      }
+    }
+  }
+
+  void dispose(Route? route) {}
+}
+
+class NopRouteAware {
+  void didPop() {}
 }
 
 // ignore: non_constant_identifier_names

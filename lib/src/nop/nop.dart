@@ -3,6 +3,7 @@ import 'dart:collection';
 import 'package:flutter/material.dart';
 import 'package:nop/utils.dart';
 
+import '../navigation/navigator_observer.dart';
 import 'dependences_mixin.dart';
 import 'nop_dependencies.dart';
 import 'nop_listener.dart';
@@ -134,7 +135,7 @@ class Nop<C> extends StatefulWidget {
   State<Nop<C>> createState() => _NopState<C>();
 }
 
-class _NopState<C> extends State<Nop<C>> with NopListenerHandle {
+class _NopState<C> extends State<Nop<C>> with NopListenerHandle, NopRouteAware {
   final _caches = <Object?, HashMap<Type, NopListener>>{};
 
   bool containsKey(Object? group, Type t) {
@@ -301,6 +302,10 @@ class _NopState<C> extends State<Nop<C>> with NopListenerHandle {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route != null) {
+      Nav.observer.subscribe(this, route);
+    }
     _initOnce();
   }
 
@@ -334,13 +339,24 @@ class _NopState<C> extends State<Nop<C>> with NopListenerHandle {
   }
 
   @override
-  void dispose() {
+  void didPop() {
     _dispose();
-    if (isPage) pop(dependences);
+    assert(Log.w('..pop'));
+    super.didPop();
+  }
+
+  @override
+  void dispose() {
+    Nav.observer.unsubscribe(this);
+    _dispose();
     super.dispose();
   }
 
+  bool _disposed = false;
   void _dispose() {
+    if (_disposed) return;
+    _disposed = true;
+    if (isPage) pop(dependences);
     for (var group in _caches.values) {
       for (var item in group.values) {
         if (item == _local && !widget.isOwner) {
