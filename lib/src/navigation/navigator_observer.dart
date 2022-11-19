@@ -86,7 +86,7 @@ class NavObserver extends NavigatorObserver {
   String? get currentRouteName {
     final route = _currentRoute;
     if (route is NopPageRouteMixin) {
-      return (route as NopPageRouteMixin).nopSettings.name;
+      return route.nopSettings.name;
     }
     return route?.settings.name;
   }
@@ -94,7 +94,7 @@ class NavObserver extends NavigatorObserver {
   dynamic get currentRouteArguments {
     final route = _currentRoute;
     if (route is NopPageRouteMixin) {
-      return (route as NopPageRouteMixin).nopSettings.arguments;
+      return route.nopSettings.arguments;
     }
     return route?.settings.arguments;
   }

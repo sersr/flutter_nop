@@ -134,7 +134,7 @@ class NopRoute {
     try {
       final route = ModalRoute.of(context);
       if (route is NopPageRouteMixin) {
-        final settings = (route as NopPageRouteMixin).nopSettings;
+        final settings = route.nopSettings;
 
         return settings.group;
       }
@@ -339,11 +339,12 @@ class NopRouteBuilder {
   }
 }
 
-mixin NopPageRouteMixin {
+mixin NopPageRouteMixin<T> on PageRoute<T> {
   NopRouteSettings get nopSettings;
 }
 
-class NopMaterialPageRoute extends MaterialPageRoute with NopPageRouteMixin {
+class NopMaterialPageRoute<T> extends MaterialPageRoute<T>
+    with NopPageRouteMixin {
   NopMaterialPageRoute({
     required super.builder,
     super.fullscreenDialog,
