@@ -41,8 +41,8 @@ void main() {
   });
 }
 
-void forEach(NopDependencies root) {
-  NopDependencies? child = root;
+void forEach(NopDependence root) {
+  NopDependence? child = root;
   Log.i('_'.padLeft(50, '_'));
   while (child != null) {
     Log.i('$child parent: ${child.parent}');
@@ -50,6 +50,6 @@ void forEach(NopDependencies root) {
   }
 }
 
-NopDependencies create(String name) {
-  return NopDependencies(debugName: name);
+NopDependence create(String name) {
+  return NopDependence(debugName: name);
 }

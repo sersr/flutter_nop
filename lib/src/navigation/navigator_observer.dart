@@ -123,7 +123,7 @@ class NavObserver extends NavigatorObserver {
   @override
   void didPop(Route route, Route? previousRoute) {
     _currentRoute = previousRoute;
-    _pop(route, previousRoute);
+    _popOrRemove(route);
     assert(Log.i(route.settings.name));
   }
 
@@ -135,7 +135,7 @@ class NavObserver extends NavigatorObserver {
 
   @override
   void didRemove(Route route, Route? previousRoute) {
-    _pop(route, previousRoute);
+    _popOrRemove(route);
     assert(Log.i(route.settings.name));
   }
 
@@ -144,15 +144,18 @@ class NavObserver extends NavigatorObserver {
     if (newRoute != null) {
       _currentRoute = newRoute;
     }
+    if (oldRoute != null) {
+      _popOrRemove(oldRoute);
+    }
     assert(Log.i('${newRoute?.settings.name}  ${oldRoute?.settings.name}'));
   }
 
-  void _pop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+  void _popOrRemove(Route<dynamic> route) {
     final subscribers = _listeners[route]?.toList();
 
     if (subscribers != null) {
       for (final routeAware in subscribers) {
-        routeAware.didPop();
+        routeAware.popDependence();
       }
     }
   }
@@ -161,7 +164,27 @@ class NavObserver extends NavigatorObserver {
 }
 
 class NopRouteAware {
-  void didPop() {}
+  /// 当前[Route]开始退出,调用`didPop`
+  ///
+  /// 路由的生命的周期已经结束，但是[State]的生命周期在动画之后才会结束
+  ///
+  /// 如果调用[Navigator.pushNamedAndRemoveUntil]等方法，且和移除的[Route]使用相同
+  /// 的依赖，在不调用此方法前，只依赖于[State]的生命周期管理，对象并不会重新创建:
+  /// ```dart
+  /// /// route name: '/page'
+  /// class Page extends StatelessWidget {
+  ///   Widget build(BuildContext context) {
+  ///   /// 不会重新创建新的对象
+  ///   final controller = context.getType<SomeController>();
+  ///  }
+  /// }
+  /// // ...
+  /// /// current route: '/page'
+  /// /// 希望: 上一个页面的对象会被释放，并且新的页面会重新创建新的对象
+  /// /// `popDependence` 解决这个问题
+  /// Navigator.pushNamedAndRemoveUntil(context, '/page',(route)=> false);
+  /// ```
+  void popDependence() {}
 }
 
 // ignore: non_constant_identifier_names

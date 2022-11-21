@@ -179,7 +179,7 @@ abstract class NopListener {
         final subListener = entry.value;
         first.addListener(t, subListener, group.key);
 
-        if (first is! NopDependencies) subListener.onDependenceAdd(first);
+        if (first is! NopDependence) subListener.onDependenceAdd(first);
       }
     }
     _syncTypePointers = first;
@@ -231,7 +231,7 @@ abstract class NopListener {
     if (sync.findCurrentTypeArg(t, group) != null) return;
     sync.addListener(t, listener, group);
 
-    if (sync is! NopDependencies) listener.onDependenceAdd(sync);
+    if (sync is! NopDependence) listener.onDependenceAdd(sync);
   }
 }
 

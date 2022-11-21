@@ -143,12 +143,12 @@ mixin GetTypePointers {
   static GetTypePointers? _globalDependences;
 
   static GetTypePointers globalDependences =
-      _globalDependences ??= NopDependencies();
+      _globalDependences ??= NopDependence();
 
   static clear() {
     final dep = _globalDependences;
     _globalDependences = null;
-    if (dep is NopDependencies) {
+    if (dep is NopDependence) {
       dep.removeCurrent();
     }
   }

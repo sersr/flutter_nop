@@ -110,7 +110,7 @@ class Nop<C> extends StatefulWidget {
   static T? find<T>({Object? group}) {
     NopListener? listener =
         GetTypePointers.globalDependences.findType<T>(group);
-    listener ??= _NopState.currentDependences?.findType<T>(group);
+    listener ??= _NopState.currentDependence?.findType<T>(group);
     return listener?.data;
   }
 
@@ -122,7 +122,7 @@ class Nop<C> extends StatefulWidget {
 
   /// 链表会自动管理生命周期
   static void clear() {
-    _NopState.currentDependences = null;
+    _NopState.currentDependence = null;
     GetTypePointers.clear();
   }
 
@@ -161,38 +161,38 @@ class _NopState<C> extends State<Nop<C>> with NopListenerHandle, NopRouteAware {
     listener.add(this);
   }
 
-  late final dependences = NopDependencies();
+  late final dependence = NopDependence();
 
-  static NopDependencies? currentDependences;
+  static NopDependence? currentDependence;
 
-  static void push(NopDependencies dependences, {NopDependencies? parent}) {
-    assert(dependences.parent == null && dependences.child == null);
-    if (currentDependences == null) {
-      currentDependences = dependences;
+  static void push(NopDependence dependence, {NopDependence? parent}) {
+    assert(dependence.parent == null && dependence.child == null);
+    if (currentDependence == null) {
+      currentDependence = dependence;
     } else {
-      if (dependences == parent) {
-        parent = currentDependences;
+      if (dependence == parent) {
+        parent = currentDependence;
       } else {
-        parent ??= currentDependences;
+        parent ??= currentDependence;
       }
-      parent!.insertChild(dependences);
+      parent!.insertChild(dependence);
       updateCurrentDependences();
     }
   }
 
   static void updateCurrentDependences() {
-    assert(currentDependences != null);
-    if (!currentDependences!.isLast) {
-      currentDependences = currentDependences!.lastChildOrSelf;
+    assert(currentDependence != null);
+    if (!currentDependence!.isLast) {
+      currentDependence = currentDependence!.lastChildOrSelf;
     }
   }
 
-  static void pop(NopDependencies dependences) {
-    if (dependences == currentDependences) {
-      assert(dependences.child == null);
-      currentDependences = dependences.parent;
+  static void pop(NopDependence dependence) {
+    if (dependence == currentDependence) {
+      assert(dependence.child == null);
+      currentDependence = dependence.parent;
     }
-    dependences.removeCurrent();
+    dependence.removeCurrent();
   }
 
   static _NopState? getPageNopState(_NopState currentState) {
@@ -248,22 +248,22 @@ class _NopState<C> extends State<Nop<C>> with NopListenerHandle, NopRouteAware {
     final pageState = getPageNopState(this);
 
     listener = pageState?.getListener(t, group);
-    final pageDependence = pageState?.dependences;
+    // [pageState.dependence] 有可能被移除
+    final dependence = pageState?.dependence ?? currentDependence;
 
     assert(listener == null || pageState != this);
-    return GetTypePointers.defaultFindNopListener(t, pageDependence, group);
+    return GetTypePointers.defaultFindNopListener(t, dependence, group);
   }
 
   NopListener getOrCreateDependence(Type t, Object? group) {
     final pageState = getPageNopState(this);
 
     NopListener? listener = pageState?.getListener(t, group);
-    final pageDependence = pageState?.dependences;
+    final dependence = pageState?.dependence ?? currentDependence;
 
     assert(listener == null || pageState != this);
 
-    listener ??=
-        GetTypePointers.defaultGetNopListener(t, pageDependence, group);
+    listener ??= GetTypePointers.defaultGetNopListener(t, dependence, group);
 
     return listener;
   }
@@ -316,8 +316,8 @@ class _NopState<C> extends State<Nop<C>> with NopListenerHandle, NopRouteAware {
 
     if (isPage) {
       final parent = Nop._maybeOf(context);
-      push(dependences,
-          parent: parent == null ? null : getPageNopState(parent)?.dependences);
+      push(dependence,
+          parent: parent == null ? null : getPageNopState(parent)?.dependence);
     }
 
     // get groupId from settings
@@ -339,24 +339,28 @@ class _NopState<C> extends State<Nop<C>> with NopListenerHandle, NopRouteAware {
   }
 
   @override
-  void didPop() {
-    _dispose();
-    assert(Log.w('..pop'));
-    super.didPop();
+  void popDependence() {
+    _popDependence();
+    super.popDependence();
   }
 
   @override
   void dispose() {
     Nav.observer.unsubscribe(this);
-    _dispose();
+    _popDependence();
+    _clearCache();
     super.dispose();
   }
 
-  bool _disposed = false;
-  void _dispose() {
-    if (_disposed) return;
-    _disposed = true;
-    if (isPage) pop(dependences);
+  bool _poped = false;
+  void _popDependence() {
+    if (_poped) return;
+    _poped = true;
+    if (isPage) pop(dependence);
+  }
+
+  void _clearCache() {
+    if (_caches.isEmpty) return;
     for (var group in _caches.values) {
       for (var item in group.values) {
         if (item == _local && !widget.isOwner) {

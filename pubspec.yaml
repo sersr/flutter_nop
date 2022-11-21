@@ -22,7 +22,8 @@ dev_dependencies:
   nop_annotations: ^0.2.0
   build_runner: any
 
-
 dependency_overrides:
   nop_gen:
     path: ../nop_gen
+  nop_annotations:
+    path: ../nop_annotations

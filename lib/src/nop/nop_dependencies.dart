@@ -1,16 +1,16 @@
 import 'dependences_mixin.dart';
 import 'nop_listener.dart';
 
-class NopDependencies with GetTypePointers {
-  NopDependencies({this.debugName});
+class NopDependence with GetTypePointers {
+  NopDependence({this.debugName});
   final String? debugName;
   @override
-  NopDependencies? parent;
+  NopDependence? parent;
   @override
-  NopDependencies? child;
+  NopDependence? child;
 
-  NopDependencies? get lastChild {
-    NopDependencies? last = child;
+  NopDependence? get lastChild {
+    NopDependence? last = child;
     while (last != null) {
       final child = last.child;
       if (child == null) break;
@@ -23,8 +23,8 @@ class NopDependencies with GetTypePointers {
   bool get isFirst => parent == null;
   bool get isLast => child == null;
 
-  NopDependencies? get firstParent {
-    NopDependencies? first = parent;
+  NopDependence? get firstParent {
+    NopDependence? first = parent;
     while (first != null) {
       final parent = first.parent;
       if (parent == null) break;
@@ -33,15 +33,15 @@ class NopDependencies with GetTypePointers {
     return first;
   }
 
-  NopDependencies get lastChildOrSelf {
+  NopDependence get lastChildOrSelf {
     return lastChild ?? this;
   }
 
-  NopDependencies get firstParentOrSelf {
+  NopDependence get firstParentOrSelf {
     return firstParent ?? this;
   }
 
-  void updateChild(NopDependencies newChild) {
+  void updateChild(NopDependence newChild) {
     assert(child == null || child!.parent == this);
     newChild.child = child?.child;
     newChild.child?.parent = newChild;
@@ -50,7 +50,7 @@ class NopDependencies with GetTypePointers {
     child = newChild;
   }
 
-  void insertChild(NopDependencies newChild) {
+  void insertChild(NopDependence newChild) {
     newChild.child = child;
     child?.parent = newChild;
     newChild.parent = this;
