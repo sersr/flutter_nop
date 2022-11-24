@@ -248,8 +248,21 @@ class _NopState<C> extends State<Nop<C>> with NopListenerHandle, NopRouteAware {
     final pageState = getPageNopState(this);
 
     listener = pageState?.getListener(t, group);
-    // [pageState.dependence] 有可能被移除
-    final dependence = pageState?.dependence ?? currentDependence;
+
+    NopDependence? dependence = pageState?.dependence;
+
+    if (dependence != null) {
+      listener = dependence.findCurrentTypeArg(t, group);
+      if (listener != null) return listener;
+    }
+
+    assert(pageState == null ||
+        !pageState._popped ||
+        pageState.dependence.isAlone);
+
+    if (pageState == null || pageState._popped) {
+      dependence = currentDependence;
+    }
 
     assert(listener == null || pageState != this);
     return GetTypePointers.defaultFindNopListener(t, dependence, group);
@@ -258,12 +271,31 @@ class _NopState<C> extends State<Nop<C>> with NopListenerHandle, NopRouteAware {
   NopListener getOrCreateDependence(Type t, Object? group) {
     final pageState = getPageNopState(this);
 
-    NopListener? listener = pageState?.getListener(t, group);
-    final dependence = pageState?.dependence ?? currentDependence;
-
+    NopListener? listener;
+    //  = pageState?.getListener(t, group);
     assert(listener == null || pageState != this);
 
-    listener ??= GetTypePointers.defaultGetNopListener(t, dependence, group);
+    NopDependence? dependence = pageState?.dependence;
+    bool isSelf = true;
+
+    assert(pageState == null ||
+        !pageState._popped ||
+        pageState.dependence.isAlone);
+
+    // [pageState.dependence] 有可能被移除
+    if (pageState == null || pageState._popped) {
+      if (dependence != null) {
+        listener = dependence.findCurrentTypeArg(t, group);
+        if (listener != null) return listener;
+      }
+      isSelf = false;
+      dependence = currentDependence;
+    } else {
+      dependence = pageState.dependence;
+    }
+
+    listener ??= GetTypePointers.defaultGetNopListener(t, dependence, group,
+        isSelf: isSelf);
 
     return listener;
   }
@@ -352,10 +384,10 @@ class _NopState<C> extends State<Nop<C>> with NopListenerHandle, NopRouteAware {
     super.dispose();
   }
 
-  bool _poped = false;
+  bool _popped = false;
   void _popDependence() {
-    if (_poped) return;
-    _poped = true;
+    if (_popped) return;
+    _popped = true;
     if (isPage) pop(dependence);
   }
 

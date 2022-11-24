@@ -82,7 +82,8 @@ mixin GetTypePointers {
   static HashMap<T, V> createHashMap<T, V>() => HashMap<T, V>();
 
   static NopListener defaultGetNopListener(
-      Type t, GetTypePointers? current, Object? groupName) {
+      Type t, GetTypePointers? current, Object? groupName,
+      {bool isSelf = true}) {
     t = getAlias(t);
 
     NopListener? listener = current?._findCurrentTypeArg(t, groupName);
@@ -92,7 +93,7 @@ mixin GetTypePointers {
       listener ??=
           globalDependences._findTypeElement(t, groupName); // global singleton
 
-      if (listener != null) {
+      if (listener != null && isSelf) {
         current?.addListener(t, listener, groupName);
       }
     }
@@ -107,8 +108,7 @@ mixin GetTypePointers {
   static NopListener? defaultFindNopListener(
       Type t, GetTypePointers? current, Object? groupName) {
     t = getAlias(t);
-    return current?._findCurrentTypeArg(t, groupName) ??
-        current?._findTypeOtherElement(t, groupName) ??
+    return current?._findTypeElement(t, groupName) ??
         globalDependences._findTypeElement(t, groupName);
   }
 

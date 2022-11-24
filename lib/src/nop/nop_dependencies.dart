@@ -9,6 +9,8 @@ class NopDependence with GetTypePointers {
   @override
   NopDependence? child;
 
+  bool get isAlone => parent == null && child == null;
+
   NopDependence? get lastChild {
     NopDependence? last = child;
     while (last != null) {
