@@ -193,7 +193,7 @@ OverlayMixinDelegate showOverlay(
   bool? closeOndismissed,
   Color? color,
   BorderRadius? radius,
-  bool removeAll = true,
+  bool removeAll = false,
   double? left = 0,
   double? right = 0,
   double? top = 0,

@@ -262,6 +262,12 @@ extension NavigatorExt on NavInterface {
     _navDelegate(pop, navigatorStateGetter);
   }
 
+  void popUntil<T extends Object?>(bool Function(Route<dynamic>) predicate,
+      [NavigatorStateGetter? navigatorStateGetter]) {
+    final pop = NopPopUntilAction(predicate);
+    _navDelegate(pop, navigatorStateGetter);
+  }
+
   Future<bool?> maybePop<T extends Object?>([
     T? result,
     NavigatorStateGetter? navigatorStateGetter,

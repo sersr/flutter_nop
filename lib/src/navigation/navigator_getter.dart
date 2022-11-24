@@ -192,6 +192,16 @@ class NavPopAction<R> extends NavAction {
   }
 }
 
+class NopPopUntilAction extends NavAction {
+  NopPopUntilAction(this.predicate);
+  final bool Function(Route<dynamic>) predicate;
+
+  @override
+  void action(NavigatorState state) {
+    state.popUntil(predicate);
+  }
+}
+
 class NavMaybePopAction<R> extends NavAction with NaviActionResult<bool> {
   NavMaybePopAction(this.value);
   final R value;
