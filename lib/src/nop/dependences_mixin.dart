@@ -83,7 +83,7 @@ mixin GetTypePointers {
 
   static NopListener defaultGetNopListener(
       Type t, GetTypePointers? current, Object? groupName,
-      {bool isSelf = true}) {
+      {bool isSelf = true, int? position}) {
     t = getAlias(t);
 
     NopListener? listener = current?._findCurrentTypeArg(t, groupName);
@@ -100,7 +100,8 @@ mixin GetTypePointers {
 
     listener ??= current?._createListenerArg(t, groupName);
 
-    assert(listener != null || Log.w('Global: create $t', position: 6));
+    assert(listener != null ||
+        Log.w('Global: create $t', position: position ?? 6));
 
     return listener ?? globalDependences._getTypeArg(t, groupName);
   }

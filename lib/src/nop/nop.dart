@@ -14,7 +14,7 @@ import 'typedef.dart';
 extension GetType on BuildContext {
   /// [group] shared group
   T getType<T>({Object? group, bool global = false}) {
-    return Nop.of(this, global: global);
+    return Nop.of(this, global: global, position: 1);
   }
 
   T? findType<T>({Object? group, bool global = false}) {
@@ -34,8 +34,6 @@ class Nop<C> extends StatefulWidget {
     this.builder,
     this.builders,
     this.create,
-    @Deprecated('will be removed.') this.list = const [],
-    @Deprecated('will be removed.') this.isOwner = true,
   })  : value = null,
         isPage = false,
         group = null,
@@ -48,8 +46,6 @@ class Nop<C> extends StatefulWidget {
     required this.child,
     this.builder,
     this.builders,
-    @Deprecated('will be removed.') this.list = const [],
-    @Deprecated('will be removed.') this.isOwner = true,
   })  : create = null,
         isPage = false,
         group = null,
@@ -65,38 +61,34 @@ class Nop<C> extends StatefulWidget {
     required this.child,
     this.builder,
     this.builders,
-    @Deprecated('will be removed.') this.list = const [],
     this.groupList = const [],
     this.group,
   })  : create = null,
         isPage = true,
         value = null,
-        isOwner = true,
         super(key: key);
 
   final Widget child;
   final NopWidgetBuilder? builder;
   final List<NopWidgetBuilder>? builders;
   final C Function(BuildContext context)? create;
-  final List<Type> list;
   final List<Type> groupList;
   final C? value;
   final bool isPage;
   final Object? group;
 
-  /// the owner of the state object
-  final bool isOwner;
-
   static bool printEnabled = false;
 
-  static T of<T>(BuildContext context, {Object? group, bool global = false}) {
-    final nop = context.dependOnInheritedWidgetOfExactType<_NopScoop>();
+  static T of<T>(BuildContext? context,
+      {Object? group, bool global = false, int position = 0}) {
+    final nop = context?.dependOnInheritedWidgetOfExactType<_NopScoop>();
     if (nop != null) {
       return nop.state.getType<T>(group, global);
     } else {
-      assert(
-          Log.e('Nop.page not found. You need to use Nop.page()') && stricted);
-      final listener = GetTypePointers.defaultGetNopListener(T, null, null);
+      assert(!stricted ||
+          Log.e('Nop.page not found. You need to use Nop.page()') && false);
+      final listener = GetTypePointers.defaultGetNopListener(T, null, group,
+          position: position += 2);
       return listener.data;
     }
   }
@@ -395,7 +387,7 @@ class _NopState<C> extends State<Nop<C>> with NopListenerHandle, NopRouteAware {
     if (_caches.isEmpty) return;
     for (var group in _caches.values) {
       for (var item in group.values) {
-        if (item == _local && !widget.isOwner) {
+        if (item == _local) {
           continue;
         }
         item.remove(this);
