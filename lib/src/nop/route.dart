@@ -276,6 +276,7 @@ class NopRoute {
     assert(settings.arguments == null || settings.arguments is Map);
     final uri = Uri.tryParse(pathName);
     if (uri != null) {
+      pathName = uri.path;
       if (uri.queryParameters.isNotEmpty) {
         query = Map.of(uri.queryParameters);
       }
