@@ -1,3 +1,7 @@
+
+# 2.1.1+2
+
+* fix: alias
 # 2.1.1+1
 
 * fix some bugs
