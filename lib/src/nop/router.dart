@@ -3,179 +3,180 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter/services.dart';
 import 'package:nop/nop.dart';
 
-class NSRouter {
-  NSRouter({required this.routes}) : assert(routes.isNotEmpty);
-  final List<NRoute> routes;
+// class NSRouter {
+//   NSRouter({required this.routes}) : assert(routes.isNotEmpty);
+//   final List<NRoute> routes;
 
-  Widget build(BuildContext context) {
-    return Container();
-  }
-}
+//   Widget build(BuildContext context) {
+//     return Container();
+//   }
+// }
 
-typedef PageBuilderX = Page Function(NRouteQueueEntry entry);
+// typedef PageBuilderX = Page Function(NRouteQueueEntry entry);
 
-class NRoute {
-  NRoute({
-    required this.path,
-    required this.pageBuilder,
-    this.pages = const [],
-  }) {
-    _pathExp = pathToRegExp(path, _params);
-  }
-  final String path;
-  final PageBuilderX pageBuilder;
-  final List<NRoute> pages;
+// class NRoute {
+//   NRoute({
+//     required this.path,
+//     required this.pageBuilder,
+//     this.pages = const [],
+//   }) {
+//     _pathExp = pathToRegExp(path, _params);
+//   }
+//   final String path;
+//   final PageBuilderX pageBuilder;
+//   final List<NRoute> pages;
 
-  late RegExp _pathExp;
+//   late RegExp _pathExp;
 
-  final _params = <String>[];
+//   final _params = <String>[];
 
-  static final _regM = RegExp(r':(\w+)');
+//   static final _regM = RegExp(r':(\w+)');
 
-  static RegExp pathToRegExp(String path, List<String> parameters) {
-    final allMatchs = _regM.allMatches(path);
+//   static RegExp pathToRegExp(String path, List<String> parameters) {
+//     final allMatchs = _regM.allMatches(path);
 
-    var start = 0;
-    final buffer = StringBuffer();
+//     var start = 0;
+//     final buffer = StringBuffer();
 
-    buffer.write('^');
+//     buffer.write('^');
 
-    for (var m in allMatchs) {
-      if (m.start > start) {
-        buffer.write(RegExp.escape(path.substring(start, m.start)));
-      }
-      final name = m[1];
-      buffer.write(r'(\w+)');
-      parameters.add('$name');
-      start = m.end;
-    }
+//     for (var m in allMatchs) {
+//       if (m.start > start) {
+//         buffer.write(RegExp.escape(path.substring(start, m.start)));
+//       }
+//       final name = m[1];
+//       buffer.write(r'(\w+)');
+//       parameters.add('$name');
+//       start = m.end;
+//     }
 
-    if (start < path.length) {
-      buffer.write(RegExp.escape(path.substring(start)));
-    }
+//     if (start < path.length) {
+//       buffer.write(RegExp.escape(path.substring(start)));
+//     }
 
-    buffer.write(r'$');
+//     buffer.write(r'$');
 
-    return RegExp(buffer.toString(), caseSensitive: false);
-  }
+//     return RegExp(buffer.toString(), caseSensitive: false);
+//   }
 
-  static final _reg = RegExp('^/.*?/');
+//   static final _reg = RegExp('^/.*?/');
 
-  static NRoute? resolve(NRoute root, String location,
-      Map<String, dynamic> params, bool relative) {
-    return _resolve(root, location, relative, params);
-  }
+//   static NRoute? resolve(NRoute root, String location,
+//       Map<String, dynamic> params, bool relative) {
+//     return _resolve(root, location, relative, params);
+//   }
 
-  static NRoute? _resolve(NRoute current, String location, bool relative,
-      Map<String, dynamic> params) {
-    final path = location;
+//   static NRoute? _resolve(NRoute current, String location, bool relative,
+//       Map<String, dynamic> params) {
+//     final path = location;
 
-    if (current.path == path && current._params.isEmpty) return current;
+//     if (current.path == path && current._params.isEmpty) return current;
 
-    final m = current._pathExp.firstMatch(path);
-    if (m != null) {
-      final keys = current._params;
-      for (var i = 0; i < keys.length; i += 1) {
-        params[keys[i]] = m[1];
-      }
-      return current;
-    }
+//     final m = current._pathExp.firstMatch(path);
+//     if (m != null) {
+//       final keys = current._params;
+//       for (var i = 0; i < keys.length; i += 1) {
+//         params[keys[i]] = m[1];
+//       }
+//       return current;
+//     }
 
-    final String parent;
+//     final String parent;
 
-    if (relative) {
-      if (!path.startsWith(current.path)) return null;
-      if (current.path != '/') {
-        parent = path.replaceAll(_reg, '/');
-      } else {
-        parent = path;
-      }
-    } else {
-      parent = path;
-    }
+//     if (relative) {
+//       if (!path.startsWith(current.path)) return null;
+//       if (current.path != '/') {
+//         parent = path.replaceAll(_reg, '/');
+//       } else {
+//         parent = path;
+//       }
+//     } else {
+//       parent = path;
+//     }
 
-    for (var page in current.pages) {
-      final r = _resolve(page, parent, relative, params);
-      if (r != null) return r;
-    }
-    return null;
-  }
-}
+//     for (var page in current.pages) {
+//       final r = _resolve(page, parent, relative, params);
+//       if (r != null) return r;
+//     }
+//     return null;
+//   }
+// }
 
-class NRouteQueue with QueueMixin<NRouteQueueEntry> {}
+// class NRouteQueue with QueueMixin<NRouteQueueEntry> {}
 
-class NRouteQueueEntry with QueueEntryMixin {
-  Object? state;
-  NRoute? _route;
-  Page? _page;
+// class NRouteQueueEntry with QueueEntryMixin {
+//   Object? state;
+//   NRoute? _route;
+//   Page? _page;
 
-  Page build() {
-    return _page ??= _route!.pageBuilder(this);
-  }
-}
+//   Page build() {
+//     return _page ??= _route!.pageBuilder(this);
+//   }
+// }
 
-mixin QueueMixin<T extends QueueEntryMixin> {
-  T? _root;
-  T? _current;
-  T? get root => _root;
-  T? get current => _current;
+// mixin QueueMixin<T extends QueueEntryMixin> {
+//   T? _root;
+//   T? _current;
+//   T? get root => _root;
+//   T? get current => _current;
 
-  void forEach(bool Function(T entry) test, {bool reverse = false}) {
-    T? current = reverse ? _current : _root;
-    while (current != null) {
-      if (test(current)) break;
-      if (reverse) {
-        current = current._pre as T?;
-      } else {
-        current = current._next as T?;
-      }
-    }
-  }
+//   void forEach(bool Function(T entry) test, {bool reverse = false}) {
+//     T? current = reverse ? _current : _root;
+//     while (current != null) {
+//       if (test(current)) break;
+//       if (reverse) {
+//         current = current._pre as T?;
+//       } else {
+//         current = current._next as T?;
+//       }
+//     }
+//   }
 
-  void insert(T entry) {
-    _root ??= entry;
-    if (_current != null) {
-      _current!.insert(entry);
-    }
-    entry._parent = this;
-    _current = entry;
-  }
+//   void insert(T entry) {
+//     _root ??= entry;
+//     if (_current != null) {
+//       _current!.insert(entry);
+//     }
+//     entry._parent = this;
+//     _current = entry;
+//   }
 
-  void remove(T entry) {
-    if (_current == entry) {
-      _current = entry._pre as T?;
-    }
-    if (_root == entry) {
-      _root = entry._next as T?;
-    }
-  }
-}
+//   void remove(T entry) {
+//     if (_current == entry) {
+//       _current = entry._pre as T?;
+//     }
+//     if (_root == entry) {
+//       _root = entry._next as T?;
+//     }
+//   }
+// }
 
-mixin QueueEntryMixin {
-  QueueEntryMixin? _pre;
-  QueueEntryMixin? _next;
-  bool get isAlone => _pre == null && _next == null;
+// mixin QueueEntryMixin {
+//   QueueEntryMixin? _pre;
+//   QueueEntryMixin? _next;
+//   bool get isAlone => _pre == null && _next == null;
 
-  QueueMixin? _parent;
+//   QueueMixin? _parent;
 
-  void insert(QueueEntryMixin entry) {
-    assert(entry.isAlone);
-    _next?._pre = entry;
-    entry._next = _next;
-    _next = entry;
-  }
+//   void insert(QueueEntryMixin entry) {
+//     assert(entry.isAlone);
+//     _next?._pre = entry;
+//     entry._next = _next;
+//     _next = entry;
+//   }
 
-  void removeCurrent() {
-    if (_parent == null) return;
-    _pre?._next = _next;
-    _next?._pre = _pre;
-    _parent?.remove(this);
-    _pre = null;
-    _next = null;
-  }
-}
+//   void removeCurrent() {
+//     if (_parent == null) return;
+//     _pre?._next = _next;
+//     _next?._pre = _pre;
+//     _parent?.remove(this);
+//     _pre = null;
+//     _next = null;
+//   }
+// }
 
 class RouteRestorable extends StatefulWidget {
   const RouteRestorable({
@@ -243,12 +244,12 @@ class _RouteRestorableState extends State<RouteRestorable>
   }
 }
 
-class MyDemoRouteDelegate extends RouterDelegate<RouteQueue>
+class NRouteDelegate extends RouterDelegate<RouteQueue>
     with PopNavigatorRouterDelegateMixin, ChangeNotifier {
-  MyDemoRouteDelegate(
-      {this.restorationId, required this.routes, required this.router});
+  NRouteDelegate(
+      {this.restorationId, required this.rootPage, required this.router});
   final String? restorationId;
-  final RouteMain routes;
+  final NPageMain rootPage;
   final NRouter router;
 
   @override
@@ -289,11 +290,11 @@ class MyDemoRouteDelegate extends RouterDelegate<RouteQueue>
     final path = uri.path;
     final query = uri.queryParameters;
     final params = <String, dynamic>{};
-    final route = RouteI.resolve(routes, path, params);
+    final route = rootPage.getPageFromLocation(path, params);
     assert(route != null);
 
     return RouteQueueEntry(
-        path: location, routeI: route!, params: params, queryParams: query);
+        path: location, page: route!, params: params, queryParams: query);
   }
 
   RouteQueueEntry go(String location, {Object? extra}) {
@@ -319,23 +320,22 @@ class MyDemoRouteDelegate extends RouterDelegate<RouteQueue>
     while (current != null) {
       if (until(current)) break;
       final pre = current._pre;
-      current.removeCurrent(null, false);
+      current._removeCurrent(null, false);
       current = pre;
     }
     return go(location);
   }
 
-  // static final _reg = RegExp(r'/:(\w)+');
-  void init(String location) {
+  void _init(String location) {
     final uri = Uri.parse(location);
     final path = uri.path;
     final query = uri.queryParameters;
     final params = <String, dynamic>{};
-    final route = RouteI.resolve(routes, path, params);
+    final route = rootPage.getPageFromLocation(path, params);
     assert(route != null);
 
     final entry = RouteQueueEntry(
-        path: path, params: params, routeI: route!, queryParams: query);
+        path: path, params: params, page: route!, queryParams: query);
     _routeQueue.insert(entry);
   }
 
@@ -344,7 +344,7 @@ class MyDemoRouteDelegate extends RouterDelegate<RouteQueue>
   void pop([Object? result]) {
     final last = _routeQueue._current;
     if (last != null && last != _routeQueue._root) {
-      last.removeCurrent(result);
+      last._removeCurrent(result);
       notifyListeners();
     }
   }
@@ -362,19 +362,62 @@ class MyDemoRouteDelegate extends RouterDelegate<RouteQueue>
   }
 }
 
+class _Router extends StatefulWidget {
+  const _Router({required this.delegate});
+  final NRouteDelegate delegate;
+  @override
+  State<_Router> createState() => __RouterState();
+}
+
+class __RouterState extends State<_Router> {
+  @override
+  Widget build(BuildContext context) {
+    return Container();
+  }
+}
+
 typedef PageBuilder<S> = Page<S> Function(RouteQueueEntry entry);
 
-class RouteMain extends RouteI {
-  RouteMain({
+class NPageMain extends NPage {
+  NPageMain({
     this.relative = true,
     required super.path,
     required super.pageBuilder,
     super.pages,
-  });
+  }) {
+    NPage._fullPathToRegExg(this);
+    resolveFullPath(this, relative);
+  }
+
   final bool relative;
 
-  RouteI? getRouteIFromLocation(String location) {
-    return RouteI.resolve(this, location, {});
+  static void resolveFullPath(NPage current, bool relative) {
+    for (var page in current.pages) {
+      String name = page.path;
+      if (relative) {
+        var parentPath = current.fullPath;
+
+        if (parentPath == '/') {
+          parentPath = '';
+        }
+        if (!name.startsWith('/')) {
+          Log.w(name.startsWith('/'));
+          name = '/$name';
+        }
+
+        name = '$parentPath$name';
+      }
+
+      page._fullPath = name;
+
+      NPage._fullPathToRegExg(page);
+
+      resolveFullPath(page, relative);
+    }
+  }
+
+  NPage? getPageFromLocation(String location, [Map<String, dynamic>? params]) {
+    return NPage.resolve(this, location, params ?? {});
   }
 }
 
@@ -382,25 +425,43 @@ class RouteMain extends RouteI {
 /// path:     `/path/to/world`
 ///           `/user/:id/book/:id/path`
 ///           `/user?id=123&bookId=456`
-class RouteI {
-  RouteI({
+class NPage {
+  NPage({
+    this.isPrimary = false,
     required this.path,
     this.pages = const [],
     required this.pageBuilder,
-  }) {
-    _pathExp = pathToRegExp(path, _params);
-  }
+  });
+
+  final bool isPrimary;
   final String path;
-  final List<RouteI> pages;
+  final List<NPage> pages;
   final PageBuilder pageBuilder;
 
-  late RegExp _pathExp;
+  String? _fullPath;
+  String get fullPath => _fullPath ?? path;
+
+  /// 完整匹配 `^$`
+  late final RegExp _pathFullExp;
+
+  /// 从头开始匹配，不保证结尾
+  late final RegExp _pathStartExp;
 
   final _params = <String>[];
 
+  /// 供外部使用
+  List<String>? _cache;
+  List<String> get params => _cache ??= _params.toList(growable: false);
+
+  static void _fullPathToRegExg(NPage current) {
+    final pattern = pathToRegExp(current.fullPath, current._params);
+    current._pathFullExp = RegExp('$pattern\$', caseSensitive: false);
+    current._pathStartExp = RegExp(pattern, caseSensitive: false);
+  }
+
   static final _regM = RegExp(r':(\w+)');
 
-  static RegExp pathToRegExp(String path, List<String> parameters) {
+  static String pathToRegExp(String path, List<String> parameters) {
     final allMatchs = _regM.allMatches(path);
 
     var start = 0;
@@ -422,25 +483,20 @@ class RouteI {
       buffer.write(RegExp.escape(path.substring(start)));
     }
 
-    buffer.write(r'$');
-
-    return RegExp(buffer.toString(), caseSensitive: false);
+    return buffer.toString();
   }
 
-  static final _reg = RegExp('^/.*?/');
-
-  static RouteI? resolve(
-      RouteMain root, String location, Map<String, dynamic> params) {
+  static NPage? resolve(
+      NPageMain root, String location, Map<String, dynamic> params) {
     return _resolve(root, location, root.relative, params);
   }
 
-  static RouteI? _resolve(RouteI current, String location, bool relative,
+  static NPage? _resolve(NPage current, String location, bool relative,
       Map<String, dynamic> params) {
-    final path = location;
+    if (current.path == location && current._params.isEmpty) return current;
 
-    if (current.path == path && current._params.isEmpty) return current;
-
-    final m = current._pathExp.firstMatch(path);
+    /// 全部匹配
+    final m = current._pathFullExp.firstMatch(location);
     if (m != null) {
       final keys = current._params;
       for (var i = 0; i < keys.length; i += 1) {
@@ -449,24 +505,42 @@ class RouteI {
       return current;
     }
 
-    final String parent;
-
-    if (relative) {
-      if (!path.startsWith(current.path)) return null;
-      if (current.path != '/') {
-        parent = path.replaceAll(_reg, '/');
-      } else {
-        parent = path;
-      }
-    } else {
-      parent = path;
+    // 如果是路径相对的，不需要匹配结尾
+    //
+    // note: 绝对路径是无序的，无法通过此法优化
+    if (relative && !current._pathStartExp.hasMatch(location)) {
+      // assert(Log.w(
+      //     '${current.fullPath} $location ${current._pathStartExp.pattern}'));
+      return null;
     }
 
+    // final String parent;
+
+    // if (relative && current.path != '/') {
+    //   parent = location.replaceFirst(current._pathStartExp, '/');
+
+    //   // 没有修改？
+    //   if (parent == location) {
+    //     // 判断是否有匹配
+    //     if (!current._pathStartExp.hasMatch(location)) {
+    //       return null;
+    //     }
+    //   }
+    //   assert(Log.w('$location current: ${current.path} next: $parent'));
+    // } else {
+    //   parent = location;
+    // }
+
     for (var page in current.pages) {
-      final r = _resolve(page, parent, relative, params);
+      final r = _resolve(page, location, relative, params);
       if (r != null) return r;
     }
     return null;
+  }
+
+  @override
+  String toString() {
+    return '$fullPath; params:$_params';
   }
 }
 
@@ -485,18 +559,18 @@ class RouteI {
 // }
 
 class NRouter implements RouterConfig<RouteQueue> {
-  NRouter({required this.routes, String? restorationId, String? initLocation}) {
-    _routeDelegate = MyDemoRouteDelegate(
-        restorationId: restorationId, routes: routes, router: this);
-    final location = initLocation ?? routes.path;
-    _routeDelegate.init(location);
+  NRouter({required this.rootPage, String? restorationId}) {
+    _routeDelegate = NRouteDelegate(
+        restorationId: restorationId, rootPage: rootPage, router: this);
+    final location = rootPage.path;
+    _routeDelegate._init(location);
   }
 
-  final RouteMain routes;
+  final NPageMain rootPage;
 
   /// 根据给出路径判断是否有效
   bool isValid(String location) {
-    return routes.getRouteIFromLocation(location) != null;
+    return rootPage.getPageFromLocation(location) != null;
   }
 
   RouteQueueEntry? getEntryFromId(int id) {
@@ -512,21 +586,24 @@ class NRouter implements RouterConfig<RouteQueue> {
     return entry;
   }
 
-  static NRouter of(BuildContext context) {
-    final router = Router.of(context);
-    final delegate = router.routerDelegate;
+  // static NRouter of(BuildContext context) {
+  //   final router = Router.maybeOf(context);
+  //   final delegate = router?.routerDelegate;
+  //   if (delegate is NRouteDelegate) {
+  //     return delegate.router;
+  //   }
 
-    return (delegate as MyDemoRouteDelegate).router;
-  }
+  //   return (delegate as NRouteDelegate).router;
+  // }
 
-  static NRouter? maybeOf(BuildContext context) {
-    final router = Router.maybeOf(context);
-    final delegate = router?.routerDelegate;
-    if (delegate is MyDemoRouteDelegate) {
-      return delegate.router;
-    }
-    return null;
-  }
+  // static NRouter? maybeOf(BuildContext context) {
+  //   final router = Router.maybeOf(context);
+  //   final delegate = router?.routerDelegate;
+  //   if (delegate is NRouteDelegate) {
+  //     return delegate.router;
+  //   }
+  //   return null;
+  // }
 
   RouteQueueEntry? ofEntry(BuildContext context) {
     return RouteQueueEntry.of(context, this);
@@ -535,7 +612,7 @@ class NRouter implements RouterConfig<RouteQueue> {
   bool removeCurrent(BuildContext context, [dynamic result]) {
     final entry = ofEntry(context);
     if (entry != null) {
-      entry.removeCurrent(result);
+      entry._removeCurrent(result);
       return true;
     }
     return false;
@@ -550,12 +627,17 @@ class NRouter implements RouterConfig<RouteQueue> {
   @override
   RouteInformationProvider? get routeInformationProvider => null;
 
-  late final MyDemoRouteDelegate _routeDelegate;
+  late final NRouteDelegate _routeDelegate;
 
   @override
   RouterDelegate<RouteQueue> get routerDelegate => _routeDelegate;
 
   bool canPop() => _routeDelegate.canPop();
+
+  /// 在 [MaterialApp].builder 中使用
+  Widget build(BuildContext context) {
+    return _routeDelegate.build(context);
+  }
 
   RouteQueueEntry go(String location) {
     return _routeDelegate.go(location);
@@ -571,113 +653,14 @@ class NRouter implements RouterConfig<RouteQueue> {
   }
 }
 
-class RouteQueue extends RestorableProperty<List<RouteQueueEntry>?> {
+class RouteQueue extends RestorableProperty<List<RouteQueueEntry>?>
+    with RouteQueueMixin {
   RouteQueue(this.delegate);
-
-  final MyDemoRouteDelegate delegate;
-  RouteQueueEntry? _root;
-  RouteQueueEntry? _current;
-  RouteQueueEntry? get current => _current;
-  int _id = 0;
-
-  bool get isSingle => _root == _current;
-
   @override
   bool get isRegistered => super.isRegistered;
-
-  void forEach(bool Function(RouteQueueEntry entry) action,
-      {bool reverse = false}) {
-    RouteQueueEntry? current = reverse ? _current : _root;
-    while (current != null) {
-      if (action(current)) return;
-      if (reverse) {
-        current = current._pre;
-      } else {
-        current = current._next;
-      }
-    }
-  }
-
-  void copyWith(RouteQueue other) {
-    if (other == this) return;
-
-    RouteQueueEntry? current = other._root;
-    while (current != null) {
-      assert(!current._disposed);
-      current._parent = this;
-      current = current._next;
-    }
-
-    current = _root;
-    while (current != null) {
-      final next = current._next;
-      current._parent = null;
-      current._pre = null;
-      current._next = null;
-      current._complete();
-      current = next;
-    }
-
-    _root = other._root;
-    _current = other._current;
-    other._root = null;
-    other._current = null;
-  }
-
-  bool isCurrent(RouteQueueEntry entry) => entry._parent == this;
-
-  void insert(RouteQueueEntry entry, {RouteQueueEntry? after}) {
-    assert(after == null || after._parent == this);
-    assert(entry.isAlone);
-    assert(entry._parent == null || entry._parent == this);
-
-    if (entry._disposed) return;
-
-    if (after != null && after != _current) {
-      _insert(after, entry);
-    } else {
-      if (_current != null) {
-        _insert(_current!, entry);
-      }
-      _current = entry;
-    }
-    entry._parent = this;
-    _root ??= entry;
-    notifyListeners();
-  }
-
-  void _remove(RouteQueueEntry entry, {bool update = true}) {
-    if (_root == entry) {
-      assert(entry._pre == null);
-      _root = entry._next;
-    }
-    if (_current == entry) {
-      assert(entry._next == null);
-      _current = entry._pre;
-    }
-    if (update) notifyListeners();
-  }
-
-  bool removeFirst() {
-    if (_root == null) return false;
-    _root!.removeCurrent();
-    return true;
-  }
-
-  bool removeLast([dynamic result]) {
-    if (_current == null) return false;
-    _current!.removeCurrent(result);
-    return true;
-  }
-
-  void _insert(RouteQueueEntry current, RouteQueueEntry entry) {
-    assert(entry.isAlone);
-    entry._next = current._next;
-    entry._pre = current;
-    current._next = entry;
-  }
-
-  void update() {
+  final NRouteDelegate delegate;
+  @override
+  void refresh() {
     notifyListeners();
   }
 
@@ -701,13 +684,12 @@ class RouteQueue extends RestorableProperty<List<RouteQueueEntry>?> {
     RouteQueueEntry? last;
     for (var item in listMap as List<Map<String, dynamic>>) {
       final path = item['path'];
-      final data = item['data'];
+      final queryParams = item['data'];
       final id = item['id'];
 
-      final params = <String, dynamic>{};
+      final current =
+          RouteQueueEntry.from(path, queryParams, delegate.rootPage);
 
-      final route = RouteI.resolve(delegate.routes, path, params);
-      final current = RouteQueueEntry.fromJson(path, data, params, route!);
       current
         .._id = id
         .._parent = this
@@ -719,22 +701,22 @@ class RouteQueue extends RestorableProperty<List<RouteQueueEntry>?> {
   }
 
   @override
-  void initWithValue(value) {
+  void initWithValue(List<RouteQueueEntry>? value) {
     if (value != null && value.isNotEmpty) {
-      var current = _root;
-      while (current != null) {
-        final next = current._next;
+      forEach((current) {
         current._parent = null;
         current._pre = null;
         current._next = null;
         current._complete();
-        current = next;
-      }
+        return false;
+      });
+
       final root = value.first;
-      current = value.last;
+      final current = value.last;
       assert(root._parent == this && current._parent == this);
       _root = root;
       _current = current;
+      _length = value.length;
     }
   }
 
@@ -752,6 +734,113 @@ class RouteQueue extends RestorableProperty<List<RouteQueueEntry>?> {
       'list': list,
     };
   }
+}
+
+mixin RouteQueueMixin {
+  RouteQueueEntry? _root;
+  RouteQueueEntry? _current;
+  RouteQueueEntry? get current => _current;
+  int _id = 0;
+  int _length = 0;
+  int get length => _length;
+
+  bool get isSingle => _root == _current;
+
+  void forEach(bool Function(RouteQueueEntry entry) test,
+      {bool reverse = false}) {
+    RouteQueueEntry? current = reverse ? _current : _root;
+    while (current != null) {
+      if (test(current)) return;
+      if (reverse) {
+        current = current._pre;
+      } else {
+        current = current._next;
+      }
+    }
+  }
+
+  void copyWith(RouteQueue other) {
+    if (other == this) return;
+
+    other.forEach((entry) {
+      assert(!entry._disposed);
+      entry._parent = this;
+      return false;
+    });
+
+    forEach((current) {
+      current._parent = null;
+      current._pre = null;
+      current._next = null;
+      current._complete();
+      return false;
+    });
+
+    _root = other._root;
+    _current = other._current;
+    _length = other.length;
+    other._root = null;
+    other._current = null;
+  }
+
+  bool isCurrent(RouteQueueEntry entry) => entry._parent == this;
+
+  void insert(RouteQueueEntry entry, {RouteQueueEntry? after}) {
+    assert(after == null || after._parent == this);
+    assert(entry.isAlone);
+    assert(entry._parent == null || entry._parent == this);
+
+    if (entry._disposed) return;
+
+    if (after != null && after != _current) {
+      _insert(after, entry);
+    } else {
+      if (_current != null) {
+        _insert(_current!, entry);
+      }
+      _current = entry;
+    }
+    entry._parent = this;
+    _root ??= entry;
+    _length += 1;
+    refresh();
+  }
+
+  void _remove(RouteQueueEntryMixin entry, {bool notify = true}) {
+    if (_root == entry) {
+      assert(entry._pre == null);
+      _root = entry._next;
+    }
+    if (_current == entry) {
+      assert(entry._next == null);
+      _current = entry._pre;
+    }
+    _length -= 1;
+    assert(_length >= 0);
+    if (notify) refresh();
+  }
+
+  bool removeFirst() {
+    if (_root == null) return false;
+    _root!._removeCurrent();
+    return true;
+  }
+
+  bool removeLast([dynamic result]) {
+    if (_current == null) return false;
+    _current!._removeCurrent(result);
+    return true;
+  }
+
+  void _insert(RouteQueueEntry current, RouteQueueEntry entry) {
+    ServicesBinding.instance.restorationManager;
+    assert(entry.isAlone);
+    entry._next = current._next;
+    entry._pre = current;
+    current._next = entry;
+  }
+
+  void refresh();
 }
 
 abstract class JsonTransform<T, F> {
@@ -780,20 +869,73 @@ abstract class JsonTransform<T, F> {
   F fromJson(T value);
 }
 
-class RouteQueueEntry {
-  final String path;
-  final Map<String, dynamic> queryParams;
+class RouteQueueEntry with RouteQueueEntryMixin {
   RouteQueueEntry(
       {required this.path,
       required this.params,
-      required this.routeI,
+      required this.page,
       this.queryParams = const {}});
-  final RouteI routeI;
-  RouteQueue? _parent;
+
+  final String path;
+  final NPage page;
+
+  /// `/path/to?user=foo` => {'user': 'foo'}
+  final Map<String, dynamic> queryParams;
+
+  /// `/path/to/:user` => {'user': \<user\>}
   final Map<String, dynamic> params;
 
+  static RouteQueueEntry? of(BuildContext context, NRouter router) {
+    final modal = ModalRoute.of(context);
+    if (modal?.settings is! Page<Object?>) {
+      return null;
+    }
+    final page = modal!.settings as Page;
+    RouteQueueEntry? matchedEntry;
+    router._routeDelegate._routeQueue.forEach((entry) {
+      if (entry._page == page) {
+        matchedEntry = entry;
+        return true;
+      }
+      return false;
+    });
+    return matchedEntry;
+  }
+
+  Page? _page;
+  Page _build() {
+    return _page ??= page.pageBuilder(this);
+  }
+
+  factory RouteQueueEntry.from(
+      String path, Map<String, dynamic> json, NPageMain nPage) {
+    final params = <String, dynamic>{};
+
+    final route = NPage.resolve(nPage, path, params);
+
+    return RouteQueueEntry(
+        path: path, queryParams: json, params: params, page: route!);
+  }
+
+  factory RouteQueueEntry.fromJson(String path, Map<String, dynamic> json,
+      Map<String, dynamic> params, NPage page) {
+    return RouteQueueEntry(
+        path: path, queryParams: json, params: params, page: page);
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'path': path,
+      'id': _id,
+      'data': queryParams,
+    };
+  }
+}
+
+mixin RouteQueueEntryMixin {
   int? _id;
   int? get id => _id;
+  RouteQueueMixin? _parent;
 
   RouteQueueEntry? _pre;
   RouteQueueEntry? _next;
@@ -811,7 +953,11 @@ class RouteQueueEntry {
 
   bool _disposed = false;
 
-  void removeCurrent([dynamic result, bool update = true]) {
+  void remove([dynamic result]) {
+    _removeCurrent(result);
+  }
+
+  void _removeCurrent([dynamic result, bool update = true]) {
     if (_disposed) return;
 
     final root = _parent;
@@ -824,7 +970,7 @@ class RouteQueueEntry {
     _pre?._next = _next;
     _next?._pre = _pre;
     _parent = null;
-    root._remove(this, update: update);
+    root._remove(this, notify: update);
     _pre = null;
     _next = null;
     _complete(result);
@@ -835,52 +981,6 @@ class RouteQueueEntry {
     if (_completer != null && !_completer!.isCompleted) {
       _completer!.complete(result);
     }
-  }
-
-  Page? _page;
-  Page _build() {
-    return _page ??= routeI.pageBuilder(this);
-  }
-
-  static RouteQueueEntry? of(BuildContext context, NRouter router) {
-    final modal = ModalRoute.of(context);
-    if (modal?.settings is! Page<Object?>) {
-      throw '';
-    }
-    final page = modal!.settings as Page;
-    RouteQueueEntry? matchEntry;
-    router._routeDelegate._routeQueue.forEach((entry) {
-      if (entry._page == page) {
-        matchEntry = entry;
-        return true;
-      }
-      return false;
-    });
-    return matchEntry;
-  }
-
-  factory RouteQueueEntry.from(
-      String path, Map<String, dynamic> json, RouteMain routes) {
-    final params = <String, dynamic>{};
-
-    final route = RouteI.resolve(routes, path, params);
-
-    return RouteQueueEntry(
-        path: path, queryParams: json, params: params, routeI: route!);
-  }
-
-  factory RouteQueueEntry.fromJson(String path, Map<String, dynamic> json,
-      Map<String, dynamic> params, RouteI route) {
-    return RouteQueueEntry(
-        path: path, queryParams: json, params: params, routeI: route);
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'path': path,
-      'id': _id,
-      'data': queryParams,
-    };
   }
 }
 
@@ -905,7 +1005,6 @@ mixin RouteQueueEntryStateMixin<T extends StatefulWidget>
 
   @override
   void restoreState(RestorationBucket? oldBucket, bool initialRestore) {
-    super.restoreState(oldBucket, initialRestore);
     _reg();
   }
 
@@ -926,17 +1025,15 @@ mixin RouteQueueEntryStateMixin<T extends StatefulWidget>
 
   @override
   void activate() {
-    // ignore: invalid_use_of_protected_member
-    if (!_id.isRegistered) {
+    super.activate();
+    if (entryRestorationId != null) {
       _reg();
     }
-    super.activate();
   }
 
   @override
   void deactivate() {
-    // ignore: invalid_use_of_protected_member
-    if (_id.isRegistered) {
+    if (entryRestorationId != null) {
       unregisterFromRestoration(_id);
     }
     super.deactivate();
