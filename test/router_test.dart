@@ -19,6 +19,7 @@ void main() {
     }
 
     _printZoned(() {
+      var nPage = NPage(path: '/new/:bookId', pageBuilder: builder);
       final root = NPageMain(
         pageBuilder: builder,
         path: '/',
@@ -30,8 +31,8 @@ void main() {
             ]),
             NPage(path: '/hello/:user', pageBuilder: builder, pages: [
               // 支持空路径名称
-              NPage(path: '/', pageBuilder: builder, pages: [
-                NPage(path: '/new', pageBuilder: builder),
+              NPage(pageBuilder: builder, pages: [
+                nPage,
               ]),
             ]),
           ]),
@@ -40,13 +41,21 @@ void main() {
 
       final page = root.getPageFromLocation('/path/to/other/hello');
       expect(page != null, true);
-      final userPage = root.getPageFromLocation('/path/hello/newUser');
-      final userNewPage = root.getPageFromLocation('/path/hello/newUser//new');
 
+      final userPage = root.getPageFromLocation('/path/hello/newUser');
       expect(userPage != null, true);
       expect(userPage!.fullPath, '/path/hello/:user');
       expect(userPage.params, ['user']);
+
+      final userNewParams = <String, dynamic>{};
+      final userNewPage = root.getPageFromLocation(
+          '/path/hello/newUser//new/131231', userNewParams);
+
       expect(userNewPage != null, true);
+      expect(userNewPage!.fullPath, '/path/hello/:user//new/:bookId');
+      expect(userNewPage.params, ['user', 'bookId']);
+      expect(userNewParams, {'user': 'newUser', 'bookId': '131231'});
+      expect(nPage.fullPath, '/path/hello/:user//new/:bookId');
     });
   });
 }

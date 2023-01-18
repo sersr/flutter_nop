@@ -263,7 +263,10 @@ class NRouteDelegate extends RouterDelegate<RouteQueue>
             final list = <Page>[];
             RouteQueueEntry? r = _routeQueue._root;
             while (r != null) {
-              list.add(r._build());
+              final page = r._build();
+              if (page != null) {
+                list.add(page);
+              }
               r = r._next;
             }
 
@@ -381,8 +384,8 @@ typedef PageBuilder<S> = Page<S> Function(RouteQueueEntry entry);
 class NPageMain extends NPage {
   NPageMain({
     this.relative = true,
-    required super.path,
-    required super.pageBuilder,
+    super.path,
+    super.pageBuilder,
     super.pages,
   }) {
     NPage._fullPathToRegExg(this);
@@ -401,7 +404,6 @@ class NPageMain extends NPage {
           parentPath = '';
         }
         if (!name.startsWith('/')) {
-          Log.w(name.startsWith('/'));
           name = '/$name';
         }
 
@@ -428,15 +430,15 @@ class NPageMain extends NPage {
 class NPage {
   NPage({
     this.isPrimary = false,
-    required this.path,
+    this.path = '/',
     this.pages = const [],
-    required this.pageBuilder,
+    this.pageBuilder,
   });
 
   final bool isPrimary;
   final String path;
   final List<NPage> pages;
-  final PageBuilder pageBuilder;
+  final PageBuilder? pageBuilder;
 
   String? _fullPath;
   String get fullPath => _fullPath ?? path;
@@ -498,9 +500,10 @@ class NPage {
     /// 全部匹配
     final m = current._pathFullExp.firstMatch(location);
     if (m != null) {
+      assert(current._params.length == m.groupCount);
       final keys = current._params;
       for (var i = 0; i < keys.length; i += 1) {
-        params[keys[i]] = m[1];
+        params[keys[i]] = m[1 + i];
       }
       return current;
     }
@@ -903,8 +906,8 @@ class RouteQueueEntry with RouteQueueEntryMixin {
   }
 
   Page? _page;
-  Page _build() {
-    return _page ??= page.pageBuilder(this);
+  Page? _build() {
+    return _page ??= page.pageBuilder?.call(this);
   }
 
   factory RouteQueueEntry.from(
