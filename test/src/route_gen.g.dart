@@ -9,40 +9,61 @@ part of 'route_gen.dart';
 // ignore_for_file: prefer_const_constructors
 
 class Routes {
-  Routes._();
-  static final root = NopRoute(
-    name: '/',
-    fullName: '/',
-    children: [page02],
-    builder: (context, arguments, group) => const Nop.page(
-      child: Page01(),
-    ),
-  );
+  Routes._() {
+    _init();
+  }
 
-  static final page02 = NopRoute(
-    name: '/page02',
-    fullName: '/page02',
-    groupOwner: () => page02,
-    groupKey: 'groupId',
-    children: [page03],
-    builder: (context, arguments, group) => Nop.page(
-      groupList: const [UniqueController],
-      group: group,
-      child: Page02(),
-    ),
-  );
+  static Routes? _instance;
 
-  static final page03 = NopRoute(
-    name: '/page03',
-    fullName: '/page02/page03',
-    groupOwner: () => page02,
-    groupKey: 'groupId',
-    builder: (context, arguments, group) => Nop.page(
-      groupList: const [UniqueController],
-      group: group,
-      child: Page03(),
-    ),
-  );
+  factory Routes({bool newInstance = false}) {
+    if (!newInstance && _instance != null) {
+      return _instance!;
+    }
+    return _instance = Routes._();
+  }
+
+  void _init() {
+    _root = NopRoute(
+      name: '/',
+      fullName: '/',
+      childrenLate: () => [_page02],
+      builder: (context, arguments, group) => const Nop.page(
+        child: Page01(),
+      ),
+    );
+
+    _page02 = NopRoute(
+      name: '/page02',
+      fullName: '/page02',
+      groupOwnerLate: () => _page02,
+      groupKey: 'groupId',
+      childrenLate: () => [_page03],
+      builder: (context, arguments, group) => Nop.page(
+        groupList: const [UniqueController],
+        group: group,
+        child: Page02(),
+      ),
+    );
+
+    _page03 = NopRoute(
+      name: '/page03',
+      fullName: '/page02/page03',
+      groupOwnerLate: () => _page02,
+      groupKey: 'groupId',
+      builder: (context, arguments, group) => Nop.page(
+        groupList: const [UniqueController],
+        group: group,
+        child: Page03(),
+      ),
+    );
+  }
+
+  late final NopRoute _root;
+  static NopRoute get root => Routes()._root;
+  late final NopRoute _page02;
+  static NopRoute get page02 => Routes()._page02;
+  late final NopRoute _page03;
+  static NopRoute get page03 => Routes()._page03;
 }
 
 class NavRoutes {
@@ -55,8 +76,7 @@ class NavRoutes {
   }
 
   static NopRouteAction<T> page02<T>(
-      {BuildContext? context, groupId /* bool or String */}) {
-    groupId ??= NopRoute.getGroupIdFromBuildContext(context);
+      {BuildContext? context, required groupId /* bool or String */}) {
     return NopRouteAction(
         context: context,
         route: Routes.page02,
@@ -64,8 +84,7 @@ class NavRoutes {
   }
 
   static NopRouteAction<T> page03<T>(
-      {BuildContext? context, groupId /* bool or String */}) {
-    groupId ??= NopRoute.getGroupIdFromBuildContext(context);
+      {BuildContext? context, required groupId /* bool or String */}) {
     return NopRouteAction(
         context: context,
         route: Routes.page03,

@@ -77,26 +77,32 @@ mixin NopRouteActionMixin<T> {
 class NopRoute {
   final String name;
   final String fullName;
-  final List<NopRoute> children;
+  final List<NopRoute> Function()? childrenLate;
   final Widget Function(BuildContext context, dynamic arguments, Object? group)
       builder;
   final String desc;
-  final NopRoute Function()? _groupOwner;
+  final NopRoute Function()? groupOwnerLate;
   final String groupKey;
 
-  const NopRoute({
+  NopRoute({
     required this.name,
     required this.fullName,
     required this.builder,
-    NopRoute Function()? groupOwner,
+    this.groupOwnerLate,
     String? groupKey,
-    this.children = const [],
+    this.childrenLate,
     this.desc = '',
-  })  : groupKey = groupKey ?? defaultGroupKey,
-        _groupOwner = groupOwner;
+  }) : groupKey = groupKey ?? defaultGroupKey;
 
+  List<NopRoute>? _children;
+
+  List<NopRoute> get children {
+    return _children ??= childrenLate?.call() ?? const [];
+  }
+
+  NopRoute? _owner;
   NopRoute? get groupOwner {
-    return _groupOwner?.call();
+    return _owner ??= groupOwnerLate?.call();
   }
 
   static const defaultGroupKey = 'nopIsMain';
@@ -367,7 +373,6 @@ class NopRouteSettings extends RouteSettings {
   final NopRoute route;
   final Object? group;
 
-  @override
   NopRouteSettings copyWith({
     String? name,
     Object? arguments,
