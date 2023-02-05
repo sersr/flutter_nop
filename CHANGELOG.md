@@ -1,7 +1,13 @@
 
+# 2.1.4
+
+migrate to Flutter 3.7  
+fix `top_level_cycle`
+
 # 2.1.1+2
 
 * fix: alias
+
 # 2.1.1+1
 
 * fix some bugs
