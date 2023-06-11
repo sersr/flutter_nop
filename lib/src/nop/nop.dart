@@ -31,7 +31,6 @@ class Nop<C> extends StatefulWidget {
   const Nop({
     Key? key,
     required this.child,
-    this.builder,
     this.builders,
     this.create,
   })  : value = null,
@@ -44,7 +43,6 @@ class Nop<C> extends StatefulWidget {
     Key? key,
     this.value,
     required this.child,
-    this.builder,
     this.builders,
   })  : create = null,
         isPage = false,
@@ -59,7 +57,6 @@ class Nop<C> extends StatefulWidget {
   const Nop.page({
     Key? key,
     required this.child,
-    this.builder,
     this.builders,
     this.groupList = const [],
     this.group,
@@ -69,7 +66,6 @@ class Nop<C> extends StatefulWidget {
         super(key: key);
 
   final Widget child;
-  final NopWidgetBuilder? builder;
   final List<NopWidgetBuilder>? builders;
   final C Function(BuildContext context)? create;
   final List<Type> groupList;
@@ -265,7 +261,7 @@ class _NopState<C> extends State<Nop<C>> with NopListenerHandle, NopRouteAware {
 
     NopListener? listener;
     //  = pageState?.getListener(t, group);
-    assert(listener == null || pageState != this);
+    // assert(listener == null || pageState != this);
 
     NopDependence? dependence = pageState?.dependence;
     bool isSelf = true;
@@ -396,17 +392,15 @@ class _NopState<C> extends State<Nop<C>> with NopListenerHandle, NopRouteAware {
     _caches.clear();
   }
 
-  dynamic _initType(Type t, _, group) => getTypeListener(t, group).data;
-
   @override
   Widget build(BuildContext context) {
-    final child = NopPreInit(
-      builder: widget.builder,
-      builders: widget.builders,
-      init: _initType,
-      group: widget.group,
-      child: widget.child,
-    );
+    Widget child = widget.child;
+    if (widget.builders != null) {
+      child = NopPreInit(
+        builders: widget.builders,
+        child: widget.child,
+      );
+    }
 
     return _NopScoop(state: this, child: child);
   }
