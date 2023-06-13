@@ -90,38 +90,31 @@ class NRouteDelegate extends RouterDelegate<RouteQueue>
       restorationId: restorationId,
       routeQueue: _routeQueue,
       child: AnimatedBuilder(
-          animation: _routeQueue,
-          builder: (context, child) {
-            final list = <Page>[];
-            RouteQueueEntry? r = _routeQueue._root;
-            while (r != null) {
-              final page = r._build();
-              if (page != null) {
-                list.add(page);
-              }
-              r = r._next;
-            }
-
-            // 为什么使用 Navigator?
-            // flutter 有很多使用`Navigator`的地方，
-            // Dialog等都有使用
-            return Navigator(
-              pages: list,
-              key: navigatorKey,
-              observers: [
-                Nav.observer,
-              ],
-              onPopPage: (route, result) {
-                if (route.settings == _routeQueue.current?._page) {
-                  Log.w('${_routeQueue.current?.page.fullPath}');
-                  _routeQueue.removeLast(result);
-                }
-                route.didPop(result);
-                return true;
-              },
-            );
-          }),
+        animation: _routeQueue,
+        builder: (context, child) {
+          // 为什么使用 Navigator?
+          // flutter 有很多使用`Navigator`的地方，
+          // Dialog等都有使用
+          return Navigator(
+            pages: _routeQueue.pages,
+            key: navigatorKey,
+            observers: [Nav.observer],
+            onPopPage: _onPopPage,
+          );
+        },
+      ),
     );
+  }
+
+  bool _onPopPage(Route route, result) {
+    if (!route.didPop(result)) {
+      return false;
+    }
+    if (route.settings is Page) {
+      final entry = _routeQueue.map.remove(route.settings);
+      entry?._removeCurrent(null, false);
+    }
+    return true;
   }
 
   late final _routeQueue = RouteQueue(this);
@@ -138,13 +131,19 @@ class NRouteDelegate extends RouterDelegate<RouteQueue>
         path: location, page: route!, params: params, queryParams: query);
   }
 
-  RouteQueueEntry go(String location, {Object? extra}) {
-    final entry = _parse(location);
-    _run(entry);
-    return entry;
+  void _init(String location) {
+    final uri = Uri.parse(location);
+    final path = uri.path;
+    final query = uri.queryParameters;
+    final params = <String, dynamic>{};
+    final route = rootPage.getPageFromLocation(path, params);
+    assert(route != null);
+
+    final entry = RouteQueueEntry(
+        path: path, params: params, page: route!, queryParams: query);
+    _routeQueue.insert(entry);
   }
 
-  @pragma('prefer-inline')
   void _run(RouteQueueEntry entry) {
     if (SchedulerBinding.instance.schedulerPhase ==
         SchedulerPhase.persistentCallbacks) {
@@ -168,7 +167,20 @@ class NRouteDelegate extends RouterDelegate<RouteQueue>
         params: params,
         page: page,
         groupId: page.resolveGroupId(groupId),
+        pageKey: _newPageKey(),
         fromPage: true);
+  }
+
+  @pragma('vm:prefer-inline')
+  ValueKey _newPageKey() {
+    // ignore: prefer_const_constructors
+    return ValueKey(Object());
+  }
+
+  RouteQueueEntry go(String location, {Object? extra}) {
+    final entry = _parse(location);
+    _run(entry);
+    return entry;
   }
 
   RouteQueueEntry goPage(NPage page,
@@ -183,12 +195,14 @@ class NRouteDelegate extends RouterDelegate<RouteQueue>
 
   void _until(UntilFn test) {
     RouteQueueEntry? current = _routeQueue._current;
+
     while (current != null) {
       if (test(current)) break;
       final pre = current._pre;
-      // current._removeCurrent(null, false);
+      current._removeCurrent(null, false);
       current = pre;
     }
+    // _routeQueue.refresh();
     final nav = navigatorKey.currentState;
     if (current != null && nav?.mounted == true) {
       nav!.popUntil((route) => route.settings == current!._page);
@@ -208,31 +222,14 @@ class NRouteDelegate extends RouterDelegate<RouteQueue>
     return goPage(page, params: params, extra: extra, groupId: groupId);
   }
 
-  void _init(String location) {
-    final uri = Uri.parse(location);
-    final path = uri.path;
-    final query = uri.queryParameters;
-    final params = <String, dynamic>{};
-    final route = rootPage.getPageFromLocation(path, params);
-    assert(route != null);
-
-    final entry = RouteQueueEntry(
-        path: path, params: params, page: route!, queryParams: query);
-    _routeQueue.insert(entry);
-  }
-
-  bool canPop() => navigatorKey.currentState?.canPop() ?? _routeQueue.isSingle;
+  bool canPop() => navigatorKey.currentState?.canPop() ?? !_routeQueue.isSingle;
 
   void popUntil(UntilFn test) {
     _until(test);
   }
 
   void pop([Object? result]) {
-    if (navigatorKey.currentState?.mounted == true) {
-      navigatorKey.currentState!.pop(result);
-    } else {
-      _pop(result);
-    }
+    _pop(result);
   }
 
   void _pop([Object? result]) {
@@ -253,20 +250,6 @@ class NRouteDelegate extends RouterDelegate<RouteQueue>
   Future<void> setNewRoutePath(configuration) {
     _routeQueue.copyWith(configuration);
     return SynchronousFuture(null);
-  }
-}
-
-class _Router extends StatefulWidget {
-  const _Router({required this.delegate});
-  final NRouteDelegate delegate;
-  @override
-  State<_Router> createState() => __RouterState();
-}
-
-class __RouterState extends State<_Router> {
-  @override
-  Widget build(BuildContext context) {
-    return Container();
   }
 }
 
@@ -335,8 +318,66 @@ class RouterAction {
   }
 
   void goReplacement([Object? result, bool immediated = false]) {
+    if (immediated) {
+      entry._pageKey = router._routeDelegate._routeQueue._current?._pageKey;
+    }
     router._routeDelegate.pop(result);
     go();
+  }
+}
+
+class MaterialIgnorePage<T> extends MaterialPage<T> {
+  const MaterialIgnorePage({
+    required super.child,
+    super.maintainState,
+    super.fullscreenDialog,
+    super.allowSnapshotting,
+    super.key,
+    super.name,
+    super.arguments,
+    super.restorationId,
+  });
+
+  @override
+  Route<T> createRoute(BuildContext context) {
+    return _MaterialIgnorePageRoute(
+        page: this, allowSnapshotting: allowSnapshotting);
+  }
+}
+
+class _MaterialIgnorePageRoute<T> extends PageRoute<T>
+    with MaterialRouteTransitionMixin<T> {
+  _MaterialIgnorePageRoute({
+    required MaterialIgnorePage<T> page,
+    super.allowSnapshotting,
+  }) : super(settings: page);
+
+  MaterialIgnorePage<T> get _page => settings as MaterialIgnorePage<T>;
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return _page.child;
+  }
+
+  @override
+  bool get maintainState => _page.maintainState;
+
+  @override
+  bool get fullscreenDialog => _page.fullscreenDialog;
+
+  @override
+  String get debugLabel => '${super.debugLabel}(${_page.name})';
+
+  @override
+  Widget buildTransitions(BuildContext context, Animation<double> animation,
+      Animation<double> secondaryAnimation, Widget child) {
+    final v = animation.status == AnimationStatus.forward ||
+        secondaryAnimation.status == AnimationStatus.forward ||
+        secondaryAnimation.status == AnimationStatus.reverse;
+
+    child = IgnorePointer(ignoring: v, child: child);
+    return super
+        .buildTransitions(context, animation, secondaryAnimation, child);
   }
 }
 
@@ -615,8 +656,32 @@ class RouteQueue extends RestorableProperty<List<RouteQueueEntry>?>
   @override
   bool get isRegistered => super.isRegistered;
   final NRouteDelegate delegate;
+
+  List<Page>? _pages;
+  List<Page> get pages => _pages ??= _newPages();
+
+  Map<Page, RouteQueueEntry>? _map;
+  Map<Page, RouteQueueEntry> get map => _map ?? const {};
+
+  List<Page> _newPages() {
+    final list = <Page>[];
+    final map = <Page, RouteQueueEntry>{};
+    RouteQueueEntry? r = _root;
+    while (r != null) {
+      final page = r._build();
+      if (page != null) {
+        map[page] = r;
+        list.add(page);
+      }
+      r = r._next;
+    }
+    _map = map;
+    return list;
+  }
+
   @override
   void refresh() {
+    _pages = _newPages();
     notifyListeners();
   }
 
@@ -700,7 +765,7 @@ mixin RouteQueueMixin {
   int _length = 0;
   int get length => _length;
 
-  bool get isSingle => _root == _current;
+  bool get isSingle => _root == _current && _root != null && _current != null;
 
   void forEach(UntilFn test, {bool reverse = false}) {
     RouteQueueEntry? current = reverse ? _current : _root;
@@ -832,13 +897,18 @@ class RouteQueueEntry with RouteQueueEntryMixin {
       {required this.path,
       required this.params,
       required this.page,
+      LocalKey? pageKey,
       this.fromPage = false,
       this.groupId,
-      this.queryParams = const {}});
+      this.queryParams = const {}})
+      : _pageKey = pageKey;
 
   final String path;
   final NPage page;
   final bool fromPage;
+
+  LocalKey? _pageKey;
+  LocalKey? get pageKey => _pageKey;
 
   /// `/path/to?user=foo` => {'user': 'foo'}
   final Map<String, dynamic> queryParams;
