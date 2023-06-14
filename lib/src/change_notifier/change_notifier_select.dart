@@ -1,6 +1,5 @@
-import 'package:equatable/equatable.dart';
-import 'package:flutter/foundation.dart';
 import 'package:collection/collection.dart';
+import 'package:flutter/foundation.dart';
 
 import 'change_auto_listen.dart';
 
@@ -14,15 +13,12 @@ extension ValueNotifierSelector<D extends Listenable> on D {
 }
 
 class ChangeNotifierSelector<T, D extends Listenable> extends ChangeNotifier
-    with EquatableMixin
     implements ValueListenable<T> {
-  ChangeNotifierSelector(
-      {required this.parent, required this.notifyValue, this.key})
+  ChangeNotifierSelector({required this.parent, required this.notifyValue})
       : _value = notifyValue(parent);
 
   final D parent;
   final ShouldNotify<T, D> notifyValue;
-  final Object? key;
 
   bool _add = false;
   @override
@@ -63,9 +59,6 @@ class ChangeNotifierSelector<T, D extends Listenable> extends ChangeNotifier
 
   @override
   T get value => _value;
-
-  @override
-  List<Object?> get props => [parent, T, key];
 }
 
 extension ChangeAutoWrapperSelectorAl<T, D extends ChangeNotifier>
