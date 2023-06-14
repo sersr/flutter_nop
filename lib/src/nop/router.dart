@@ -14,18 +14,20 @@ class RouteRestorable extends StatefulWidget {
   const RouteRestorable({
     super.key,
     this.restorationId,
-    required this.routeQueue,
+    required this.delegate,
     required this.child,
   });
   final String? restorationId;
   final Widget child;
-  final RouteQueue routeQueue;
+  final NRouteDelegate delegate;
+  RouteQueue get routeQueue => delegate._routeQueue;
+
   @override
   State<RouteRestorable> createState() => _RouteRestorableState();
 }
 
 class _RouteRestorableState extends State<RouteRestorable>
-    with RestorationMixin {
+    with WidgetsBindingObserver, RestorationMixin {
   late RouteQueue routeQueue;
 
   @override
@@ -37,6 +39,22 @@ class _RouteRestorableState extends State<RouteRestorable>
   void initState() {
     super.initState();
     routeQueue = widget.routeQueue;
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  Future<bool> didPopRoute() async {
+    final nav = widget.delegate.navigatorKey.currentState;
+    if (nav == null) {
+      return false;
+    }
+    return nav.maybePop();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
   }
 
   @override
@@ -88,7 +106,7 @@ class NRouteDelegate extends RouterDelegate<RouteQueue>
   Widget build(BuildContext context) {
     return RouteRestorable(
       restorationId: restorationId,
-      routeQueue: _routeQueue,
+      delegate: this,
       child: AnimatedBuilder(
         animation: _routeQueue,
         builder: (context, child) {
