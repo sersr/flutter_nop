@@ -184,6 +184,7 @@ class NRouteDelegate extends RouterDelegate<RouteQueue>
         path: page.fullPath,
         params: params,
         page: page,
+        queryParams: extra ?? const {},
         groupId: page.resolveGroupId(groupId),
         pageKey: _newPageKey(),
         fromPage: true);
