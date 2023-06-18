@@ -52,6 +52,50 @@ class _RouteRestorableState extends State<RouteRestorable>
   }
 
   @override
+  Future<bool> didPushRouteInformation(RouteInformation routeInformation) {
+    final uri = routeInformation.uri;
+    final realParams = <String, dynamic>{};
+    final route =
+        widget.delegate.rootPage.getPageFromLocation(uri.path, realParams);
+    if (route == null) {
+      return SynchronousFuture(false);
+    }
+
+    final entry = RouteQueueEntry(
+      path: uri.toString(),
+      params: realParams,
+      page: route,
+      queryParams: uri.queryParameters,
+      pageKey: widget.delegate._newPageKey(),
+    );
+
+    if (routeQueue._current?._pre?.path == entry.path) {
+      widget.delegate._pop();
+    } else {
+      widget.delegate._run(entry, update: false);
+    }
+    return SynchronousFuture(true);
+  }
+
+  // @override
+  // Future<bool> didPushRoute(String route) async {
+  //   final entry = widget.delegate._parse(route);
+  //   if (entry != null) {
+  //     // Log.w('...${widget.delegate._routeQueue._current?._pre?.page} $entry');
+  //     if (routeQueue._current?._pre?.path == entry.path) {
+  //       widget.delegate._pop();
+  //     } else {
+  //       // if (routeQueue.isSingle && entry.page == widget.delegate.rootPage) {
+  //       //   return false;
+  //       // }
+  //       widget.delegate._run(entry, update: false);
+  //     }
+  //     return false;
+  //   }
+  //   return false;
+  // }
+
+  @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -131,42 +175,66 @@ class NRouteDelegate extends RouterDelegate<RouteQueue>
     if (route.settings is Page) {
       final entry = _routeQueue.map.remove(route.settings);
       entry?._removeCurrent(null, false);
+      _updateRouteInfo(false);
     }
     return true;
   }
 
   late final _routeQueue = RouteQueue(this);
 
-  RouteQueueEntry _parse(String location) {
+  void _updateRouteInfo(bool replace) {
+    _routeQueue._updateRouteInfo(replace);
+  }
+
+  RouteQueueEntry? _parse(String location,
+      {Map<String, dynamic> params = const {},
+      Map<String, dynamic>? extra,
+      Object? groupId}) {
     final uri = Uri.parse(location);
-    final path = uri.path;
-    final query = uri.queryParameters;
-    final params = <String, dynamic>{};
-    final route = rootPage.getPageFromLocation(path, params);
-    assert(route != null);
+
+    String? path = location;
+    Map<String, dynamic> query = uri.queryParameters;
+    if (extra != null && extra.isNotEmpty) {
+      query = extra;
+      path = null;
+    }
+    if (path != null && params.isNotEmpty) {
+      path = null;
+    }
+
+    final realParams = <String, dynamic>{};
+    final route = rootPage.getPageFromLocation(uri.path, realParams, params);
+    if (route == null) return null;
 
     return RouteQueueEntry(
-        path: location, page: route!, params: params, queryParams: query);
+      path: path,
+      page: route,
+      params: realParams,
+      queryParams: query,
+      groupId: groupId,
+      pageKey: _newPageKey(),
+    );
   }
 
-  void _init(String location) {
-    final uri = Uri.parse(location);
-    final path = uri.path;
-    final query = uri.queryParameters;
-    final params = <String, dynamic>{};
-    final route = rootPage.getPageFromLocation(path, params);
-    assert(route != null);
+  // void _init(String location) {
+  //   final uri = Uri.parse(location);
+  //   final path = uri.path;
+  //   final query = uri.queryParameters;
+  //   final params = <String, dynamic>{};
+  //   final route = rootPage.getPageFromLocation(path, params);
+  //   assert(route != null);
 
-    final entry = RouteQueueEntry(
-        path: path, params: params, page: route!, queryParams: query);
-    _routeQueue.insert(entry);
-  }
+  //   final entry = RouteQueueEntry(
+  //       path: path, params: params, page: route!, queryParams: query);
+  //   _routeQueue.insert(entry);
+  // }
 
-  void _run(RouteQueueEntry entry) {
+  void _run(RouteQueueEntry entry, {bool update = true}) {
     if (SchedulerBinding.instance.schedulerPhase ==
         SchedulerPhase.persistentCallbacks) {
       // attach
       entry._parent = _routeQueue;
+
       // delay
       SchedulerBinding.instance.addPostFrameCallback((timeStamp) {
         _routeQueue.insert(entry);
@@ -174,6 +242,7 @@ class NRouteDelegate extends RouterDelegate<RouteQueue>
     } else {
       _routeQueue.insert(entry);
     }
+    if (update) _updateRouteInfo(false);
   }
 
   RouteQueueEntry createEntry(NPage page,
@@ -181,7 +250,6 @@ class NRouteDelegate extends RouterDelegate<RouteQueue>
       Map<String, dynamic>? extra,
       Object? groupId}) {
     return RouteQueueEntry(
-        path: page.fullPath,
         params: params,
         page: page,
         queryParams: extra ?? const {},
@@ -196,8 +264,18 @@ class NRouteDelegate extends RouterDelegate<RouteQueue>
     return ValueKey(Object());
   }
 
-  RouteQueueEntry go(String location, {Object? extra}) {
-    final entry = _parse(location);
+  bool isValid(String location) {
+    final uri = Uri.parse(location);
+    final path = uri.path;
+    return rootPage.getPageFromLocation(path) != null;
+  }
+
+  RouteQueueEntry go(String location,
+      {Map<String, dynamic> params = const {},
+      Map<String, dynamic>? extra,
+      Object? groupId}) {
+    final entry =
+        _parse(location, params: params, extra: extra, groupId: groupId)!;
     _run(entry);
     return entry;
   }
@@ -249,6 +327,7 @@ class NRouteDelegate extends RouterDelegate<RouteQueue>
 
   void pop([Object? result]) {
     _pop(result);
+    _updateRouteInfo(false);
   }
 
   void _pop([Object? result]) {
@@ -311,8 +390,9 @@ class NPageMain extends NPage {
     }
   }
 
-  NPage? getPageFromLocation(String location, [Map<String, dynamic>? params]) {
-    return NPage.resolve(this, location, params ?? {});
+  NPage? getPageFromLocation(String location,
+      [Map<String, dynamic>? params, Map<String, dynamic>? keys]) {
+    return NPage.resolve(this, location, params ?? {}, keys);
   }
 }
 
@@ -340,8 +420,9 @@ class RouterAction {
     if (immediated) {
       entry._pageKey = router._routeDelegate._routeQueue._current?._pageKey;
     }
-    router._routeDelegate.pop(result);
-    go();
+    router._routeDelegate._pop(result);
+    router._routeDelegate._run(entry, update: false);
+    router._routeDelegate._updateRouteInfo(true);
   }
 }
 
@@ -458,15 +539,18 @@ class NPage {
   List<String> get params => _cache ??= _params.toList(growable: false);
 
   static void _fullPathToRegExg(NPage current) {
-    final pattern = pathToRegExp(current.fullPath, current._params);
+    final pattern = pathToRegExp(current, current._params);
     current._pathFullExp = RegExp('$pattern\$', caseSensitive: false);
     current._pathStartExp = RegExp(pattern, caseSensitive: false);
   }
 
+  late final List<Match> _matchs;
   static final _regM = RegExp(r':(\w+)');
 
-  static String pathToRegExp(String path, List<String> parameters) {
-    final allMatchs = _regM.allMatches(path);
+  static String pathToRegExp(NPage page, List<String> parameters) {
+    final path = page.fullPath;
+    final allMatchs = _regM.allMatches(path).toList();
+    page._matchs = allMatchs;
 
     var start = 0;
     final buffer = StringBuffer();
@@ -490,17 +574,79 @@ class NPage {
     return buffer.toString();
   }
 
-  static NPage? resolve(
-      NPageMain root, String location, Map<String, dynamic> params) {
-    return _resolve(root, location, root.relative, params);
+  String getUrl(Map<String, dynamic> params, Map<String, dynamic> extra) {
+    final path = fullPath;
+    final allMatchs = _matchs;
+    var start = 0;
+    final buffer = StringBuffer();
+
+    buffer.write('');
+
+    int i = 0;
+    for (var m in allMatchs) {
+      if (m.start > start) {
+        buffer.write(path.substring(start, m.start));
+      }
+      buffer.write(params[i]);
+      start = m.end;
+      i += 1;
+    }
+
+    if (start < path.length) {
+      buffer.write(path.substring(start));
+    }
+
+    if (extra.isNotEmpty) {
+      buffer.write('?');
+      bool isFirst = true;
+      for (var entry in extra.entries) {
+        if (!isFirst) {
+          buffer.write('&');
+        } else {
+          isFirst = false;
+        }
+        final key = entry.key;
+        final value = entry.value;
+        buffer.write('$key=$value');
+      }
+    }
+
+    return buffer.toString();
+  }
+
+  static NPage? resolve(NPageMain root, String location,
+      Map<String, dynamic> params, Map<String, dynamic>? keys) {
+    return _resolve(root, location, root.relative, params, keys);
   }
 
   static NPage? _resolve(NPage current, String location, bool relative,
-      Map<String, dynamic> params) {
-    if (current.path == location && current._params.isEmpty) return current;
+      Map<String, dynamic> params, Map<String, dynamic>? keys) {
+    final hasKeys = keys != null && keys.isNotEmpty;
+    final pathEq = current.fullPath == location;
+
+    if (pathEq && current._params.isEmpty) {
+      return current;
+    }
 
     /// 全部匹配
-    final m = current._pathFullExp.firstMatch(location);
+    var m = current._pathFullExp.firstMatch(location);
+    if (m == null && hasKeys) {
+      if (pathEq) {
+        // assert(current._params.every((e) => keys.containsKey(e)));
+        params.addAll(keys);
+        return current;
+      }
+
+      final keysW = '/_' * current._params.length;
+      final path = '$location$keysW';
+      Log.w('...$path ${current._pathFullExp.pattern}');
+
+      if (current._pathFullExp.hasMatch(path)) {
+        // assert(current._params.every((e) => keys.containsKey(e)));
+        params.addAll(keys);
+        return current;
+      }
+    }
     if (m != null) {
       assert(current._params.length == m.groupCount);
       final keys = current._params;
@@ -537,7 +683,7 @@ class NPage {
     // }
 
     for (var page in current.pages) {
-      final r = _resolve(page, location, relative, params);
+      final r = _resolve(page, location, relative, params, keys);
       if (r != null) return r;
     }
     return null;
@@ -564,18 +710,24 @@ class NPage {
 // }
 
 class NRouter implements RouterConfig<RouteQueue> {
-  NRouter({required this.rootPage, String? restorationId}) {
+  NRouter(
+      {required this.rootPage,
+      String? restorationId,
+      Map<String, dynamic> params = const {},
+      Map<String, dynamic>? extra,
+      Object? groupId}) {
     _routeDelegate = NRouteDelegate(
         restorationId: restorationId, rootPage: rootPage, router: this);
-    final location = rootPage.path;
-    _routeDelegate._init(location);
+    final entry = _routeDelegate.createEntry(rootPage,
+        params: params, extra: extra, groupId: groupId);
+    _routeDelegate._run(entry, update: false);
   }
 
   final NPageMain rootPage;
 
   /// 根据给出路径判断是否有效
   bool isValid(String location) {
-    return rootPage.getPageFromLocation(location) != null;
+    return _routeDelegate.isValid(location);
   }
 
   RouteQueueEntry? getEntryFromId(int id) {
@@ -644,8 +796,12 @@ class NRouter implements RouterConfig<RouteQueue> {
     return _routeDelegate.build(context);
   }
 
-  RouteQueueEntry go(String location) {
-    return _routeDelegate.go(location);
+  RouteQueueEntry go(String location,
+      {Map<String, dynamic> params = const {},
+      Map<String, dynamic>? extra,
+      Object? groupId}) {
+    return _routeDelegate.go(location,
+        params: params, extra: extra, groupId: groupId);
   }
 
   RouteQueueEntry goPage(NPage page,
@@ -696,6 +852,16 @@ class RouteQueue extends RestorableProperty<List<RouteQueueEntry>?>
     }
     _map = map;
     return list;
+  }
+
+  void _updateRouteInfo(bool repalce) {
+    if (kIsWeb) {
+      Log.w('path: ${_current!.path}');
+      SystemNavigator.selectMultiEntryHistory();
+
+      SystemNavigator.routeInformationUpdated(
+          uri: Uri.tryParse(_current!.path), replace: repalce);
+    }
   }
 
   @override
@@ -913,16 +1079,25 @@ abstract class JsonTransform<T, F> {
 
 class RouteQueueEntry with RouteQueueEntryMixin {
   RouteQueueEntry(
-      {required this.path,
+      {String? path,
       required this.params,
       required this.page,
       LocalKey? pageKey,
       this.fromPage = false,
       this.groupId,
       this.queryParams = const {}})
-      : _pageKey = pageKey;
+      : _pageKey = pageKey,
+        _path = path;
 
-  final String path;
+  String? _path;
+
+  String get path {
+    if (_path != null) {
+      return _path!;
+    }
+    return _path = page.getUrl(params, queryParams);
+  }
+
   final NPage page;
   final bool fromPage;
 
@@ -948,7 +1123,7 @@ class RouteQueueEntry with RouteQueueEntryMixin {
     }
 
     RouteQueueEntry? matchedEntry;
-    router._routeDelegate._routeQueue.forEach((entry) {
+    router._routeDelegate._routeQueue.forEach(reverse: true, (entry) {
       if (entry._page == page) {
         matchedEntry = entry;
         return true;
@@ -967,7 +1142,7 @@ class RouteQueueEntry with RouteQueueEntryMixin {
       String path, Map<String, dynamic> json, NPageMain nPage) {
     final params = <String, dynamic>{};
 
-    final route = NPage.resolve(nPage, path, params);
+    final route = NPage.resolve(nPage, path, params, null);
 
     return RouteQueueEntry(
         path: path, queryParams: json, params: params, page: route!);

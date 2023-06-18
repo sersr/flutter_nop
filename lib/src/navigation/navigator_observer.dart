@@ -18,6 +18,8 @@ class NavGlobal extends NavInterface {
 
   final NavObserver observer = NavObserver();
 
+  bool enabledPrint = false;
+
   Route? get currentRoute => observer.currentRoute;
 
   NopPageRouteMixin? get nopRoute => observer.nopRoute;
@@ -125,19 +127,19 @@ class NavObserver extends NavigatorObserver {
   void didPop(Route route, Route? previousRoute) {
     _currentRoute = previousRoute;
     _popOrRemove(route);
-    assert(Log.i(route.settings.name));
+    assert(!Nav.enabledPrint || Log.i(route.settings.name));
   }
 
   @override
   void didPush(Route route, Route? previousRoute) {
     _currentRoute = route;
-    assert(Log.i(route.settings.name));
+    assert(!Nav.enabledPrint || Log.i(route.settings.name));
   }
 
   @override
   void didRemove(Route route, Route? previousRoute) {
     _popOrRemove(route);
-    assert(Log.i(route.settings.name));
+    assert(!Nav.enabledPrint || Log.i(route.settings.name));
   }
 
   @override
@@ -148,7 +150,8 @@ class NavObserver extends NavigatorObserver {
     if (oldRoute != null) {
       _popOrRemove(oldRoute);
     }
-    assert(Log.i('${newRoute?.settings.name}  ${oldRoute?.settings.name}'));
+    assert(!Nav.enabledPrint ||
+        Log.i('${newRoute?.settings.name}  ${oldRoute?.settings.name}'));
   }
 
   void _popOrRemove(Route<dynamic> route) {
