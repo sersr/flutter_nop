@@ -733,7 +733,7 @@ class NRouter implements RouterConfig<RouteQueue> {
         restorationId: restorationId, rootPage: rootPage, router: this);
     final entry = _routeDelegate.createEntry(rootPage,
         params: params, extra: extra, groupId: groupId);
-    _routeDelegate._run(entry, update: false);
+    _routeDelegate._routeQueue.insert(entry);
   }
 
   final NPageMain rootPage;
