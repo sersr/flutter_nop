@@ -639,7 +639,7 @@ class NPage {
 
       final keysW = '/_' * current._params.length;
       final path = '$location$keysW';
-      Log.w('...$path ${current._pathFullExp.pattern}');
+      assert(Log.w('...$path ${current._pathFullExp.pattern}'));
 
       if (current._pathFullExp.hasMatch(path)) {
         // assert(current._params.every((e) => keys.containsKey(e)));
@@ -708,6 +708,19 @@ class NPage {
 //     return super.restoreRouteInformation(configuration);
 //   }
 // }
+
+/// Example:
+/// ```dart
+/// final router = NRouter( ... );
+/// ...
+/// final app = MaterialApp(
+///   restorationScopeId: 'restore Id', // immutable
+///   builder: (context, child) {
+///    return router.build(context);
+/// },
+///  title: 'router demo',
+/// );
+/// ```
 
 class NRouter implements RouterConfig<RouteQueue> {
   NRouter(
@@ -856,7 +869,7 @@ class RouteQueue extends RestorableProperty<List<RouteQueueEntry>?>
 
   void _updateRouteInfo(bool repalce) {
     if (kIsWeb) {
-      Log.w('path: ${_current!.path}');
+      assert(Log.w('path: ${_current!.path}'));
       SystemNavigator.selectMultiEntryHistory();
 
       SystemNavigator.routeInformationUpdated(
@@ -878,8 +891,7 @@ class RouteQueue extends RestorableProperty<List<RouteQueueEntry>?>
   @override
   List<RouteQueueEntry>? fromPrimitives(Object? data) {
     if (data == null) return null;
-    assert(data is List<Map<String, dynamic>>);
-    final map = data as Map<String, dynamic>;
+    final map = Map.from(data as Map);
 
     final list = <RouteQueueEntry>[];
 
@@ -888,14 +900,15 @@ class RouteQueue extends RestorableProperty<List<RouteQueueEntry>?>
     _id = id;
 
     RouteQueueEntry? last;
-    for (var item in listMap as List<Map<String, dynamic>>) {
-      final path = item['path'];
-      final queryParams = item['data'];
+    for (var item in listMap as List) {
+      final path = item['path']; // String
+      final queryParams = item['data']; // Map
       final id = item['id'];
 
       final current =
-          RouteQueueEntry.from(path, queryParams, delegate.rootPage);
+          RouteQueueEntry.from(path, Map.from(queryParams), delegate.rootPage);
 
+      last?._next = current;
       current
         .._id = id
         .._parent = this
@@ -923,6 +936,7 @@ class RouteQueue extends RestorableProperty<List<RouteQueueEntry>?>
       _root = root;
       _current = current;
       _length = value.length;
+      refresh();
     }
   }
 
@@ -930,6 +944,7 @@ class RouteQueue extends RestorableProperty<List<RouteQueueEntry>?>
   Object? toPrimitives() {
     final list = <Map<String, dynamic>>[];
     RouteQueueEntry? r = _root;
+
     while (r != null) {
       list.add(r.toJson());
       assert(r._next != null || r == _current);
@@ -1141,8 +1156,9 @@ class RouteQueueEntry with RouteQueueEntryMixin {
   factory RouteQueueEntry.from(
       String path, Map<String, dynamic> json, NPageMain nPage) {
     final params = <String, dynamic>{};
+    final uri = Uri.parse(path);
 
-    final route = NPage.resolve(nPage, path, params, null);
+    final route = NPage.resolve(nPage, uri.path, params, null);
 
     return RouteQueueEntry(
         path: path, queryParams: json, params: params, page: route!);
