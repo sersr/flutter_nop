@@ -65,6 +65,7 @@ class _RouteRestorableState extends State<RouteRestorable>
   @override
   Future<bool> didPushRouteInformation(RouteInformation routeInformation) {
     final uri = routeInformation.uri;
+    Log.w('push: $uri');
     final realParams = <String, dynamic>{};
     final route =
         widget.delegate.rootPage.getPageFromLocation(uri.path, realParams);
@@ -666,6 +667,7 @@ class NRouter implements RouterConfig<RouteQueue> {
     final entry = routerDelegate.createEntry(rootPage,
         params: params, extra: extra, groupId: groupId);
     routerDelegate._routeQueue.insert(entry);
+    routerDelegate._updateRouteInfo(false);
   }
 
   final NPageMain rootPage;
