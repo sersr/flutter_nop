@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -26,13 +27,23 @@ class RouteRestorable extends StatefulWidget {
   State<RouteRestorable> createState() => _RouteRestorableState();
 }
 
+class _NRouterScope extends InheritedWidget {
+  const _NRouterScope({required this.routeQueue, required super.child});
+  final RouteQueue routeQueue;
+
+  @override
+  bool updateShouldNotify(covariant _NRouterScope oldWidget) {
+    return routeQueue != oldWidget.routeQueue;
+  }
+}
+
 class _RouteRestorableState extends State<RouteRestorable>
     with WidgetsBindingObserver, RestorationMixin {
   late RouteQueue routeQueue;
 
   @override
   Widget build(BuildContext context) {
-    return widget.child;
+    return _NRouterScope(routeQueue: routeQueue, child: widget.child);
   }
 
   @override
@@ -61,39 +72,20 @@ class _RouteRestorableState extends State<RouteRestorable>
       return SynchronousFuture(false);
     }
 
-    final entry = RouteQueueEntry(
-      path: uri.toString(),
-      params: realParams,
-      page: route,
-      queryParams: uri.queryParameters,
-      pageKey: widget.delegate._newPageKey(),
-    );
-
-    if (routeQueue._current?._pre?.path == entry.path) {
+    if (routeQueue._current?._pre?.path == uri.path) {
       widget.delegate._pop();
     } else {
+      final entry = RouteQueueEntry(
+        path: uri.toString(),
+        params: realParams,
+        page: route,
+        queryParams: uri.queryParameters,
+        pageKey: widget.routeQueue.delegate._newPageKey(prefix: 'p+'),
+      );
       widget.delegate._run(entry, update: false);
     }
     return SynchronousFuture(true);
   }
-
-  // @override
-  // Future<bool> didPushRoute(String route) async {
-  //   final entry = widget.delegate._parse(route);
-  //   if (entry != null) {
-  //     // Log.w('...${widget.delegate._routeQueue._current?._pre?.page} $entry');
-  //     if (routeQueue._current?._pre?.path == entry.path) {
-  //       widget.delegate._pop();
-  //     } else {
-  //       // if (routeQueue.isSingle && entry.page == widget.delegate.rootPage) {
-  //       //   return false;
-  //       // }
-  //       widget.delegate._run(entry, update: false);
-  //     }
-  //     return false;
-  //   }
-  //   return false;
-  // }
 
   @override
   void dispose() {
@@ -104,12 +96,7 @@ class _RouteRestorableState extends State<RouteRestorable>
   @override
   void didUpdateWidget(covariant RouteRestorable oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (routeQueue != widget.routeQueue) {
-      routeQueue = widget.routeQueue;
-      if (restorePending) {
-        registerForRestoration(routeQueue, '_routes');
-      }
-    }
+    routeQueue = widget.routeQueue;
   }
 
   @override
@@ -119,22 +106,6 @@ class _RouteRestorableState extends State<RouteRestorable>
   void restoreState(RestorationBucket? oldBucket, bool initialRestore) {
     assert(Log.w('res: $restorationId'));
     registerForRestoration(routeQueue, '_routes');
-  }
-
-  @override
-  void activate() {
-    if (!routeQueue.isRegistered) {
-      registerForRestoration(routeQueue, '_routes');
-    }
-    super.activate();
-  }
-
-  @override
-  void deactivate() {
-    if (routeQueue.isRegistered) {
-      unregisterFromRestoration(routeQueue);
-    }
-    super.deactivate();
   }
 }
 
@@ -216,19 +187,6 @@ class NRouteDelegate extends RouterDelegate<RouteQueue>
     );
   }
 
-  // void _init(String location) {
-  //   final uri = Uri.parse(location);
-  //   final path = uri.path;
-  //   final query = uri.queryParameters;
-  //   final params = <String, dynamic>{};
-  //   final route = rootPage.getPageFromLocation(path, params);
-  //   assert(route != null);
-
-  //   final entry = RouteQueueEntry(
-  //       path: path, params: params, page: route!, queryParams: query);
-  //   _routeQueue.insert(entry);
-  // }
-
   void _run(RouteQueueEntry entry, {bool update = true}) {
     if (SchedulerBinding.instance.schedulerPhase ==
         SchedulerPhase.persistentCallbacks) {
@@ -258,10 +216,13 @@ class NRouteDelegate extends RouterDelegate<RouteQueue>
         fromPage: true);
   }
 
-  @pragma('vm:prefer-inline')
-  ValueKey _newPageKey() {
-    // ignore: prefer_const_constructors
-    return ValueKey(Object());
+  final random = Random();
+
+  ValueKey _newPageKey({String prefix = 'n+'}) {
+    final key =
+        String.fromCharCodes(List.generate(32, (_) => random.nextInt(97) + 33));
+
+    return ValueKey('$prefix$key');
   }
 
   bool isValid(String location) {
@@ -299,7 +260,7 @@ class NRouteDelegate extends RouterDelegate<RouteQueue>
       current._removeCurrent(null, false);
       current = pre;
     }
-    // _routeQueue.refresh();
+
     final nav = navigatorKey.currentState;
     if (current != null && nav?.mounted == true) {
       nav!.popUntil((route) => route.settings == current!._page);
@@ -334,15 +295,11 @@ class NRouteDelegate extends RouterDelegate<RouteQueue>
     final last = _routeQueue._current;
     if (last != null && last != _routeQueue._root) {
       last._removeCurrent(result);
-      notifyListeners();
     }
   }
 
-  // @override
-  // RouteQueue get currentConfiguration => _routeQueue;
-
   @override
-  GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+  final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
   @override
   Future<void> setNewRoutePath(configuration) {
@@ -401,28 +358,28 @@ class RouterAction {
       {Map<String, dynamic> params = const {},
       Map<String, dynamic>? extra,
       Object? groupId})
-      : entry = router._routeDelegate
+      : entry = router.routerDelegate
             .createEntry(page, params: params, extra: extra, groupId: groupId);
 
   final RouteQueueEntry entry;
   final NRouter router;
 
   void go() {
-    router._routeDelegate._run(entry);
+    router.routerDelegate._run(entry);
   }
 
   void goUntil(UntilFn test) {
-    router._routeDelegate._until(test);
+    router.routerDelegate._until(test);
     go();
   }
 
   void goReplacement([Object? result, bool immediated = false]) {
     if (immediated) {
-      entry._pageKey = router._routeDelegate._routeQueue._current?._pageKey;
+      entry._pageKey = router.routerDelegate._routeQueue._current?._pageKey;
     }
-    router._routeDelegate._pop(result);
-    router._routeDelegate._run(entry, update: false);
-    router._routeDelegate._updateRouteInfo(true);
+    router.routerDelegate._pop(result);
+    router.routerDelegate._run(entry, update: false);
+    router.routerDelegate._updateRouteInfo(true);
   }
 }
 
@@ -660,27 +617,8 @@ class NPage {
     //
     // note: 绝对路径是无序的，无法通过此法优化
     if (relative && !current._pathStartExp.hasMatch(location)) {
-      // assert(Log.w(
-      //     '${current.fullPath} $location ${current._pathStartExp.pattern}'));
       return null;
     }
-
-    // final String parent;
-
-    // if (relative && current.path != '/') {
-    //   parent = location.replaceFirst(current._pathStartExp, '/');
-
-    //   // 没有修改？
-    //   if (parent == location) {
-    //     // 判断是否有匹配
-    //     if (!current._pathStartExp.hasMatch(location)) {
-    //       return null;
-    //     }
-    //   }
-    //   assert(Log.w('$location current: ${current.path} next: $parent'));
-    // } else {
-    //   parent = location;
-    // }
 
     for (var page in current.pages) {
       final r = _resolve(page, location, relative, params, keys);
@@ -695,20 +633,6 @@ class NPage {
   }
 }
 
-// class MyRouteParser extends RouteInformationParser<RouteQueue> {
-//   @override
-//   Future<RouteQueue> parseRouteInformationWithDependencies(
-//       RouteInformation routeInformation, BuildContext context) {
-//     return super
-//         .parseRouteInformationWithDependencies(routeInformation, context);
-//   }
-
-//   @override
-//   RouteInformation? restoreRouteInformation(RouteQueue configuration) {
-//     return super.restoreRouteInformation(configuration);
-//   }
-// }
-
 /// Example:
 /// ```dart
 /// final router = NRouter( ... );
@@ -720,6 +644,14 @@ class NPage {
 /// },
 ///  title: 'router demo',
 /// );
+///
+/// or:
+///
+/// final app = MaterialApp.router(
+///   restorationScopeId: 'restore Id', // immutable
+///   routerConfig: router,
+///   title: 'router demo',
+/// );
 /// ```
 
 class NRouter implements RouterConfig<RouteQueue> {
@@ -729,22 +661,22 @@ class NRouter implements RouterConfig<RouteQueue> {
       Map<String, dynamic> params = const {},
       Map<String, dynamic>? extra,
       Object? groupId}) {
-    _routeDelegate = NRouteDelegate(
+    routerDelegate = NRouteDelegate(
         restorationId: restorationId, rootPage: rootPage, router: this);
-    final entry = _routeDelegate.createEntry(rootPage,
+    final entry = routerDelegate.createEntry(rootPage,
         params: params, extra: extra, groupId: groupId);
-    _routeDelegate._routeQueue.insert(entry);
+    routerDelegate._routeQueue.insert(entry);
   }
 
   final NPageMain rootPage;
 
   /// 根据给出路径判断是否有效
   bool isValid(String location) {
-    return _routeDelegate.isValid(location);
+    return routerDelegate.isValid(location);
   }
 
   RouteQueueEntry? getEntryFromId(int id) {
-    final queue = _routeDelegate._routeQueue;
+    final queue = routerDelegate._routeQueue;
     RouteQueueEntry? entry;
     queue.forEach((e) {
       if (e._id == id) {
@@ -756,24 +688,24 @@ class NRouter implements RouterConfig<RouteQueue> {
     return entry;
   }
 
-  // static NRouter of(BuildContext context) {
-  //   final router = Router.maybeOf(context);
-  //   final delegate = router?.routerDelegate;
-  //   if (delegate is NRouteDelegate) {
-  //     return delegate.router;
-  //   }
+  static NRouter of(BuildContext context) {
+    final router = Router.of(context);
+    final delegate = router.routerDelegate;
+    if (delegate is NRouteDelegate) {
+      return delegate.router;
+    }
 
-  //   return (delegate as NRouteDelegate).router;
-  // }
+    return (delegate as NRouteDelegate).router;
+  }
 
-  // static NRouter? maybeOf(BuildContext context) {
-  //   final router = Router.maybeOf(context);
-  //   final delegate = router?.routerDelegate;
-  //   if (delegate is NRouteDelegate) {
-  //     return delegate.router;
-  //   }
-  //   return null;
-  // }
+  static NRouter? maybeOf(BuildContext context) {
+    final router = Router.maybeOf(context);
+    final delegate = router?.routerDelegate;
+    if (delegate is NRouteDelegate) {
+      return delegate.router;
+    }
+    return null;
+  }
 
   RouteQueueEntry? ofEntry(BuildContext context) {
     return RouteQueueEntry.of(context, this);
@@ -789,7 +721,7 @@ class NRouter implements RouterConfig<RouteQueue> {
   }
 
   @override
-  BackButtonDispatcher? get backButtonDispatcher => null;
+  final BackButtonDispatcher backButtonDispatcher = RootBackButtonDispatcher();
 
   @override
   RouteInformationParser<RouteQueue>? get routeInformationParser => null;
@@ -797,23 +729,21 @@ class NRouter implements RouterConfig<RouteQueue> {
   @override
   RouteInformationProvider? get routeInformationProvider => null;
 
-  late final NRouteDelegate _routeDelegate;
-
   @override
-  RouterDelegate<RouteQueue> get routerDelegate => _routeDelegate;
+  late final NRouteDelegate routerDelegate;
 
-  bool canPop() => _routeDelegate.canPop();
+  bool canPop() => routerDelegate.canPop();
 
   /// 在 [MaterialApp].builder 中使用
   Widget build(BuildContext context) {
-    return _routeDelegate.build(context);
+    return routerDelegate.build(context);
   }
 
   RouteQueueEntry go(String location,
       {Map<String, dynamic> params = const {},
       Map<String, dynamic>? extra,
       Object? groupId}) {
-    return _routeDelegate.go(location,
+    return routerDelegate.go(location,
         params: params, extra: extra, groupId: groupId);
   }
 
@@ -821,20 +751,20 @@ class NRouter implements RouterConfig<RouteQueue> {
       {Map<String, dynamic> params = const {},
       Map<String, dynamic>? extra,
       Object? groupId}) {
-    return _routeDelegate.goPage(page,
+    return routerDelegate.goPage(page,
         params: params, extra: extra, groupId: groupId);
   }
 
   RouteQueueEntry goUntil(String location, UntilFn until) {
-    return _routeDelegate.goUntil(location, until);
+    return routerDelegate.goUntil(location, until);
   }
 
   void popUntil(UntilFn test) {
-    _routeDelegate.popUntil(test);
+    routerDelegate.popUntil(test);
   }
 
   void pop([Object? result]) {
-    _routeDelegate.pop(result);
+    routerDelegate.pop(result);
   }
 }
 
@@ -901,12 +831,7 @@ class RouteQueue extends RestorableProperty<List<RouteQueueEntry>?>
 
     RouteQueueEntry? last;
     for (var item in listMap as List) {
-      final path = item['path']; // String
-      final queryParams = item['data']; // Map
-      final id = item['id'];
-
-      final current =
-          RouteQueueEntry.from(path, Map.from(queryParams), delegate.rootPage);
+      final current = RouteQueueEntry.fromJson(item, delegate.rootPage);
 
       last?._next = current;
       current
@@ -1097,7 +1022,7 @@ class RouteQueueEntry with RouteQueueEntryMixin {
       {String? path,
       required this.params,
       required this.page,
-      LocalKey? pageKey,
+      ValueKey? pageKey,
       this.fromPage = false,
       this.groupId,
       this.queryParams = const {}})
@@ -1116,8 +1041,8 @@ class RouteQueueEntry with RouteQueueEntryMixin {
   final NPage page;
   final bool fromPage;
 
-  LocalKey? _pageKey;
-  LocalKey? get pageKey => _pageKey;
+  ValueKey? _pageKey;
+  ValueKey? get pageKey => _pageKey;
 
   /// `/path/to?user=foo` => {'user': 'foo'}
   final Map<String, dynamic> queryParams;
@@ -1132,13 +1057,13 @@ class RouteQueueEntry with RouteQueueEntryMixin {
       return null;
     }
     final page = modal!.settings as Page;
-    final lastEntry = router._routeDelegate._routeQueue._lastRemoved;
+    final lastEntry = router.routerDelegate._routeQueue._lastRemoved;
     if (page == lastEntry?._page) {
       return lastEntry;
     }
 
     RouteQueueEntry? matchedEntry;
-    router._routeDelegate._routeQueue.forEach(reverse: true, (entry) {
+    router.routerDelegate._routeQueue.forEach(reverse: true, (entry) {
       if (entry._page == page) {
         matchedEntry = entry;
         return true;
@@ -1153,21 +1078,26 @@ class RouteQueueEntry with RouteQueueEntryMixin {
     return _page ??= page.pageBuilder?.call(this);
   }
 
-  factory RouteQueueEntry.from(
-      String path, Map<String, dynamic> json, NPageMain nPage) {
+  factory RouteQueueEntry.fromJson(Map json, NPageMain root) {
+    final path = json['path']; // String
+    final queryParams = json['data']; // Map
+    final id = json['id'];
+    final groupId = json['groupId'];
+    final pageKey = json['pageKey'];
     final params = <String, dynamic>{};
     final uri = Uri.parse(path);
 
-    final route = NPage.resolve(nPage, uri.path, params, null);
+    final route = NPage.resolve(root, uri.path, params, null);
 
     return RouteQueueEntry(
-        path: path, queryParams: json, params: params, page: route!);
-  }
-
-  factory RouteQueueEntry.fromJson(String path, Map<String, dynamic> json,
-      Map<String, dynamic> params, NPage page) {
-    return RouteQueueEntry(
-        path: path, queryParams: json, params: params, page: page);
+      path: path,
+      queryParams: Map.from(queryParams),
+      params: params,
+      page: route!,
+      groupId: groupId,
+      // ignore: prefer_const_constructors
+      pageKey: ValueKey(pageKey),
+    ).._id = id;
   }
 
   Map<String, dynamic> toJson() {
@@ -1175,6 +1105,8 @@ class RouteQueueEntry with RouteQueueEntryMixin {
       'path': path,
       'id': _id,
       'data': queryParams,
+      'groupId': groupId,
+      'pageKey': pageKey?.value,
     };
   }
 }
@@ -1268,21 +1200,5 @@ mixin RouteQueueEntryStateMixin<T extends StatefulWidget>
         }
       }
     }
-  }
-
-  @override
-  void activate() {
-    super.activate();
-    if (entryRestorationId != null) {
-      _reg();
-    }
-  }
-
-  @override
-  void deactivate() {
-    if (entryRestorationId != null) {
-      unregisterFromRestoration(_id);
-    }
-    super.deactivate();
   }
 }
