@@ -10,7 +10,7 @@ typedef Cs = ChangeScoop;
 class ChangeScoop extends StatefulWidget {
   const ChangeScoop(this.builder, {Key? key}) : super(key: key);
   final Widget Function() builder;
-  static bool printEnabled = true;
+  static bool printEnabled = false;
   @override
   State<ChangeScoop> createState() => _ChangeScoopState();
 }

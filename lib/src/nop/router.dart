@@ -126,9 +126,6 @@ class NRouteDelegate extends RouterDelegate<RouteQueue>
       child: AnimatedBuilder(
         animation: _routeQueue,
         builder: (context, child) {
-          // 为什么使用 Navigator?
-          // flutter 有很多使用`Navigator`的地方，
-          // Dialog等都有使用
           return Navigator(
             pages: _routeQueue.pages,
             key: navigatorKey,
@@ -146,8 +143,10 @@ class NRouteDelegate extends RouterDelegate<RouteQueue>
     }
     if (route.settings is Page) {
       final entry = _routeQueue.map.remove(route.settings);
-      entry?._removeCurrent(null, false);
-      _updateRouteInfo(false);
+      if (entry != null) {
+        entry._removeCurrent(null, false);
+        _updateRouteInfo(false);
+      }
     }
     return true;
   }
@@ -188,20 +187,24 @@ class NRouteDelegate extends RouterDelegate<RouteQueue>
     );
   }
 
-  void _run(RouteQueueEntry entry, {bool update = true}) {
+  RouteQueueEntry _run(RouteQueueEntry entry, {bool update = true}) {
+    final newEntry = rootPage.redirect(entry);
+    assert(newEntry._pageKey == entry._pageKey);
+
     if (SchedulerBinding.instance.schedulerPhase ==
         SchedulerPhase.persistentCallbacks) {
       // attach
-      entry._parent = _routeQueue;
+      newEntry._parent = _routeQueue;
 
       // delay
       SchedulerBinding.instance.addPostFrameCallback((timeStamp) {
-        _routeQueue.insert(entry);
+        _routeQueue.insert(newEntry);
       });
     } else {
-      _routeQueue.insert(entry);
+      _routeQueue.insert(newEntry);
     }
     if (update) _updateRouteInfo(false);
+    return newEntry;
   }
 
   RouteQueueEntry createEntry(NPage page,
@@ -209,12 +212,12 @@ class NRouteDelegate extends RouterDelegate<RouteQueue>
       Map<String, dynamic>? extra,
       Object? groupId}) {
     return RouteQueueEntry(
-        params: params,
-        page: page,
-        queryParams: extra ?? const {},
-        groupId: page.resolveGroupId(groupId),
-        pageKey: _newPageKey(),
-        fromPage: true);
+      params: params,
+      page: page,
+      queryParams: extra ?? const {},
+      groupId: page.resolveGroupId(groupId),
+      pageKey: _newPageKey(),
+    );
   }
 
   final random = Random();
@@ -238,8 +241,7 @@ class NRouteDelegate extends RouterDelegate<RouteQueue>
       Object? groupId}) {
     final entry =
         _parse(location, params: params, extra: extra, groupId: groupId)!;
-    _run(entry);
-    return entry;
+    return _run(entry);
   }
 
   RouteQueueEntry goPage(NPage page,
@@ -248,8 +250,7 @@ class NRouteDelegate extends RouterDelegate<RouteQueue>
       Object? groupId}) {
     final entry =
         createEntry(page, params: params, extra: extra, groupId: groupId);
-    _run(entry);
-    return entry;
+    return _run(entry);
   }
 
   void _until(UntilFn test) {
@@ -310,6 +311,7 @@ class NRouteDelegate extends RouterDelegate<RouteQueue>
 }
 
 typedef PageBuilder<S> = Page<S> Function(RouteQueueEntry entry);
+typedef RedirectBuilder = RouteQueueEntry Function(RouteQueueEntry entry);
 
 class NPageMain extends NPage {
   NPageMain({
@@ -317,12 +319,19 @@ class NPageMain extends NPage {
     super.path,
     super.pageBuilder,
     super.pages,
+    this.redirectBuilder,
   }) {
     NPage._fullPathToRegExg(this);
     resolveFullPath(this, relative);
   }
 
   final bool relative;
+  final RedirectBuilder? redirectBuilder;
+
+  RouteQueueEntry redirect(RouteQueueEntry entry) {
+    if (redirectBuilder == null) return entry;
+    return redirectBuilder!(entry);
+  }
 
   static void resolveFullPath(NPage current, bool relative) {
     for (var page in current.pages) {
@@ -365,22 +374,23 @@ class RouterAction {
   final RouteQueueEntry entry;
   final NRouter router;
 
-  void go() {
-    router.routerDelegate._run(entry);
+  RouteQueueEntry go() {
+    return router.routerDelegate._run(entry);
   }
 
-  void goUntil(UntilFn test) {
+  RouteQueueEntry goUntil(UntilFn test) {
     router.routerDelegate._until(test);
-    go();
+    return go();
   }
 
-  void goReplacement([Object? result, bool immediated = false]) {
+  RouteQueueEntry goReplacement([Object? result, bool immediated = false]) {
     if (immediated) {
       entry._pageKey = router.routerDelegate._routeQueue._current?._pageKey;
     }
     router.routerDelegate._pop(result);
-    router.routerDelegate._run(entry, update: false);
+    final newEntry = router.routerDelegate._run(entry, update: false);
     router.routerDelegate._updateRouteInfo(true);
+    return newEntry;
   }
 }
 
@@ -1025,10 +1035,10 @@ class RouteQueueEntry with RouteQueueEntryMixin {
       required this.params,
       required this.page,
       ValueKey? pageKey,
-      this.fromPage = false,
-      this.groupId,
+      Object? groupId,
       this.queryParams = const {}})
       : _pageKey = pageKey,
+        _groupId = groupId,
         _path = path;
 
   String? _path;
@@ -1041,7 +1051,6 @@ class RouteQueueEntry with RouteQueueEntryMixin {
   }
 
   final NPage page;
-  final bool fromPage;
 
   ValueKey? _pageKey;
   ValueKey? get pageKey => _pageKey;
@@ -1051,7 +1060,9 @@ class RouteQueueEntry with RouteQueueEntryMixin {
 
   /// `/path/to/:user` => {'user': \<user\>}
   final Map<String, dynamic> params;
-  final Object? groupId;
+
+  Object? _groupId;
+  Object? get groupId => _groupId;
 
   static RouteQueueEntry? of(BuildContext context, NRouter router) {
     final modal = ModalRoute.of(context);
@@ -1078,6 +1089,26 @@ class RouteQueueEntry with RouteQueueEntryMixin {
   Page? _page;
   Page? _build() {
     return _page ??= page.pageBuilder?.call(this);
+  }
+
+  RouteQueueEntry redirect({
+    required Map<String, dynamic> params,
+    required NPage page,
+    Map<String, dynamic> queryParams = const {},
+    Object? groupId,
+  }) {
+    return RouteQueueEntry(
+      path: path,
+      page: page,
+      params: params,
+      queryParams: queryParams,
+      groupId: groupId,
+      pageKey: _pageKey,
+    );
+  }
+
+  RouteQueueEntry redirectEntry(RouteQueueEntry entry) {
+    return entry.._pageKey = _pageKey;
   }
 
   factory RouteQueueEntry.fromJson(Map json, NPageMain root) {
