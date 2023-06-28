@@ -66,7 +66,6 @@ class _RouteRestorableState extends State<RouteRestorable>
   @override
   Future<bool> didPushRouteInformation(RouteInformation routeInformation) {
     final uri = routeInformation.uri;
-    Log.w('push: $uri');
     final realParams = <String, dynamic>{};
     final route =
         widget.delegate.rootPage.getPageFromLocation(uri.path, realParams);
@@ -89,14 +88,12 @@ class _RouteRestorableState extends State<RouteRestorable>
     // }
     final pre = routeQueue._current?._pre;
     final state = routeInformation.state;
-    final length = RouteQueue.pageLength(state) ?? 0;
     final url = uri.toString();
-    Log.w('p: ${pre?.path} | $length : ${routeQueue.length} $state');
     if (pre?.path == url) {
       widget.delegate._pop();
     } else {
       final entry = RouteQueueEntry(
-        path: uri.toString(),
+        path: url,
         params: realParams,
         page: route,
         queryParams: uri.queryParameters,
