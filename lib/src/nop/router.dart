@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:nop/nop.dart';
 
 import '../../nav.dart';
+import 'web/history_state.dart';
 
 typedef UntilFn = bool Function(RouteQueueEntry entry);
 
@@ -72,8 +73,26 @@ class _RouteRestorableState extends State<RouteRestorable>
     if (route == null) {
       return SynchronousFuture(false);
     }
+    // final state = routeInformation.state;
 
-    if (routeQueue._current?._pre?.path == uri.path) {
+    // if (state != null) {
+    //   if (routeQueue.length == 1) {
+    //       final n = RouteQueue.fromJson(state, widget.delegate);
+    //       if (n != null) {
+    //         routeQueue.copyWith(n);
+    //         routeQueue.refresh();
+    //         Log.e('copy:${routeQueue.toPrimitives()}');
+    //         return SynchronousFuture(true);
+    //       }
+    //     }
+    //   }
+    // }
+    final pre = routeQueue._current?._pre;
+    final state = routeInformation.state;
+    final length = RouteQueue.pageLength(state) ?? 0;
+    final url = uri.toString();
+    Log.w('p: ${pre?.path} | $length : ${routeQueue.length} $state');
+    if (pre?.path == url) {
       widget.delegate._pop();
     } else {
       final entry = RouteQueueEntry(
@@ -83,7 +102,10 @@ class _RouteRestorableState extends State<RouteRestorable>
         queryParams: uri.queryParameters,
         pageKey: widget.routeQueue.delegate._newPageKey(prefix: 'p+'),
       );
-      widget.delegate._run(entry, update: false);
+      routeQueue.insert(entry);
+      if (state == null) {
+        routeQueue._updateRouteInfo(true);
+      }
     }
     return SynchronousFuture(true);
   }
@@ -188,7 +210,7 @@ class NRouteDelegate extends RouterDelegate<RouteQueue>
   }
 
   RouteQueueEntry _run(RouteQueueEntry entry, {bool update = true}) {
-    final newEntry = rootPage.redirect(entry);
+    final newEntry = entry.page.redirect(entry);
     assert(newEntry._pageKey == entry._pageKey);
 
     if (SchedulerBinding.instance.schedulerPhase ==
@@ -319,19 +341,13 @@ class NPageMain extends NPage {
     super.path,
     super.pageBuilder,
     super.pages,
-    this.redirectBuilder,
+    super.redirectBuilder,
   }) {
     NPage._fullPathToRegExg(this);
     resolveFullPath(this, relative);
   }
 
   final bool relative;
-  final RedirectBuilder? redirectBuilder;
-
-  RouteQueueEntry redirect(RouteQueueEntry entry) {
-    if (redirectBuilder == null) return entry;
-    return redirectBuilder!(entry);
-  }
 
   static void resolveFullPath(NPage current, bool relative) {
     for (var page in current.pages) {
@@ -387,7 +403,7 @@ class RouterAction {
     if (immediated) {
       entry._pageKey = router.routerDelegate._routeQueue._current?._pageKey;
     }
-    router.routerDelegate._pop(result);
+    router.routerDelegate._routeQueue.removeLast();
     final newEntry = router.routerDelegate._run(entry, update: false);
     router.routerDelegate._updateRouteInfo(true);
     return newEntry;
@@ -460,12 +476,20 @@ class NPage {
     this.pages = const [],
     this.pageBuilder,
     this.groupOwner,
+    this.redirectBuilder,
   });
 
   final bool isPrimary;
   final String path;
   final List<NPage> pages;
   final PageBuilder? pageBuilder;
+
+  final RedirectBuilder? redirectBuilder;
+
+  RouteQueueEntry redirect(RouteQueueEntry entry) {
+    if (redirectBuilder == null) return entry;
+    return redirectBuilder!(entry);
+  }
 
   String? _fullPath;
   String get fullPath => _fullPath ?? path;
@@ -674,10 +698,22 @@ class NRouter implements RouterConfig<RouteQueue> {
       Object? groupId}) {
     routerDelegate = NRouteDelegate(
         restorationId: restorationId, rootPage: rootPage, router: this);
-    final entry = routerDelegate.createEntry(rootPage,
-        params: params, extra: extra, groupId: groupId);
+
+    if (restore()) return;
+
+    WidgetsFlutterBinding.ensureInitialized();
+    RouteQueueEntry entry;
+    final defaultName =
+        WidgetsBinding.instance.platformDispatcher.defaultRouteName;
+    if (defaultName == '/') {
+      entry = routerDelegate.createEntry(rootPage,
+          params: params, extra: extra, groupId: groupId);
+    } else {
+      entry = routerDelegate._parse(defaultName)!;
+    }
     routerDelegate._routeQueue.insert(entry);
-    routerDelegate._updateRouteInfo(false);
+    assert(routerDelegate._routeQueue._current == entry);
+    routerDelegate._routeQueue._updateRouteInfo(true);
   }
 
   final NPageMain rootPage;
@@ -733,7 +769,7 @@ class NRouter implements RouterConfig<RouteQueue> {
   }
 
   @override
-  final BackButtonDispatcher backButtonDispatcher = RootBackButtonDispatcher();
+  final backButtonDispatcher = null;
 
   @override
   RouteInformationParser<RouteQueue>? get routeInformationParser => null;
@@ -778,6 +814,19 @@ class NRouter implements RouterConfig<RouteQueue> {
   void pop([Object? result]) {
     routerDelegate.pop(result);
   }
+
+  bool restore() {
+    if (kDartIsWeb) {
+      final state = historyState as dynamic;
+      final n = RouteQueue.fromJson(state['state'], routerDelegate);
+      if (n != null) {
+        routerDelegate._routeQueue.copyWith(n);
+        routerDelegate._routeQueue.refresh();
+        return true;
+      }
+    }
+    return false;
+  }
 }
 
 class RouteQueue extends RestorableProperty<List<RouteQueueEntry>?>
@@ -811,11 +860,13 @@ class RouteQueue extends RestorableProperty<List<RouteQueueEntry>?>
 
   void _updateRouteInfo(bool repalce) {
     if (kIsWeb) {
-      assert(Log.w('path: ${_current!.path}'));
+      assert(
+          Log.w('path : ${_current!.path} key: ${_current?.pageKey?.value}'));
       SystemNavigator.selectMultiEntryHistory();
-
       SystemNavigator.routeInformationUpdated(
-          uri: Uri.tryParse(_current!.path), replace: repalce);
+          uri: Uri.tryParse(_current!.path),
+          state: toPrimitives(),
+          replace: repalce);
     }
   }
 
@@ -830,11 +881,46 @@ class RouteQueue extends RestorableProperty<List<RouteQueueEntry>?>
     return null;
   }
 
+  static int? pageLength(Object? data) {
+    if (data == null) return null;
+    final map = Map.from(data as Map);
+    final listMap = map['list'] as List;
+    return listMap.length;
+  }
+
+  static RouteQueue? fromJson(Object? data, NRouteDelegate delegate) {
+    if (data == null) return null;
+    final map = Map.from(data as Map);
+    final routeQueue = RouteQueue(delegate);
+    final list = <RouteQueueEntry>[];
+
+    final listMap = map['list'];
+    final id = map['id'];
+    if (listMap is! List) {
+      return null;
+    }
+    routeQueue._id = id;
+
+    RouteQueueEntry? last;
+    for (var item in listMap) {
+      final current = RouteQueueEntry.fromJson(item, delegate.rootPage);
+
+      last?._next = current;
+      current
+        .._id = id
+        .._parent = routeQueue
+        .._pre = last;
+      last = current;
+      list.add(current);
+    }
+    routeQueue.initWithValue(list);
+    return routeQueue;
+  }
+
   @override
   List<RouteQueueEntry>? fromPrimitives(Object? data) {
     if (data == null) return null;
     final map = Map.from(data as Map);
-
     final list = <RouteQueueEntry>[];
 
     final listMap = map['list'];
@@ -980,9 +1066,9 @@ mixin RouteQueueMixin {
     if (notify) refresh();
   }
 
-  bool removeFirst() {
+  bool removeFirst([dynamic result]) {
     if (_root == null) return false;
-    _root!._removeCurrent();
+    _root!._removeCurrent(result);
     return true;
   }
 
@@ -993,7 +1079,6 @@ mixin RouteQueueMixin {
   }
 
   void _insert(RouteQueueEntry current, RouteQueueEntry entry) {
-    ServicesBinding.instance.restorationManager;
     assert(entry.isAlone);
     entry._next = current._next;
     entry._pre = current;
