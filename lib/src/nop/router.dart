@@ -24,17 +24,25 @@ class RouteRestorable extends StatefulWidget {
   final NRouteDelegate delegate;
   RouteQueue get routeQueue => delegate._routeQueue;
 
+  // ignore: library_private_types_in_public_api
+  static _RouteRestorableState? maybeOf(BuildContext context) {
+    final scope = context.dependOnInheritedWidgetOfExactType<_NRouterScope>();
+    return scope?.state;
+  }
+
   @override
   State<RouteRestorable> createState() => _RouteRestorableState();
 }
 
 class _NRouterScope extends InheritedWidget {
-  const _NRouterScope({required this.routeQueue, required super.child});
+  const _NRouterScope(
+      {required this.routeQueue, this.state, required super.child});
   final RouteQueue routeQueue;
+  final _RouteRestorableState? state;
 
   @override
   bool updateShouldNotify(covariant _NRouterScope oldWidget) {
-    return routeQueue != oldWidget.routeQueue;
+    return routeQueue != oldWidget.routeQueue || state != oldWidget.state;
   }
 }
 
@@ -44,7 +52,8 @@ class _RouteRestorableState extends State<RouteRestorable>
 
   @override
   Widget build(BuildContext context) {
-    return _NRouterScope(routeQueue: routeQueue, child: widget.child);
+    return _NRouterScope(
+        routeQueue: routeQueue, state: this, child: widget.child);
   }
 
   @override
@@ -89,16 +98,35 @@ class _RouteRestorableState extends State<RouteRestorable>
     final pre = routeQueue._current?._pre;
     final state = routeInformation.state;
     final url = uri.toString();
+    final list = RouteQueue.pageList(state) ?? const [];
     if (pre?.path == url) {
       widget.delegate._pop();
     } else {
-      final entry = RouteQueueEntry(
-        path: url,
-        params: realParams,
-        page: route,
-        queryParams: uri.queryParameters,
-        pageKey: widget.routeQueue.delegate._newPageKey(prefix: 'p+'),
-      );
+      final isNew = list.isEmpty;
+
+      RouteQueueEntry? entry;
+      if (!isNew) {
+        entry = RouteQueueEntry.fromJson(list.last, widget.delegate.rootPage);
+      }
+      if (entry == null || entry.path != url) {
+        ValueKey pageKey;
+        int id;
+        if (isNew) {
+          id = widget.delegate.newId;
+          pageKey = widget.delegate._newPageKey(prefix: 'p+');
+        } else {
+          pageKey = ValueKey(list.last['pageKey']);
+          id = list.last['id'] as int;
+        }
+        entry = RouteQueueEntry(
+          path: url,
+          params: realParams,
+          page: route,
+          queryParams: uri.queryParameters,
+          pageKey: pageKey,
+        )..setId(id);
+      }
+
       routeQueue.insert(entry);
       if (state == null) {
         routeQueue._updateRouteInfo(true);
@@ -163,7 +191,7 @@ class NRouteDelegate extends RouterDelegate<RouteQueue>
     if (route.settings is Page) {
       final entry = _routeQueue.map.remove(route.settings);
       if (entry != null) {
-        entry._removeCurrent(null, false);
+        entry._removeCurrent();
         _updateRouteInfo(false);
       }
     }
@@ -203,11 +231,12 @@ class NRouteDelegate extends RouterDelegate<RouteQueue>
       queryParams: query,
       groupId: groupId,
       pageKey: _newPageKey(),
-    );
+    )..setId(newId);
   }
 
   RouteQueueEntry _run(RouteQueueEntry entry, {bool update = true}) {
     final newEntry = entry.page.redirect(entry);
+    newEntry.setId(entry.id!);
     assert(newEntry._pageKey == entry._pageKey);
 
     if (SchedulerBinding.instance.schedulerPhase ==
@@ -236,7 +265,7 @@ class NRouteDelegate extends RouterDelegate<RouteQueue>
       queryParams: extra ?? const {},
       groupId: page.resolveGroupId(groupId),
       pageKey: _newPageKey(),
-    );
+    )..setId(newId);
   }
 
   final random = Random();
@@ -246,6 +275,13 @@ class NRouteDelegate extends RouterDelegate<RouteQueue>
         String.fromCharCodes(List.generate(32, (_) => random.nextInt(97) + 33));
 
     return ValueKey('$prefix$key');
+  }
+
+  int _id = 0;
+
+  int get newId {
+    _id += 1;
+    return _id;
   }
 
   bool isValid(String location) {
@@ -434,10 +470,18 @@ class _MaterialIgnorePageRoute<T> extends PageRoute<T>
   }) : super(settings: page);
 
   MaterialIgnorePage<T> get _page => settings as MaterialIgnorePage<T>;
-
   @override
   Widget buildContent(BuildContext context) {
-    return _page.child;
+    if (_page.restorationId == null) {
+      return _page.child;
+    }
+    final bucket = RouteRestorable.maybeOf(context)?.bucket;
+
+    return UnmanagedRestorationScope(
+      bucket: bucket,
+      child: RestorationScope(
+          restorationId: _page.restorationId, child: _page.child),
+    );
   }
 
   @override
@@ -696,7 +740,7 @@ class NRouter implements RouterConfig<RouteQueue> {
     routerDelegate = NRouteDelegate(
         restorationId: restorationId, rootPage: rootPage, router: this);
 
-    if (restore()) return;
+    if (_restore()) return;
 
     WidgetsFlutterBinding.ensureInitialized();
     RouteQueueEntry entry;
@@ -766,7 +810,7 @@ class NRouter implements RouterConfig<RouteQueue> {
   }
 
   @override
-  final backButtonDispatcher = null;
+  final backButtonDispatcher = RootBackButtonDispatcher();
 
   @override
   RouteInformationParser<RouteQueue>? get routeInformationParser => null;
@@ -812,10 +856,14 @@ class NRouter implements RouterConfig<RouteQueue> {
     routerDelegate.pop(result);
   }
 
-  bool restore() {
+  bool _restore() {
     if (kDartIsWeb) {
       final state = historyState as dynamic;
-      final n = RouteQueue.fromJson(state['state'], routerDelegate);
+      Log.w('state: $state');
+      RouteQueue? n;
+      if (state is Map) {
+        n = RouteQueue.fromJson(state['state'], routerDelegate);
+      }
       if (n != null) {
         routerDelegate._routeQueue.copyWith(n);
         routerDelegate._routeQueue.refresh();
@@ -878,11 +926,11 @@ class RouteQueue extends RestorableProperty<List<RouteQueueEntry>?>
     return null;
   }
 
-  static int? pageLength(Object? data) {
+  static List? pageList(Object? data) {
     if (data == null) return null;
     final map = Map.from(data as Map);
     final listMap = map['list'] as List;
-    return listMap.length;
+    return listMap;
   }
 
   static RouteQueue? fromJson(Object? data, NRouteDelegate delegate) {
@@ -892,11 +940,10 @@ class RouteQueue extends RestorableProperty<List<RouteQueueEntry>?>
     final list = <RouteQueueEntry>[];
 
     final listMap = map['list'];
-    final id = map['id'];
+
     if (listMap is! List) {
       return null;
     }
-    routeQueue._id = id;
 
     RouteQueueEntry? last;
     for (var item in listMap) {
@@ -904,7 +951,6 @@ class RouteQueue extends RestorableProperty<List<RouteQueueEntry>?>
 
       last?._next = current;
       current
-        .._id = id
         .._parent = routeQueue
         .._pre = last;
       last = current;
@@ -921,8 +967,6 @@ class RouteQueue extends RestorableProperty<List<RouteQueueEntry>?>
     final list = <RouteQueueEntry>[];
 
     final listMap = map['list'];
-    final id = map['id'];
-    _id = id;
 
     RouteQueueEntry? last;
     for (var item in listMap as List) {
@@ -930,7 +974,6 @@ class RouteQueue extends RestorableProperty<List<RouteQueueEntry>?>
 
       last?._next = current;
       current
-        .._id = id
         .._parent = this
         .._pre = last;
       last = current;
@@ -971,7 +1014,6 @@ class RouteQueue extends RestorableProperty<List<RouteQueueEntry>?>
       r = r._next;
     }
     return {
-      'id': _id,
       'list': list,
     };
   }
@@ -981,7 +1023,7 @@ mixin RouteQueueMixin {
   RouteQueueEntry? _root;
   RouteQueueEntry? _current;
   RouteQueueEntry? get current => _current;
-  int _id = 0;
+
   int _length = 0;
   int get length => _length;
 
@@ -1210,9 +1252,12 @@ class RouteQueueEntry with RouteQueueEntryMixin {
       params: params,
       page: route!,
       groupId: groupId,
-      // ignore: prefer_const_constructors
       pageKey: ValueKey(pageKey),
-    ).._id = id;
+    )..setId(id);
+  }
+
+  void setId(int newId) {
+    _id ??= newId;
   }
 
   Map<String, dynamic> toJson() {
@@ -1229,6 +1274,7 @@ class RouteQueueEntry with RouteQueueEntryMixin {
 mixin RouteQueueEntryMixin {
   int? _id;
   int? get id => _id;
+  String? get restorationId => _id == null ? null : 'n_router+$_id';
   RouteQueueMixin? _parent;
 
   RouteQueueEntry? _pre;
@@ -1280,7 +1326,6 @@ mixin RouteQueueEntryMixin {
 
 mixin RouteQueueEntryStateMixin<T extends StatefulWidget>
     on State<T>, RestorationMixin<T> {
-  String? get entryRestorationId;
   final _id = RestorableIntN(null);
   NRouter get nRouter;
 
@@ -1290,22 +1335,33 @@ mixin RouteQueueEntryStateMixin<T extends StatefulWidget>
   set entry(RouteQueueEntry? value) {
     _entry = value;
     _id.value = _entry?._id;
+    if (_entry != null) {
+      _completed();
+    }
   }
 
   @mustCallSuper
   void onRestoreEntry() {
     assert(_entry != null);
+    _completed();
   }
+
+  void _completed() {
+    final cache = entry;
+    if (cache == null) return;
+    cache.future.whenComplete(() {
+      if (cache != entry) return;
+      entry = null;
+      whenComplete(cache);
+    });
+  }
+
+  void whenComplete(RouteQueueEntry entry) {}
 
   @override
   void restoreState(RestorationBucket? oldBucket, bool initialRestore) {
-    _reg();
-  }
-
-  void _reg() {
-    final restorationId = entryRestorationId;
     if (restorationId != null) {
-      registerForRestoration(_id, restorationId);
+      registerForRestoration(_id, '_route_queue_entry');
       final id = _id.value;
       if (id != null) {
         final entry = nRouter.getEntryFromId(id);
