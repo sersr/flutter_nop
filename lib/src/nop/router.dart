@@ -84,20 +84,7 @@ class _RouteRestorableState extends State<RouteRestorable>
     if (route == null) {
       return SynchronousFuture(false);
     }
-    // final state = routeInformation.state;
 
-    // if (state != null) {
-    //   if (routeQueue.length == 1) {
-    //       final n = RouteQueue.fromJson(state, widget.delegate);
-    //       if (n != null) {
-    //         routeQueue.copyWith(n);
-    //         routeQueue.refresh();
-    //         Log.e('copy:${routeQueue.toPrimitives()}');
-    //         return SynchronousFuture(true);
-    //       }
-    //     }
-    //   }
-    // }
     final pre = routeQueue._current?._pre;
     final state = routeInformation.state;
     final url = uri.toString();
@@ -466,6 +453,20 @@ class MaterialIgnorePage<T> extends MaterialPage<T> {
     return _MaterialIgnorePageRoute(
         page: this, allowSnapshotting: allowSnapshotting);
   }
+
+  static Widget wrap(RouteQueueEntry entry, Widget child) {
+    return Builder(builder: (context) {
+      final bucket = RouteRestorable.maybeOf(context)?.bucket;
+
+      return UnmanagedRestorationScope(
+        bucket: bucket,
+        child: RestorationScope(
+          restorationId: entry.restorationId,
+          child: child,
+        ),
+      );
+    });
+  }
 }
 
 class _MaterialIgnorePageRoute<T> extends PageRoute<T>
@@ -486,7 +487,9 @@ class _MaterialIgnorePageRoute<T> extends PageRoute<T>
     return UnmanagedRestorationScope(
       bucket: bucket,
       child: RestorationScope(
-          restorationId: _page.restorationId, child: _page.child),
+        restorationId: _page.restorationId,
+        child: _page.child,
+      ),
     );
   }
 
