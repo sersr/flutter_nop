@@ -1,9 +1,9 @@
 状态管理，路由生成
 
-demo: [shudu](https://github.com/sersr/shudu)
+demo01: [shudu](https://github.com/sersr/shudu)
+demo02: [router_demo](https://github.com/sersr/router_demo)
 
 ## 状态管理
-
 
 ```dart
     Class CounterState {
@@ -15,7 +15,9 @@ demo: [shudu](https://github.com/sersr/shudu)
     //...
     runApp(MyApp());
 ```
+
 获取
+
 ```dart
     //...
     Widget build(BuildContext context) {
@@ -24,8 +26,11 @@ demo: [shudu](https://github.com/sersr/shudu)
         //...
     }
 ```
+
 ## 路由生成
+
 需要添加依赖：
+
 ```yaml
   dependencies:
     nop_annotations:
@@ -38,6 +43,7 @@ demo: [shudu](https://github.com/sersr/shudu)
 ### 示例
 
 file: routes.dart;
+
 ```dart
     import 'package:nop_annotations/nop_annotations.dart';
 
@@ -58,8 +64,10 @@ file: routes.dart;
     }
 
 ```
+
 run: flutter pub run build_runner build  
 将会生成 routes.g.dart 文件  
+
 ```dart
     class Routes {
         //...
@@ -84,7 +92,10 @@ run: flutter pub run build_runner build
       }
     }
 ```
-demo [shudu](https://github.com/sersr/shudu/blob/master/lib/routes/routes.dart)
+
+## NRouter
+
+[router_demo](https://github.com/sersr/router_demo)
 
 路由生成注解为 `Nav` 和 `Nop` 提供了支持；路由跳转提供明确的参数(以函数调用提供)
 

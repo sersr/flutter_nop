@@ -10,6 +10,8 @@ import 'package:nop/nop.dart';
 import '../../nav.dart';
 import 'web/history_state.dart';
 
+export 'dart:convert' show jsonDecode;
+
 typedef UntilFn = bool Function(RouteQueueEntry entry);
 
 class RouteRestorable extends StatefulWidget {
@@ -49,6 +51,7 @@ class _NRouterScope extends InheritedWidget {
 class _RouteRestorableState extends State<RouteRestorable>
     with WidgetsBindingObserver, RestorationMixin {
   late RouteQueue routeQueue;
+  NRouteDelegate get delegate => widget.delegate;
 
   @override
   Widget build(BuildContext context) {
@@ -176,7 +179,10 @@ class NRouteDelegate extends RouterDelegate<RouteQueue>
           return Navigator(
             pages: _routeQueue.pages,
             key: navigatorKey,
-            observers: [Nav.observer],
+            observers: [
+              if (!router.observers.contains(Nav.observer)) Nav.observer,
+              ...router.observers,
+            ],
             onPopPage: _onPopPage,
           );
         },
@@ -731,12 +737,14 @@ class NPage {
 /// ```
 
 class NRouter implements RouterConfig<RouteQueue> {
-  NRouter(
-      {required this.rootPage,
-      String? restorationId,
-      Map<String, dynamic> params = const {},
-      Map<String, dynamic>? extra,
-      Object? groupId}) {
+  NRouter({
+    required this.rootPage,
+    String? restorationId,
+    Map<String, dynamic> params = const {},
+    Map<String, dynamic>? extra,
+    Object? groupId,
+    this.observers = const [],
+  }) {
     routerDelegate = NRouteDelegate(
         restorationId: restorationId, rootPage: rootPage, router: this);
 
@@ -758,6 +766,7 @@ class NRouter implements RouterConfig<RouteQueue> {
   }
 
   final NPageMain rootPage;
+  final List<NavigatorObserver> observers;
 
   /// 根据给出路径判断是否有效
   bool isValid(String location) {
@@ -765,35 +774,16 @@ class NRouter implements RouterConfig<RouteQueue> {
   }
 
   RouteQueueEntry? getEntryFromId(int id) {
-    final queue = routerDelegate._routeQueue;
-    RouteQueueEntry? entry;
-    queue.forEach((e) {
-      if (e._id == id) {
-        entry = e;
-        return true;
-      }
-      return false;
-    });
-    return entry;
+    return routerDelegate._routeQueue.getEntryFromId(id);
   }
 
   static NRouter of(BuildContext context) {
-    final router = Router.of(context);
-    final delegate = router.routerDelegate;
-    if (delegate is NRouteDelegate) {
-      return delegate.router;
-    }
-
-    return (delegate as NRouteDelegate).router;
+    return maybeOf(context)!;
   }
 
   static NRouter? maybeOf(BuildContext context) {
-    final router = Router.maybeOf(context);
-    final delegate = router?.routerDelegate;
-    if (delegate is NRouteDelegate) {
-      return delegate.router;
-    }
-    return null;
+    final router = RouteRestorable.maybeOf(context);
+    return router?.delegate.router;
   }
 
   RouteQueueEntry? ofEntry(BuildContext context) {
@@ -919,6 +909,18 @@ class RouteQueue extends RestorableProperty<List<RouteQueueEntry>?>
   void refresh() {
     _pages = _newPages();
     notifyListeners();
+  }
+
+  RouteQueueEntry? getEntryFromId(int id) {
+    RouteQueueEntry? entry;
+    forEach((e) {
+      if (e._id == id) {
+        entry = e;
+        return true;
+      }
+      return false;
+    });
+    return entry;
   }
 
   @override
@@ -1327,7 +1329,7 @@ mixin RouteQueueEntryMixin {
 mixin RouteQueueEntryStateMixin<T extends StatefulWidget>
     on State<T>, RestorationMixin<T> {
   final _id = RestorableIntN(null);
-  NRouter get nRouter;
+  NRouter? get nRouter => null;
 
   RouteQueueEntry? _entry;
   RouteQueueEntry? get entry => _entry;
@@ -1358,17 +1360,18 @@ mixin RouteQueueEntryStateMixin<T extends StatefulWidget>
 
   void whenComplete(RouteQueueEntry entry) {}
 
+  String get nRouterRestorationId => '_route_queue_entry';
+
   @override
   void restoreState(RestorationBucket? oldBucket, bool initialRestore) {
-    if (restorationId != null) {
-      registerForRestoration(_id, '_route_queue_entry');
-      final id = _id.value;
-      if (id != null) {
-        final entry = nRouter.getEntryFromId(id);
-        if (entry != null) {
-          _entry = entry;
-          onRestoreEntry();
-        }
+    registerForRestoration(_id, nRouterRestorationId);
+    final id = _id.value;
+    final router = nRouter ?? NRouter.of(context);
+    if (id != null) {
+      final entry = router.getEntryFromId(id);
+      if (entry != null) {
+        _entry = entry;
+        onRestoreEntry();
       }
     }
   }
