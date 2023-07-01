@@ -1,7 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_nop/src/nop/router.dart';
+import 'package:flutter_nop/src/router/page.dart';
+import 'package:flutter_nop/src/router/route_queue.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 R _printZoned<R>(R Function() body) {

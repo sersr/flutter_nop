@@ -1,0 +1,343 @@
+import 'package:flutter/material.dart';
+import 'package:nop/nop.dart';
+
+import 'delegate.dart';
+import 'route_queue.dart';
+
+typedef PageBuilder<S> = Page<S> Function(RouteQueueEntry entry);
+typedef RedirectBuilder = RouteQueueEntry Function(RouteQueueEntry entry);
+
+class NPageMain extends NPage {
+  NPageMain({
+    this.relative = true,
+    super.path,
+    super.pageBuilder,
+    super.pages,
+    super.redirectBuilder,
+  }) {
+    NPage._fullPathToRegExg(this);
+    resolveFullPath(this, relative);
+  }
+
+  final bool relative;
+
+  static void resolveFullPath(NPage current, bool relative) {
+    for (var page in current.pages) {
+      String name = page.path;
+      if (relative) {
+        var parentPath = current.fullPath;
+
+        if (parentPath == '/') {
+          parentPath = '';
+        }
+        if (!name.startsWith('/')) {
+          name = '/$name';
+        }
+
+        name = '$parentPath$name';
+      }
+
+      page._fullPath = name;
+
+      NPage._fullPathToRegExg(page);
+
+      resolveFullPath(page, relative);
+    }
+  }
+
+  NPage? getPageFromLocation(String location,
+      [Map<String, dynamic>? params, Map<String, dynamic>? keys]) {
+    return NPage.resolve(this, location, params ?? {}, keys);
+  }
+}
+
+mixin RouteQueueEntryPage<T> on Page<T> {
+  RouteQueueEntry get entry;
+}
+
+class MaterialIgnorePage<T> extends MaterialPage<T> with RouteQueueEntryPage {
+  const MaterialIgnorePage({
+    required this.entry,
+    required super.child,
+    super.maintainState,
+    super.fullscreenDialog,
+    super.allowSnapshotting,
+    super.key,
+    super.name,
+    super.arguments,
+    super.restorationId,
+  });
+
+  @override
+  final RouteQueueEntry entry;
+
+  @override
+  Route<T> createRoute(BuildContext context) {
+    return _MaterialIgnorePageRoute(
+        page: this, allowSnapshotting: allowSnapshotting);
+  }
+
+  static Widget wrap(RouteQueueEntry entry, Widget child) {
+    return Builder(builder: (context) {
+      final bucket = RouteRestorable.maybeOf(context)?.bucket;
+
+      return UnmanagedRestorationScope(
+        bucket: bucket,
+        child: RestorationScope(
+          restorationId: entry.restorationId,
+          child: child,
+        ),
+      );
+    });
+  }
+}
+
+class _MaterialIgnorePageRoute<T> extends PageRoute<T>
+    with MaterialRouteTransitionMixin<T> {
+  _MaterialIgnorePageRoute({
+    required MaterialIgnorePage<T> page,
+    super.allowSnapshotting,
+  }) : super(settings: page);
+
+  MaterialIgnorePage<T> get _page => settings as MaterialIgnorePage<T>;
+
+  @override
+  Widget buildContent(BuildContext context) {
+    if (_page.entry.restorationId == null) {
+      return _page.child;
+    }
+    final bucket = RouteRestorable.maybeOf(context)?.bucket;
+
+    return UnmanagedRestorationScope(
+      bucket: bucket,
+      child: RestorationScope(
+        restorationId: _page.entry.restorationId,
+        child: _page.child,
+      ),
+    );
+  }
+
+  @override
+  bool get maintainState => _page.maintainState;
+
+  @override
+  bool get fullscreenDialog => _page.fullscreenDialog;
+
+  @override
+  String get debugLabel => '${super.debugLabel}(${_page.name})';
+
+  @override
+  Widget buildTransitions(BuildContext context, Animation<double> animation,
+      Animation<double> secondaryAnimation, Widget child) {
+    final v = animation.status == AnimationStatus.forward ||
+        secondaryAnimation.status == AnimationStatus.forward ||
+        secondaryAnimation.status == AnimationStatus.reverse;
+
+    child = IgnorePointer(ignoring: v, child: child);
+    return super
+        .buildTransitions(context, animation, secondaryAnimation, child);
+  }
+}
+
+///
+/// path:     `/path/to/world`
+///           `/user/:id/book/:id/path`
+///           `/user?id=123&bookId=456`
+class NPage {
+  NPage({
+    this.isPrimary = false,
+    this.path = '/',
+    this.pages = const [],
+    this.pageBuilder,
+    this.groupOwner,
+    this.redirectBuilder,
+  });
+
+  final bool isPrimary;
+  final String path;
+  final List<NPage> pages;
+  final PageBuilder? pageBuilder;
+
+  final RedirectBuilder? redirectBuilder;
+
+  RouteQueueEntry redirect(RouteQueueEntry entry, {RedirectBuilder? builder}) {
+    if (redirectBuilder == null) return builder?.call(entry) ?? entry;
+    return redirectBuilder!(entry);
+  }
+
+  String? _fullPath;
+  String get fullPath => _fullPath ?? path;
+
+  /// 完整匹配 `^$`
+  late final RegExp _pathFullExp;
+
+  /// 从头开始匹配，不保证结尾
+  late final RegExp _pathStartExp;
+
+  final _params = <String>[];
+
+  /// [true] or [Npage Function()]
+  final Object? groupOwner;
+
+  static int _routeId = 0;
+  static int get _incGroupId => _routeId += 1;
+
+  /// groupId token
+  static final newGroupKey = Object();
+
+  Object? resolveGroupId(Object? groupId) {
+    if (identical(groupId, newGroupKey)) {
+      return newGroupId;
+    }
+    return groupId;
+  }
+
+  String? get newGroupId {
+    if (groupOwner == true) return '${fullPath}_$_incGroupId';
+    if (groupOwner is NPage Function()) {
+      return (groupOwner as NPage Function())().newGroupId;
+    }
+    return null;
+  }
+
+  /// 供外部使用
+  List<String>? _cache;
+  List<String> get params => _cache ??= _params.toList(growable: false);
+
+  static void _fullPathToRegExg(NPage current) {
+    final pattern = pathToRegExp(current, current._params);
+    current._pathFullExp = RegExp('$pattern\$', caseSensitive: false);
+    current._pathStartExp = RegExp(pattern, caseSensitive: false);
+  }
+
+  late final List<Match> _matchs;
+  static final _regM = RegExp(r':(\w+)');
+
+  static String pathToRegExp(NPage page, List<String> parameters) {
+    final path = page.fullPath;
+    final allMatchs = _regM.allMatches(path).toList();
+    page._matchs = allMatchs;
+
+    var start = 0;
+    final buffer = StringBuffer();
+
+    buffer.write('^');
+
+    for (var m in allMatchs) {
+      if (m.start > start) {
+        buffer.write(RegExp.escape(path.substring(start, m.start)));
+      }
+      final name = m[1];
+      buffer.write(r'(\w+)');
+      parameters.add('$name');
+      start = m.end;
+    }
+
+    if (start < path.length) {
+      buffer.write(RegExp.escape(path.substring(start)));
+    }
+
+    return buffer.toString();
+  }
+
+  String getUrl(Map<String, dynamic> params, Map<String, dynamic> extra) {
+    final path = fullPath;
+    final allMatchs = _matchs;
+    var start = 0;
+    final buffer = StringBuffer();
+
+    buffer.write('');
+
+    int i = 0;
+    for (var m in allMatchs) {
+      if (m.start > start) {
+        buffer.write(path.substring(start, m.start));
+      }
+      buffer.write(params[i]);
+      start = m.end;
+      i += 1;
+    }
+
+    if (start < path.length) {
+      buffer.write(path.substring(start));
+    }
+
+    if (extra.isNotEmpty) {
+      buffer.write('?');
+      bool isFirst = true;
+      for (var entry in extra.entries) {
+        if (!isFirst) {
+          buffer.write('&');
+        } else {
+          isFirst = false;
+        }
+        final key = entry.key;
+        final value = entry.value;
+        buffer.write('$key=$value');
+      }
+    }
+
+    return buffer.toString();
+  }
+
+  static NPage? resolve(NPageMain root, String location,
+      Map<String, dynamic> params, Map<String, dynamic>? keys) {
+    return _resolve(root, location, root.relative, params, keys);
+  }
+
+  static NPage? _resolve(NPage current, String location, bool relative,
+      Map<String, dynamic> params, Map<String, dynamic>? keys) {
+    final hasKeys = keys != null && keys.isNotEmpty;
+    final pathEq = current.fullPath == location;
+
+    if (pathEq && current._params.isEmpty) {
+      return current;
+    }
+
+    /// 全部匹配
+    var m = current._pathFullExp.firstMatch(location);
+    if (m == null && hasKeys) {
+      if (pathEq) {
+        // assert(current._params.every((e) => keys.containsKey(e)));
+        params.addAll(keys);
+        return current;
+      }
+
+      final keysW = '/_' * current._params.length;
+      final path = '$location$keysW';
+      assert(Log.w('...$path ${current._pathFullExp.pattern}'));
+
+      if (current._pathFullExp.hasMatch(path)) {
+        // assert(current._params.every((e) => keys.containsKey(e)));
+        params.addAll(keys);
+        return current;
+      }
+    }
+    if (m != null) {
+      assert(current._params.length == m.groupCount);
+      final keys = current._params;
+      for (var i = 0; i < keys.length; i += 1) {
+        params[keys[i]] = m[1 + i];
+      }
+      return current;
+    }
+
+    // 如果是路径相对的，不需要匹配结尾
+    //
+    // note: 绝对路径是无序的，无法通过此法优化
+    if (relative && !current._pathStartExp.hasMatch(location)) {
+      return null;
+    }
+
+    for (var page in current.pages) {
+      final r = _resolve(page, location, relative, params, keys);
+      if (r != null) return r;
+    }
+    return null;
+  }
+
+  @override
+  String toString() {
+    return '$fullPath; params:$_params';
+  }
+}
