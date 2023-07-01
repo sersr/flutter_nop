@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:nop/nop.dart';
 
@@ -6,6 +8,73 @@ import 'route_queue.dart';
 
 typedef PageBuilder<S> = Page<S> Function(RouteQueueEntry entry);
 typedef RedirectBuilder = RouteQueueEntry Function(RouteQueueEntry entry);
+
+/// ```dart
+/// class JsonData {
+///
+///   // json: call `toJson`
+///   String toJson() {
+///     return '';
+///   }
+/// }
+/// ```
+var jsonDecodeCustom = jsonDecode;
+
+typedef ToJsonFn = (dynamic Function(dynamic data)? toJson,);
+
+abstract interface class NRouterJsonTransfrom {
+  dynamic toJson();
+
+  static final _toJsonFns = <Type, ToJsonFn>{};
+
+  static ToJsonFn? get<T>([Type? t]) {
+    return _toJsonFns[t ?? T];
+  }
+
+  static void putToJsonFn<T>(ToJsonFn fn, [Type? t]) {
+    _toJsonFns[t ?? T] = fn;
+  }
+
+  static void removeToJsonFn<T>([Type? t]) {
+    _toJsonFns.remove(t ?? T);
+  }
+
+  static bool canTransfrom(dynamic data) =>
+      data is NRouterJsonTransfrom || _toJsonFns.containsKey(data.runtimeType);
+
+  static dynamic encode(dynamic data) {
+    if (data is NRouterJsonTransfrom) {
+      data = data.toJson();
+    } else {
+      final fn = get(data.runtimeType);
+      if (fn != null) {
+        data = fn.$1?.call(data) ?? data.toJson();
+      }
+    }
+
+    if (data is Map) {
+      data = encodeMap(data);
+    } else if (data is List) {
+      data = encodeList(data);
+    }
+
+    return data;
+  }
+
+  static Map<T, dynamic> encodeMap<T>(Map<T, dynamic> data) {
+    if (data.values.any(canTransfrom)) {
+      data = data.map((key, value) => MapEntry(key, encode(value)));
+    }
+    return data;
+  }
+
+  static List<dynamic> encodeList(List<dynamic> data) {
+    if (data.any(canTransfrom)) {
+      data = data.map(encode).toList();
+    }
+    return data;
+  }
+}
 
 class NPageMain extends NPage {
   NPageMain({
@@ -16,12 +85,13 @@ class NPageMain extends NPage {
     super.redirectBuilder,
   }) {
     NPage._fullPathToRegExg(this);
-    resolveFullPath(this, relative);
+    _index = 0;
+    resolveFullPath(this, relative, 1);
   }
 
   final bool relative;
 
-  static void resolveFullPath(NPage current, bool relative) {
+  static void resolveFullPath(NPage current, bool relative, int index) {
     for (var page in current.pages) {
       String name = page.path;
       if (relative) {
@@ -38,10 +108,12 @@ class NPageMain extends NPage {
       }
 
       page._fullPath = name;
+      page._index = index;
+      index += 1;
 
       NPage._fullPathToRegExg(page);
 
-      resolveFullPath(page, relative);
+      resolveFullPath(page, relative, index);
     }
   }
 
@@ -167,6 +239,17 @@ class NPage {
 
   String? _fullPath;
   String get fullPath => _fullPath ?? path;
+  late int _index;
+  int get index => _index;
+
+  NPage? getNPageFromIndex(int index) {
+    if (_index == index) return this;
+    for (var page in pages) {
+      final nPage = page.getNPageFromIndex(index);
+      if (nPage != null) return nPage;
+    }
+    return null;
+  }
 
   /// 完整匹配 `^$`
   late final RegExp _pathFullExp;
@@ -240,7 +323,7 @@ class NPage {
     return buffer.toString();
   }
 
-  String getUrl(Map<String, dynamic> params, Map<String, dynamic> extra) {
+  String getUrl(Map<dynamic, dynamic> params, Map<dynamic, dynamic> extra) {
     final path = fullPath;
     final allMatchs = _matchs;
     var start = 0;
@@ -253,7 +336,10 @@ class NPage {
       if (m.start > start) {
         buffer.write(path.substring(start, m.start));
       }
-      buffer.write(params[i]);
+
+      final data = NRouterJsonTransfrom.encode(params[i]);
+
+      buffer.write(data);
       start = m.end;
       i += 1;
     }
@@ -272,7 +358,9 @@ class NPage {
           isFirst = false;
         }
         final key = entry.key;
-        final value = entry.value;
+
+        final value = NRouterJsonTransfrom.encode(entry.value);
+
         buffer.write('$key=$value');
       }
     }

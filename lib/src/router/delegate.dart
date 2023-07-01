@@ -7,11 +7,10 @@ import 'package:flutter/scheduler.dart';
 import 'package:nop/nop.dart';
 
 import '../../nav.dart';
-import '../../router.dart';
+import 'page.dart';
+import 'route_queue.dart';
 import 'router.dart';
 import 'web/history_state.dart';
-
-export 'dart:convert' show jsonDecode;
 
 typedef UntilFn = bool Function(RouteQueueEntry entry);
 
@@ -24,7 +23,7 @@ class RouteRestorable extends StatefulWidget {
   });
   final String? restorationId;
   final Widget child;
-  final NRouteDelegate delegate;
+  final NRouterDelegate delegate;
   RouteQueue get routeQueue => delegate._routeQueue;
 
   // ignore: library_private_types_in_public_api
@@ -52,7 +51,7 @@ class _NRouterScope extends InheritedWidget {
 class _RouteRestorableState extends State<RouteRestorable>
     with WidgetsBindingObserver, RestorationMixin {
   late RouteQueue routeQueue;
-  NRouteDelegate get delegate => widget.delegate;
+  NRouterDelegate get delegate => widget.delegate;
 
   @override
   Widget build(BuildContext context) {
@@ -148,9 +147,9 @@ class _RouteRestorableState extends State<RouteRestorable>
   }
 }
 
-class NRouteDelegate extends RouterDelegate<RouteQueue>
+class NRouterDelegate extends RouterDelegate<RouteQueue>
     with PopNavigatorRouterDelegateMixin, ChangeNotifier {
-  NRouteDelegate(
+  NRouterDelegate(
       {this.restorationId, required this.rootPage, required this.router});
   final String? restorationId;
   final NPageMain rootPage;
@@ -182,14 +181,14 @@ class NRouteDelegate extends RouterDelegate<RouteQueue>
   bool _restore() {
     if (kDartIsWeb) {
       final state = historyState as dynamic;
-      Log.w('state: $state');
-      RouteQueue? n;
+      assert(Log.w('state: $state'));
+
       if (state is Map) {
-        n = RouteQueue.fromJson(state['state'], this);
-      }
-      if (n != null) {
-        routeQueue.copyWith(n);
-        return true;
+        final n = RouteQueue.fromJson(state['state'], this);
+        if (n != null) {
+          routeQueue.copyWith(n);
+          return true;
+        }
       }
     }
     return false;

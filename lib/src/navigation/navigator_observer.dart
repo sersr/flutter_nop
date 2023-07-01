@@ -167,7 +167,7 @@ class NavObserver extends NavigatorObserver {
   void dispose(Route? route) {}
 }
 
-class NopRouteAware {
+abstract mixin class NopRouteAware {
   /// 当前[Route]开始退出,调用`didPop`
   ///
   /// 路由的生命的周期已经结束，但是[State]的生命周期在动画之后才会结束

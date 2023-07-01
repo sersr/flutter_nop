@@ -1,12 +1,12 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:nop/nop.dart';
 
-import '../../router.dart';
+import 'delegate.dart';
+import 'page.dart';
 import 'router.dart';
 
 class RouteQueue extends RestorableProperty<List<RouteQueueEntry>?>
@@ -14,7 +14,7 @@ class RouteQueue extends RestorableProperty<List<RouteQueueEntry>?>
   RouteQueue(this.delegate);
   @override
   bool get isRegistered => super.isRegistered;
-  final NRouteDelegate delegate;
+  final NRouterDelegate delegate;
 
   List<Page>? _pages;
   List<Page> get pages => _pages ??= _newPages();
@@ -84,13 +84,12 @@ class RouteQueue extends RestorableProperty<List<RouteQueueEntry>?>
     return listMap;
   }
 
-  static RouteQueue? fromJson(Object? data, NRouteDelegate delegate) {
-    if (data == null) return null;
-    final map = Map.from(data as Map);
+  static RouteQueue? fromJson(Object? data, NRouterDelegate delegate) {
+    if (data == null || data is! Map) return null;
     final routeQueue = RouteQueue(delegate);
     final list = <RouteQueueEntry>[];
 
-    final listMap = map['list'];
+    final listMap = data['list'];
 
     if (listMap is! List) {
       return null;
@@ -244,10 +243,7 @@ mixin RouteQueueMixin {
     refresh();
   }
 
-  RouteQueueEntry? _lastRemoved;
-
   void _remove(RouteQueueEntryMixin entry, {bool notify = true}) {
-    _lastRemoved = entry as RouteQueueEntry;
     if (_root == entry) {
       assert(entry._pre == null);
       _root = entry._next;
@@ -314,34 +310,21 @@ class RouteQueueEntry with RouteQueueEntryMixin {
   }
 
   /// `/path/to?user=foo` => {'user': 'foo'}
-  final Map<String, dynamic> queryParams;
+  final Map<dynamic, dynamic> queryParams;
 
   /// `/path/to/:user` => {'user': \<user\>}
-  final Map<String, dynamic> params;
+  final Map<dynamic, dynamic> params;
 
   Object? _groupId;
   Object? get groupId => _groupId;
 
-  static RouteQueueEntry? of(BuildContext context, NRouter router) {
+  static RouteQueueEntry? of(BuildContext context) {
     final modal = ModalRoute.of(context);
-    if (modal?.settings is! RouteQueueEntryPage<Object?>) {
-      return null;
+    final page = modal?.settings;
+    if (page is RouteQueueEntryPage) {
+      return page.entry;
     }
-    final page = modal!.settings as Page;
-    final lastEntry = router.routerDelegate.routeQueue._lastRemoved;
-    if (page == lastEntry?._page) {
-      return lastEntry;
-    }
-
-    RouteQueueEntry? matchedEntry;
-    router.routerDelegate.routeQueue.forEach(reverse: true, (entry) {
-      if (entry._page == page) {
-        matchedEntry = entry;
-        return true;
-      }
-      return false;
-    });
-    return matchedEntry;
+    return null;
   }
 
   Page? _page;
@@ -373,18 +356,20 @@ class RouteQueueEntry with RouteQueueEntryMixin {
 
   factory RouteQueueEntry.fromJson(Map json, NPageMain root) {
     final path = json['path']; // String
-    final queryParams = json['data']; // Map
+    final queryParams = json['queryParams']; // Map
+    var params = json['params'];
     final id = json['id'];
     final groupId = json['groupId'];
     final pageKey = json['pageKey'];
-    final params = <String, dynamic>{};
-    final uri = Uri.parse(path);
-
-    final route = NPage.resolve(root, uri.path, params, null);
-
+    final index = json['index'];
+    final route = root.getNPageFromIndex(index);
+    // final route = NPage.resolve(root, uri.path, params, null);
+    if ((params is Map && params.isEmpty) && path is String) {
+      params = Uri.parse(path).queryParameters;
+    }
     return RouteQueueEntry(
       path: path,
-      queryParams: jsonDecode(queryParams),
+      queryParams: queryParams,
       params: params,
       nPage: route!,
       groupId: groupId,
@@ -397,10 +382,14 @@ class RouteQueueEntry with RouteQueueEntryMixin {
   }
 
   Map<String, dynamic> toJson() {
+    var ps = NRouterJsonTransfrom.encodeMap(params);
+    final qps = NRouterJsonTransfrom.encodeMap(queryParams);
     return {
-      'path': path,
+      'path': _path,
       'id': _id,
-      'data': jsonEncode(queryParams),
+      'index': nPage.index,
+      'params': ps,
+      'queryParams': qps,
       'groupId': groupId,
       'pageKey': pageKey?.value,
     };

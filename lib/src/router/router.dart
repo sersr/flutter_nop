@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../../router.dart';
+import 'delegate.dart';
+import 'page.dart';
+import 'route_queue.dart';
 
 /// Example:
 /// ```dart
@@ -32,7 +34,7 @@ class NRouter implements RouterConfig<RouteQueue> {
     Object? groupId,
     this.observers = const [],
   }) {
-    routerDelegate = NRouteDelegate(
+    routerDelegate = NRouterDelegate(
         restorationId: restorationId, rootPage: rootPage, router: this);
     routerDelegate.init(restorationId, params, extra, groupId);
   }
@@ -58,7 +60,9 @@ class NRouter implements RouterConfig<RouteQueue> {
   }
 
   RouteQueueEntry? ofEntry(BuildContext context) {
-    return RouteQueueEntry.of(context, this);
+    final current = RouteQueueEntry.of(context);
+    assert(current == null || routerDelegate.routeQueue.isCurrent(current));
+    return current;
   }
 
   bool removeCurrent(BuildContext context, [dynamic result]) {
@@ -80,7 +84,7 @@ class NRouter implements RouterConfig<RouteQueue> {
   RouteInformationProvider? get routeInformationProvider => null;
 
   @override
-  late final NRouteDelegate routerDelegate;
+  late final NRouterDelegate routerDelegate;
 
   @pragma('vm:prefer-inline')
   bool canPop() => routerDelegate.canPop();
