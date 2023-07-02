@@ -15,15 +15,15 @@ import 'typedef.dart';
 extension GetType on BuildContext {
   /// [group] shared group
   T getType<T>({Object? group, bool global = false}) {
-    return Nop.of(this, global: global, position: 1);
+    return Nop.of(this, group: group, global: global, position: 1);
   }
 
   T? findType<T>({Object? group, bool global = false}) {
-    return Nop.findwithContext(this, global: global);
+    return Nop.findwithContext(this, group: group, global: global);
   }
 
   T? getTypeOr<T>({Object? group, bool global = false}) {
-    return Nop.maybeOf(this, global: global);
+    return Nop.maybeOf(this, group: group, global: global);
   }
 }
 
