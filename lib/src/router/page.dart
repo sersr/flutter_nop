@@ -56,23 +56,19 @@ abstract interface class NRouterJsonTransfrom {
       data = encodeMap(data);
     } else if (data is List) {
       data = encodeList(data);
+    } else if (data is Enum) {
+      data = data.index;
     }
 
     return data;
   }
 
   static Map<T, dynamic> encodeMap<T>(Map<T, dynamic> data) {
-    if (data.values.any(canTransfrom)) {
-      data = data.map((key, value) => MapEntry(key, encode(value)));
-    }
-    return data;
+    return data.map((key, value) => MapEntry(key, encode(value)));
   }
 
   static List<dynamic> encodeList(List<dynamic> data) {
-    if (data.any(canTransfrom)) {
-      data = data.map(encode).toList();
-    }
-    return data;
+    return data.map(encode).toList();
   }
 }
 

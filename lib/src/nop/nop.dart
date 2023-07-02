@@ -1,6 +1,7 @@
 import 'dart:collection';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:nop/utils.dart';
 
 import '../navigation/navigator_observer.dart';
@@ -82,6 +83,7 @@ class Nop<C> extends StatefulWidget {
       return nop.state.getType<T>(group, global);
     } else {
       assert(!stricted ||
+          context == null ||
           Log.e('Nop.page not found. You need to use Nop.page()') && false);
       final listener = GetTypePointers.defaultGetNopListener(T, null, group,
           position: position += 2);
@@ -290,7 +292,12 @@ class _NopState<C> extends State<Nop<C>> with NopListenerHandle, NopRouteAware {
 
   @override
   void update() {
-    if (mounted) setState(() {});
+    if (mounted) {
+      if (SchedulerBinding.instance.schedulerPhase !=
+          SchedulerPhase.persistentCallbacks) {
+        setState(() {});
+      }
+    }
   }
 
   Object? _group;
