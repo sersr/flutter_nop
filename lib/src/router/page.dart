@@ -39,35 +39,41 @@ abstract interface class NRouterJsonTransfrom {
     _toJsonFns.remove(t ?? T);
   }
 
-  static bool canTransfrom(dynamic data) =>
-      data is NRouterJsonTransfrom || _toJsonFns.containsKey(data.runtimeType);
+  static bool shouldTransfrom(dynamic data) {
+    return switch (data) {
+      NRouterJsonTransfrom || Enum _ => true,
+      Map map => map.values.any(shouldTransfrom),
+      List list => list.any(shouldTransfrom),
+      _ => _toJsonFns.containsKey(data.runtimeType),
+    };
+  }
 
   static dynamic encode(dynamic data) {
-    if (data is NRouterJsonTransfrom) {
-      data = data.toJson();
-    } else {
-      final fn = get(data.runtimeType);
-      if (fn != null) {
-        data = fn.$1?.call(data) ?? data.toJson();
-      }
+    switch (data) {
+      case NRouterJsonTransfrom value:
+        return value.toJson();
+      case Enum value:
+        return value.index;
+      case Map map:
+        return encodeMap(map);
+      case List list:
+        return encodeList(list);
+      default:
+        final fn = get(data.runtimeType);
+        if (fn != null) {
+          data = fn.$1?.call(data) ?? data.toJson();
+        }
+        return data;
     }
-
-    if (data is Map) {
-      data = encodeMap(data);
-    } else if (data is List) {
-      data = encodeList(data);
-    } else if (data is Enum) {
-      data = data.index;
-    }
-
-    return data;
   }
 
   static Map<T, dynamic> encodeMap<T>(Map<T, dynamic> data) {
+    // if (!shouldTransfrom(data)) return data;
     return data.map((key, value) => MapEntry(key, encode(value)));
   }
 
   static List<dynamic> encodeList(List<dynamic> data) {
+    // if (!shouldTransfrom(data)) return data;
     return data.map(encode).toList();
   }
 }
@@ -325,8 +331,6 @@ class NPage {
     var start = 0;
     final buffer = StringBuffer();
 
-    buffer.write('');
-
     int i = 0;
     for (var m in allMatchs) {
       if (m.start > start) {
@@ -347,17 +351,16 @@ class NPage {
     if (extra.isNotEmpty) {
       buffer.write('?');
       bool isFirst = true;
-      for (var entry in extra.entries) {
+      for (var MapEntry(key: key, value: value) in extra.entries) {
         if (!isFirst) {
           buffer.write('&');
         } else {
           isFirst = false;
         }
-        final key = entry.key;
 
-        final value = NRouterJsonTransfrom.encode(entry.value);
+        final data = NRouterJsonTransfrom.encode(value);
 
-        buffer.write('$key=$value');
+        buffer.write('$key=$data');
       }
     }
 

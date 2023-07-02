@@ -79,7 +79,7 @@ class RouteQueue extends RestorableProperty<List<RouteQueueEntry>?>
 
   static List? pageList(Object? data) {
     if (data == null) return null;
-    final map = Map.from(data as Map);
+    final map = data as Map;
     final listMap = map['list'] as List;
     return listMap;
   }
@@ -97,7 +97,7 @@ class RouteQueue extends RestorableProperty<List<RouteQueueEntry>?>
 
     RouteQueueEntry? last;
     for (var item in listMap) {
-      final current = RouteQueueEntry.fromJson(item, delegate.rootPage);
+      final current = RouteQueueEntry.fromJson(item, delegate);
 
       last?._next = current;
       current
@@ -113,14 +113,14 @@ class RouteQueue extends RestorableProperty<List<RouteQueueEntry>?>
   @override
   List<RouteQueueEntry>? fromPrimitives(Object? data) {
     if (data == null) return null;
-    final map = Map.from(data as Map);
+    final map = data as Map;
     final list = <RouteQueueEntry>[];
 
     final listMap = map['list'];
 
     RouteQueueEntry? last;
     for (var item in listMap as List) {
-      final current = RouteQueueEntry.fromJson(item, delegate.rootPage);
+      final current = RouteQueueEntry.fromJson(item, delegate);
 
       last?._next = current;
       current
@@ -271,6 +271,7 @@ mixin RouteQueueMixin {
 
   void _insert(RouteQueueEntry current, RouteQueueEntry entry) {
     assert(entry.isAlone);
+    assert(entry._id != null);
     entry._next = current._next;
     entry._pre = current;
     current._next = entry;
@@ -284,7 +285,7 @@ class RouteQueueEntry with RouteQueueEntryMixin {
       {String? path,
       required this.params,
       required this.nPage,
-      ValueKey? pageKey,
+      ValueKey<String>? pageKey,
       Object? groupId,
       this.queryParams = const {}})
       : _pageKey = pageKey,
@@ -302,10 +303,10 @@ class RouteQueueEntry with RouteQueueEntryMixin {
 
   final NPage nPage;
 
-  ValueKey? _pageKey;
-  ValueKey? get pageKey => _pageKey;
+  ValueKey<String>? _pageKey;
+  ValueKey<String>? get pageKey => _pageKey;
 
-  void replace(ValueKey? key) {
+  void replace(ValueKey<String>? key) {
     _pageKey = key;
   }
 
@@ -315,7 +316,7 @@ class RouteQueueEntry with RouteQueueEntryMixin {
   /// `/path/to/:user` => {'user': \<user\>}
   final Map<dynamic, dynamic> params;
 
-  Object? _groupId;
+  final Object? _groupId;
   Object? get groupId => _groupId;
 
   static RouteQueueEntry? of(BuildContext context) {
@@ -354,27 +355,33 @@ class RouteQueueEntry with RouteQueueEntryMixin {
     return entry.._pageKey = _pageKey;
   }
 
-  factory RouteQueueEntry.fromJson(Map json, NPageMain root) {
-    final path = json['path']; // String
-    final queryParams = json['queryParams']; // Map
-    var params = json['params'];
-    final id = json['id'];
-    final groupId = json['groupId'];
-    final pageKey = json['pageKey'];
-    final index = json['index'];
-    final route = root.getNPageFromIndex(index);
-    // final route = NPage.resolve(root, uri.path, params, null);
-    if ((params is Map && params.isEmpty) && path is String) {
-      params = Uri.parse(path).queryParameters;
+  static RouteQueueEntry fromJson(Map json, NRouterDelegate delegate) {
+    if (json
+        case {
+          'path': String? path,
+          'params': Map params,
+          'queryParams': Map queryParams,
+          'groupId': Object? groupId,
+          'index': int index,
+          'id': int id,
+          'pageKey': String pageKey,
+        }) {
+      final root = delegate.rootPage;
+      final route = root.getNPageFromIndex(index);
+      if ((params.isEmpty) && path != null) {
+        params = Uri.parse(path).queryParameters;
+      }
+      delegate.resetRouterId(id);
+      return RouteQueueEntry(
+        path: path,
+        queryParams: queryParams,
+        params: params,
+        nPage: route!,
+        groupId: groupId,
+        pageKey: ValueKey(pageKey),
+      )..setId(id);
     }
-    return RouteQueueEntry(
-      path: path,
-      queryParams: queryParams,
-      params: params,
-      nPage: route!,
-      groupId: groupId,
-      pageKey: ValueKey(pageKey),
-    )..setId(id);
+    throw RouteQueueFromJosnError(data: json);
   }
 
   void setId(int newId) {
@@ -384,13 +391,16 @@ class RouteQueueEntry with RouteQueueEntryMixin {
   Map<String, dynamic> toJson() {
     var ps = NRouterJsonTransfrom.encodeMap(params);
     final qps = NRouterJsonTransfrom.encodeMap(queryParams);
+    final groupIdEncoded = NRouterJsonTransfrom.encode(groupId);
+
+    assert(_id != null && pageKey != null);
     return {
       'path': _path,
       'id': _id,
       'index': nPage.index,
       'params': ps,
       'queryParams': qps,
-      'groupId': groupId,
+      'groupId': groupIdEncoded,
       'pageKey': pageKey?.value,
     };
   }
@@ -509,5 +519,16 @@ mixin RouteQueueEntryStateMixin<T extends StatefulWidget>
         onRestoreEntry();
       }
     }
+  }
+}
+
+class RouteQueueFromJosnError implements Exception {
+  const RouteQueueFromJosnError({this.data});
+
+  final Map? data;
+
+  @override
+  String toString() {
+    return 'RouteQueueFromJosnError: $data';
   }
 }

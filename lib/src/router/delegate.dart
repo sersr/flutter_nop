@@ -96,10 +96,10 @@ class _RouteRestorableState extends State<RouteRestorable>
 
       RouteQueueEntry? entry;
       if (!isNew) {
-        entry = RouteQueueEntry.fromJson(list.last, widget.delegate.rootPage);
+        entry = RouteQueueEntry.fromJson(list.last, widget.delegate);
       }
       if (entry == null || entry.path != url) {
-        ValueKey pageKey;
+        ValueKey<String> pageKey;
         int id;
         if (isNew) {
           id = widget.delegate.newId;
@@ -305,7 +305,7 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
 
   final random = Random();
 
-  ValueKey _newPageKey({String prefix = 'n+'}) {
+  ValueKey<String> _newPageKey({String prefix = 'n+'}) {
     final key =
         String.fromCharCodes(List.generate(32, (_) => random.nextInt(97) + 33));
 
@@ -313,6 +313,12 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
   }
 
   int _id = 0;
+
+  void resetRouterId(int oldId) {
+    if (oldId > _id) {
+      _id = oldId;
+    }
+  }
 
   int get newId {
     _id += 1;
