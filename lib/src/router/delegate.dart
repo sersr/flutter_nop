@@ -74,6 +74,11 @@ class RouteRestorableState extends State<RouteRestorable>
     return nav.maybePop();
   }
 
+  /// 浏览器的地址栏和本地的地址可能不相等;
+  /// 本地地址没有使用 [Uri] 编码，即使使用也可能出问题，
+  /// 如：' '有两种形式 '+'和'%2B'，所以[RouteInformation.uri]不会被使用
+  ///
+  /// 从[RouteInformation.state]获取`stateEntry`
   @override
   Future<bool> didPushRouteInformation(RouteInformation routeInformation) {
     final state = routeInformation.state;
@@ -97,7 +102,6 @@ class RouteRestorableState extends State<RouteRestorable>
       RouteQueueEntry? entry = stateEntry;
 
       if (entry == null) {
-        // new
         final uri = routeInformation.uri;
         final realParams = <String, dynamic>{};
 
