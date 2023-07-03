@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
@@ -26,21 +27,20 @@ class RouteRestorable extends StatefulWidget {
   final NRouterDelegate delegate;
   RouteQueue get routeQueue => delegate._routeQueue;
 
-  // ignore: library_private_types_in_public_api
-  static _RouteRestorableState? maybeOf(BuildContext context) {
+  static RouteRestorableState? maybeOf(BuildContext context) {
     final scope = context.dependOnInheritedWidgetOfExactType<_NRouterScope>();
     return scope?.state;
   }
 
   @override
-  State<RouteRestorable> createState() => _RouteRestorableState();
+  State<RouteRestorable> createState() => RouteRestorableState();
 }
 
 class _NRouterScope extends InheritedWidget {
   const _NRouterScope(
       {required this.routeQueue, this.state, required super.child});
   final RouteQueue routeQueue;
-  final _RouteRestorableState? state;
+  final RouteRestorableState? state;
 
   @override
   bool updateShouldNotify(covariant _NRouterScope oldWidget) {
@@ -48,7 +48,7 @@ class _NRouterScope extends InheritedWidget {
   }
 }
 
-class _RouteRestorableState extends State<RouteRestorable>
+class RouteRestorableState extends State<RouteRestorable>
     with WidgetsBindingObserver, RestorationMixin {
   late RouteQueue routeQueue;
   NRouterDelegate get delegate => widget.delegate;
@@ -87,8 +87,11 @@ class _RouteRestorableState extends State<RouteRestorable>
 
     final pre = routeQueue.pre;
     final state = routeInformation.state;
-    final url = uri.toString();
     final list = RouteQueue.pageList(state) ?? const [];
+
+    /// 处理字符串不一致，如： '+' '%2B'
+    final url = Uri.decodeQueryComponent(uri.toString());
+
     if (pre?.path == url) {
       widget.delegate._pop();
     } else {
@@ -96,18 +99,15 @@ class _RouteRestorableState extends State<RouteRestorable>
 
       RouteQueueEntry? entry;
       if (!isNew) {
-        entry = RouteQueueEntry.fromJson(list.last, widget.delegate);
-      }
-      if (entry == null || entry.path != url) {
-        ValueKey<String> pageKey;
-        int id;
-        if (isNew) {
-          id = widget.delegate.newId;
-          pageKey = widget.delegate._newPageKey(prefix: 'p+');
-        } else {
-          pageKey = ValueKey(list.last['pageKey']);
-          id = list.last['id'] as int;
+        final current =
+            list.lastWhereOrNull((element) => element['path'] == url);
+        if (current is Map) {
+          entry = RouteQueueEntry.fromJson(current, delegate);
         }
+      }
+      if (entry == null) {
+        final id = widget.delegate.newId;
+        final pageKey = widget.delegate._newPageKey(prefix: 'p+');
         entry = RouteQueueEntry(
           path: url,
           params: realParams,
@@ -119,6 +119,7 @@ class _RouteRestorableState extends State<RouteRestorable>
 
       routeQueue.insert(entry);
       if (state == null) {
+        // 更新当前路由的状态
         routeQueue.updateRouteInfo(true);
       }
     }
@@ -196,6 +197,10 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
 
   @override
   Widget build(BuildContext context) {
+    final navObservers = [
+      if (!router.observers.contains(Nav.observer)) Nav.observer,
+      ...router.observers,
+    ];
     return RouteRestorable(
       restorationId: restorationId,
       delegate: this,
@@ -205,10 +210,7 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
           return Navigator(
             pages: _routeQueue.pages,
             key: navigatorKey,
-            observers: [
-              if (!router.observers.contains(Nav.observer)) Nav.observer,
-              ...router.observers,
-            ],
+            observers: navObservers,
             onPopPage: _onPopPage,
           );
         },
