@@ -27,3 +27,5 @@ dependency_overrides:
     path: ../nop_gen
   nop_annotations:
     path: ../nop_annotations
+  nop:
+    path: ../nop

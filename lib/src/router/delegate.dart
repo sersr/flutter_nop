@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:math';
 
-import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
@@ -68,7 +67,7 @@ class RouteRestorableState extends State<RouteRestorable>
 
   @override
   Future<bool> didPopRoute() async {
-    final nav = widget.delegate.navigatorKey.currentState;
+    final nav = delegate.navigatorKey.currentState;
     if (nav == null) {
       return false;
     }
@@ -77,44 +76,44 @@ class RouteRestorableState extends State<RouteRestorable>
 
   @override
   Future<bool> didPushRouteInformation(RouteInformation routeInformation) {
-    final uri = routeInformation.uri;
-    final realParams = <String, dynamic>{};
-    final route =
-        widget.delegate.rootPage.getPageFromLocation(uri.path, realParams);
-    if (route == null) {
-      return SynchronousFuture(false);
-    }
-
-    final pre = routeQueue.pre;
     final state = routeInformation.state;
     final list = RouteQueue.pageList(state) ?? const [];
 
-    /// 处理字符串不一致，如： '+' '%2B'
-    final url = Uri.decodeQueryComponent(uri.toString());
-    if (pre?.path == url) {
-      widget.delegate._pop();
+    assert(Log.e('uri: ${routeInformation.uri}'));
+
+    RouteQueueEntry? stateEntry;
+    if (list.isNotEmpty) {
+      stateEntry = RouteQueueEntry.fromJson(list.last, delegate);
+    }
+
+    final pre = routeQueue.pre;
+    if (stateEntry != null && stateEntry.eq(pre)) {
+      assert(Log.i('pre:'));
+      assert(Log.w(pre!.toJson().logPretty()));
+      assert(Log.i('state:'));
+      assert(Log.w(stateEntry.toJson().logPretty()));
+      delegate._pop();
     } else {
-      RouteQueueEntry? entry;
-
-      final current = list.lastWhereOrNull((e) {
-        if (e case {'path': String path}) return path == url;
-        return false;
-      });
-
-      if (current is Map) {
-        entry = RouteQueueEntry.fromJson(current, delegate);
-      }
+      RouteQueueEntry? entry = stateEntry;
 
       if (entry == null) {
-        final id = widget.delegate.newId;
-        final pageKey = widget.delegate._newPageKey(prefix: 'p+');
+        // new
+        final uri = routeInformation.uri;
+        final realParams = <String, dynamic>{};
+
+        final route =
+            delegate.rootPage.getPageFromLocation(uri.path, realParams);
+        if (route == null) {
+          return SynchronousFuture(false);
+        }
+
+        final pageKey = delegate._newPageKey(prefix: 'p+');
         entry = RouteQueueEntry(
-          path: url,
           params: realParams,
           nPage: route,
           queryParams: uri.queryParameters,
           pageKey: pageKey,
-        )..setId(id);
+        )..setId(delegate.newId);
       }
 
       routeQueue.insert(entry);
@@ -165,15 +164,17 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
     WidgetsFlutterBinding.ensureInitialized();
     if (_restore()) return;
 
-    RouteQueueEntry entry;
+    RouteQueueEntry? entry;
     final defaultName =
         WidgetsBinding.instance.platformDispatcher.defaultRouteName;
-    if (defaultName == '/') {
-      entry =
-          createEntry(rootPage, params: params, extra: extra, groupId: groupId);
-    } else {
-      entry = _parse(defaultName)!;
+
+    if (defaultName != '/') {
+      entry = _parse(defaultName);
     }
+
+    entry ??=
+        createEntry(rootPage, params: params, extra: extra, groupId: groupId);
+
     routeQueue.insert(entry);
     assert(routeQueue.current == entry);
     routeQueue.updateRouteInfo(true);
@@ -181,13 +182,13 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
 
   bool _restore() {
     if (kDartIsWeb) {
-      final state = historyState as dynamic;
-      assert(Log.w('state: $state'));
+      final state = historyState;
 
       if (state is Map) {
+        assert(Log.w('state: ${state.logPretty()}', showTag: false));
         final n = RouteQueue.fromJson(state['state'], this);
         if (n != null) {
-          routeQueue.copyWith(n);
+          routeQueue.copyFrom(n);
           // ? ? ?
           routeQueue.updateRouteInfo(true);
           return true;
@@ -311,7 +312,7 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
 
   ValueKey<String> _newPageKey({String prefix = 'n+'}) {
     final key =
-        String.fromCharCodes(List.generate(32, (_) => random.nextInt(97) + 33));
+        String.fromCharCodes(List.generate(24, (_) => random.nextInt(97) + 33));
 
     return ValueKey('$prefix$key');
   }
@@ -404,7 +405,7 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
 
   @override
   Future<void> setNewRoutePath(configuration) {
-    _routeQueue.copyWith(configuration);
+    _routeQueue.copyFrom(configuration);
     return SynchronousFuture(null);
   }
 }
@@ -431,8 +432,8 @@ class RouterAction {
 
   RouteQueueEntry goReplacement([Object? result, bool immediated = false]) {
     final queue = router.routerDelegate._routeQueue;
-    if (immediated) {
-      entry.replace(queue.current?.pageKey);
+    if (immediated && queue.current != null) {
+      entry.replace(queue.current!.pageKey);
     }
     queue.removeLast();
     final newEntry = router.routerDelegate._run(entry, update: false);

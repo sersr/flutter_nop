@@ -336,9 +336,9 @@ class NPage {
       if (m.start > start) {
         buffer.write(path.substring(start, m.start));
       }
+      final key = _params[i];
 
-      final data = NRouterJsonTransfrom.encode(params[i]);
-
+      final data = NRouterJsonTransfrom.encode(params[key]);
       buffer.write(data);
       start = m.end;
       i += 1;
@@ -351,7 +351,7 @@ class NPage {
     if (extra.isNotEmpty) {
       buffer.write('?');
       bool isFirst = true;
-      for (var MapEntry(key: key, value: value) in extra.entries) {
+      for (var MapEntry(:key, :value) in extra.entries) {
         if (!isFirst) {
           buffer.write('&');
         } else {
