@@ -91,20 +91,20 @@ class RouteRestorableState extends State<RouteRestorable>
 
     /// 处理字符串不一致，如： '+' '%2B'
     final url = Uri.decodeQueryComponent(uri.toString());
-
     if (pre?.path == url) {
       widget.delegate._pop();
     } else {
-      final isNew = list.isEmpty;
-
       RouteQueueEntry? entry;
-      if (!isNew) {
-        final current =
-            list.lastWhereOrNull((element) => element['path'] == url);
-        if (current is Map) {
-          entry = RouteQueueEntry.fromJson(current, delegate);
-        }
+
+      final current = list.lastWhereOrNull((e) {
+        if (e case {'path': String path}) return path == url;
+        return false;
+      });
+
+      if (current is Map) {
+        entry = RouteQueueEntry.fromJson(current, delegate);
       }
+
       if (entry == null) {
         final id = widget.delegate.newId;
         final pageKey = widget.delegate._newPageKey(prefix: 'p+');
@@ -162,9 +162,9 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
     Map<String, dynamic>? extra,
     Object? groupId,
   ) {
+    WidgetsFlutterBinding.ensureInitialized();
     if (_restore()) return;
 
-    WidgetsFlutterBinding.ensureInitialized();
     RouteQueueEntry entry;
     final defaultName =
         WidgetsBinding.instance.platformDispatcher.defaultRouteName;
@@ -188,6 +188,8 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
         final n = RouteQueue.fromJson(state['state'], this);
         if (n != null) {
           routeQueue.copyWith(n);
+          // ? ? ?
+          routeQueue.updateRouteInfo(true);
           return true;
         }
       }
