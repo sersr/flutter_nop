@@ -154,6 +154,7 @@ class RouteQueue extends RestorableProperty<List<RouteQueueEntry>?>
       assert(r._next != null || r == _current);
       r = r._next;
     }
+
     return {
       'list': list,
     };
@@ -283,13 +284,15 @@ class RouteQueueEntry with RouteQueueEntryMixin {
         _groupId = groupId,
         _path = path;
 
-  String? _path;
+  final String? _path;
+  String? _cachePath;
 
   String get path {
+    if (_cachePath != null) return _cachePath!;
     if (_path != null) {
-      return _path!;
+      return _cachePath = _path!;
     }
-    return _path = nPage.getUrl(params, queryParams);
+    return _cachePath = nPage.getUrl(params, queryParams);
   }
 
   bool eq(RouteQueueEntry? other) {
@@ -348,6 +351,21 @@ class RouteQueueEntry with RouteQueueEntryMixin {
 
   RouteQueueEntry redirectEntry(RouteQueueEntry entry) {
     return entry.._pageKey = _pageKey;
+  }
+
+  static bool canParse(Map? json) {
+    if (json
+        case {
+          'path': String? _,
+          'params': Map _,
+          'queryParams': Map _,
+          'groupId': Object? _,
+          'index': int _,
+          'id': int _,
+          'pageKey': String _,
+        }) return true;
+
+    return false;
   }
 
   static RouteQueueEntry fromJson(Map json, NRouterDelegate delegate) {

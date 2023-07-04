@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
@@ -66,12 +65,8 @@ class RouteRestorableState extends State<RouteRestorable>
   }
 
   @override
-  Future<bool> didPopRoute() async {
-    final nav = delegate.navigatorKey.currentState;
-    if (nav == null) {
-      return false;
-    }
-    return nav.maybePop();
+  Future<bool> didPopRoute() {
+    return delegate.maybePop();
   }
 
   /// 浏览器的地址栏和本地的地址可能不相等;
@@ -87,8 +82,10 @@ class RouteRestorableState extends State<RouteRestorable>
     assert(Log.e('uri: ${routeInformation.uri}'));
 
     RouteQueueEntry? stateEntry;
-    if (list.isNotEmpty) {
-      stateEntry = RouteQueueEntry.fromJson(list.last, delegate);
+    if (list case [..., Map last]) {
+      if (RouteQueueEntry.canParse(last)) {
+        stateEntry = RouteQueueEntry.fromJson(last, delegate);
+      }
     }
 
     final pre = routeQueue.pre;
@@ -186,11 +183,9 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
 
   bool _restore() {
     if (kDartIsWeb) {
-      final state = historyState;
-
-      if (state is Map) {
-        assert(Log.w('state: ${state.logPretty()}', showTag: false));
-        final n = RouteQueue.fromJson(state['state'], this);
+      if (historyState case {'state': Map data}) {
+        assert(Log.w('state: ${data.logPretty()}', showTag: false));
+        final n = RouteQueue.fromJson(data, this);
         if (n != null) {
           routeQueue.copyFrom(n);
           // ? ? ?
@@ -387,6 +382,8 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
   }
 
   bool canPop() => navigatorKey.currentState?.canPop() ?? !_routeQueue.isSingle;
+  Future<bool> maybePop() =>
+      navigatorKey.currentState?.maybePop() ?? SynchronousFuture(false);
 
   void popUntil(UntilFn test) {
     _until(test);

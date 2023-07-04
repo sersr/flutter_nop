@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:nop/nop.dart';
 
 import 'delegate.dart';
 import 'route_queue.dart';
@@ -241,7 +240,7 @@ class NPage {
 
   String? _fullPath;
   String get fullPath => _fullPath ?? path;
-  late int _index;
+  late final int _index;
   int get index => _index;
 
   NPage? getNPageFromIndex(int index) {
@@ -392,7 +391,6 @@ class NPage {
 
       final keysW = '/_' * current._params.length;
       final path = '$location$keysW';
-      assert(Log.w('...$path ${current._pathFullExp.pattern}'));
 
       if (current._pathFullExp.hasMatch(path)) {
         // assert(current._params.every((e) => keys.containsKey(e)));
