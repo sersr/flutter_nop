@@ -1,8 +1,14 @@
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'delegate.dart';
-import 'page.dart';
-import 'route_queue.dart';
+
+part 'page.dart';
+part 'route_queue.dart';
 
 /// Example:
 /// ```dart

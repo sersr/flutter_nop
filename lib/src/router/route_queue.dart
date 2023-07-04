@@ -1,12 +1,4 @@
-import 'dart:async';
-
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-
-import 'delegate.dart';
-import 'page.dart';
-import 'router.dart';
+part of 'router.dart';
 
 class RouteQueue extends RestorableProperty<List<RouteQueueEntry>?>
     with RouteQueueMixin {
@@ -263,7 +255,6 @@ mixin RouteQueueMixin {
 
   void _insert(RouteQueueEntry current, RouteQueueEntry entry) {
     assert(entry.isAlone);
-    assert(entry._id != null);
     entry._next = current._next;
     entry._pre = current;
     current._next = entry;
@@ -273,14 +264,31 @@ mixin RouteQueueMixin {
 }
 
 class RouteQueueEntry with RouteQueueEntryMixin {
-  RouteQueueEntry(
-      {String? path,
-      required this.params,
-      required this.nPage,
-      required ValueKey<String> pageKey,
-      Object? groupId,
-      this.queryParams = const {}})
-      : _pageKey = pageKey,
+  RouteQueueEntry({
+    String? path,
+    required this.params,
+    required this.nPage,
+    required ValueKey<String> pageKey,
+    Object? groupId,
+    this.queryParams = const {},
+  })  : _pageKey = pageKey,
+        _groupId = NPage.ignoreToken(groupId),
+        _id = nPage._newRouteId,
+        _useId = NPage.canUseId(groupId),
+        _path = path;
+
+  RouteQueueEntry._json({
+    String? path,
+    required this.params,
+    required this.nPage,
+    Object? groupId,
+    required int id,
+    required bool useId,
+    required ValueKey<String> pageKey,
+    this.queryParams = const {},
+  })  : _pageKey = pageKey,
+        _id = id,
+        _useId = useId,
         _groupId = groupId,
         _path = path;
 
@@ -289,14 +297,14 @@ class RouteQueueEntry with RouteQueueEntryMixin {
 
   String get path {
     if (_cachePath != null) return _cachePath!;
-    if (_path != null) {
-      return _cachePath = _path!;
-    }
-    return _cachePath = nPage.getUrl(params, queryParams);
+
+    return _cachePath = _path ?? nPage.getUrl(params, queryParams);
   }
 
   bool eq(RouteQueueEntry? other) {
     if (other == null) return false;
+    if (identical(this, other)) return true;
+
     return path == other.path && pageKey == other.pageKey;
   }
 
@@ -315,8 +323,25 @@ class RouteQueueEntry with RouteQueueEntryMixin {
   /// `/path/to/:user` => {'user': \<user\>}
   final Map<dynamic, dynamic> params;
 
+  @override
+  String get restorationId => nPage.getRestorationId(_id);
+
+  final bool _useId;
+
+  final int _id;
+
+  @override
+  int get id => _id;
+
   final Object? _groupId;
-  Object? get groupId => _groupId;
+  Object? _cacheGroupId;
+
+  Object? get groupId {
+    if (_cacheGroupId != null) return _cacheGroupId!;
+    if (!_useId) return _cacheGroupId = _groupId;
+
+    return _cacheGroupId = _groupId ?? nPage.getGroupIdWithId(_id);
+  }
 
   static RouteQueueEntry? of(BuildContext context) {
     final modal = ModalRoute.of(context);
@@ -340,6 +365,9 @@ class RouteQueueEntry with RouteQueueEntryMixin {
     Map<String, dynamic> queryParams = const {},
     Object? groupId,
   }) {
+    assert(isAlone && !attached);
+    _disposed = true;
+
     return RouteQueueEntry(
       nPage: page,
       params: params,
@@ -360,6 +388,7 @@ class RouteQueueEntry with RouteQueueEntryMixin {
           'params': Map _,
           'queryParams': Map _,
           'groupId': Object? _,
+          'useId': bool _,
           'index': int _,
           'id': int _,
           'pageKey': String _,
@@ -375,51 +404,51 @@ class RouteQueueEntry with RouteQueueEntryMixin {
           'params': Map params,
           'queryParams': Map queryParams,
           'groupId': Object? groupId,
+          'useId': bool useId,
           'index': int index,
           'id': int id,
           'pageKey': String pageKey,
         }) {
       final root = delegate.rootPage;
-      final route = root.getNPageFromIndex(index);
+      final route = root.getNPageFromIndex(index)!;
 
-      delegate.resetRouterId(id);
-      return RouteQueueEntry(
+      /// reset global ids
+      route.resetId(id);
+
+      return RouteQueueEntry._json(
+        id: id,
         path: path,
+        useId: useId,
         queryParams: queryParams,
         params: params,
-        nPage: route!,
+        nPage: route,
         groupId: groupId,
         pageKey: ValueKey(pageKey),
-      )..setId(id);
+      );
     }
     throw RouteQueueFromJosnError(data: json);
-  }
-
-  void setId(int newId) {
-    _id ??= newId;
   }
 
   Map<String, dynamic> toJson() {
     var ps = NRouterJsonTransfrom.encodeMap(params);
     final qps = NRouterJsonTransfrom.encodeMap(queryParams);
 
-    assert(_id != null);
     return {
       'path': _path,
       'id': _id,
       'index': nPage.index,
       'params': ps,
       'queryParams': qps,
-      'groupId': groupId,
+      'groupId': _groupId,
+      'useId': _useId,
       'pageKey': pageKey.value,
     };
   }
 }
 
 mixin RouteQueueEntryMixin {
-  int? _id;
-  int? get id => _id;
-  String? get restorationId => _id == null ? null : 'n_router+$_id';
+  int get id;
+  String get restorationId => 'n_router+$id';
   RouteQueueMixin? _parent;
 
   RouteQueueEntry? _pre;

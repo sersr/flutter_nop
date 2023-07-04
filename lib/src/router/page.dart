@@ -1,9 +1,4 @@
-import 'dart:convert';
-
-import 'package:flutter/material.dart';
-
-import 'delegate.dart';
-import 'route_queue.dart';
+part of 'router.dart';
 
 typedef PageBuilder<S> = Page<S> Function(RouteQueueEntry entry);
 typedef RedirectBuilder = RouteQueueEntry Function(RouteQueueEntry entry);
@@ -176,10 +171,8 @@ class _MaterialIgnorePageRoute<T> extends PageRoute<T>
 
   @override
   Widget buildContent(BuildContext context) {
-    if (_page.entry.restorationId == null) {
-      return _page.child;
-    }
     final bucket = RouteRestorable.maybeOf(context)?.bucket;
+    if (bucket == null) return _page.child;
 
     return UnmanagedRestorationScope(
       bucket: bucket,
@@ -263,25 +256,42 @@ class NPage {
   /// [true] or [Npage Function()]
   final Object? groupOwner;
 
-  static int _routeId = 0;
-  static int get _incGroupId => _routeId += 1;
+  int _routeId = 0;
+  int get historyCount => _routeId;
+
+  int get _newRouteId => _routeId += 1;
 
   /// groupId token
   static final newGroupKey = Object();
 
-  Object? resolveGroupId(Object? groupId) {
+  void resetId(int? old) {
+    if (old == null) return;
+    if (old > _routeId) {
+      _routeId = old;
+    }
+  }
+
+  static bool canUseId(Object? groupId) {
+    return identical(groupId, newGroupKey);
+  }
+
+  static Object? ignoreToken(Object? groupId) {
     if (identical(groupId, newGroupKey)) {
-      return newGroupId;
+      return null;
     }
     return groupId;
   }
 
-  String? get newGroupId {
-    if (groupOwner == true) return '${fullPath}_$_incGroupId';
-    if (groupOwner is NPage Function()) {
-      return (groupOwner as NPage Function())().newGroupId;
-    }
-    return null;
+  String getRestorationId(int id) {
+    return 'n_router_$_index+$id';
+  }
+
+  String? getGroupIdWithId(int id) {
+    return switch (groupOwner) {
+      true => '${fullPath}_$id',
+      NPage Function() fn => fn().getGroupIdWithId(id),
+      _ => null,
+    };
   }
 
   /// 供外部使用

@@ -6,8 +6,6 @@ import 'package:flutter/scheduler.dart';
 import 'package:nop/nop.dart';
 
 import '../../nav.dart';
-import 'page.dart';
-import 'route_queue.dart';
 import 'router.dart';
 import 'web/history_state.dart';
 
@@ -114,7 +112,7 @@ class RouteRestorableState extends State<RouteRestorable>
           nPage: route,
           queryParams: uri.queryParameters,
           pageKey: pageKey,
-        )..setId(delegate.newId);
+        );
       }
 
       routeQueue.insert(entry);
@@ -269,13 +267,13 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
       queryParams: query,
       groupId: groupId,
       pageKey: _newPageKey(),
-    )..setId(newId);
+    );
   }
 
   RouteQueueEntry _run(RouteQueueEntry entry, {bool update = true}) {
     final newEntry =
         entry.nPage.redirect(entry, builder: rootPage.redirectBuilder);
-    newEntry.setId(entry.id!);
+
     assert(newEntry.pageKey == entry.pageKey);
 
     if (SchedulerBinding.instance.schedulerPhase ==
@@ -302,9 +300,9 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
       params: params,
       nPage: page,
       queryParams: extra ?? const {},
-      groupId: page.resolveGroupId(groupId),
+      groupId: groupId,
       pageKey: _newPageKey(),
-    )..setId(newId);
+    );
   }
 
   final random = Random();
@@ -314,19 +312,6 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
         String.fromCharCodes(List.generate(24, (_) => random.nextInt(97) + 33));
 
     return ValueKey('$prefix$key');
-  }
-
-  int _id = 0;
-
-  void resetRouterId(int oldId) {
-    if (oldId > _id) {
-      _id = oldId;
-    }
-  }
-
-  int get newId {
-    _id += 1;
-    return _id;
   }
 
   bool isValid(String location) {
@@ -356,15 +341,17 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
   void _until(UntilFn test) {
     RouteQueueEntry? current = _routeQueue.current;
 
-    while (current != null) {
-      if (test(current)) break;
-      final pre = current.pre;
-      current = pre;
+    RouteQueueEntry? entry = current;
+    while (entry != null) {
+      if (test(entry)) break;
+      final pre = entry.pre;
+      entry = pre;
     }
 
     final nav = navigatorKey.currentState;
-    if (current != null && nav?.mounted == true) {
-      nav!.popUntil((route) => route.settings == current!.page);
+    if (entry != null && entry != current && nav?.mounted == true) {
+      final page = entry.page;
+      nav!.popUntil((route) => route.settings == page);
     }
   }
 
