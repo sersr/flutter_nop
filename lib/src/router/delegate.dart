@@ -4,7 +4,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:nop/nop.dart';
-
 import '../../nav.dart';
 import 'router.dart';
 import 'web/history_state.dart';
@@ -88,10 +87,10 @@ class RouteRestorableState extends State<RouteRestorable>
 
     final pre = routeQueue.pre;
     if (stateEntry != null && stateEntry.eq(pre)) {
-      assert(Log.i('pre:'));
-      assert(Log.w(pre!.toJson().logPretty()));
-      assert(Log.i('state:'));
-      assert(Log.w(stateEntry.toJson().logPretty()));
+      // assert(Log.i('pre:'));
+      // assert(Log.w(pre!.toJson().logPretty()));
+      // assert(Log.i('state:'));
+      // assert(Log.w(stateEntry.toJson().logPretty()));
       delegate._pop();
     } else {
       RouteQueueEntry? entry = stateEntry;
@@ -117,7 +116,7 @@ class RouteRestorableState extends State<RouteRestorable>
 
       routeQueue.insert(entry);
       if (state == null) {
-        // 更新当前路由的状态
+        // update new route state
         routeQueue.updateRouteInfo(true);
       }
     }
@@ -180,18 +179,17 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
   }
 
   bool _restore() {
-    if (kDartIsWeb) {
-      if (historyState case {'state': Map data}) {
-        assert(Log.w('state: ${data.logPretty()}', showTag: false));
-        final n = RouteQueue.fromJson(data, this);
-        if (n != null) {
-          routeQueue.copyFrom(n);
-          // ? ? ?
-          routeQueue.updateRouteInfo(true);
-          return true;
-        }
+    if (historyState case {'state': Map data}) {
+      // assert(Log.w('state: ${data.logPretty()}', showTag: false));
+      final n = RouteQueue.fromJson(data, this);
+      if (n != null) {
+        routeQueue.copyFrom(n);
+        // ? ? ?
+        routeQueue.updateRouteInfo(true);
+        return true;
       }
     }
+
     return false;
   }
 
@@ -222,13 +220,8 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
     if (!route.didPop(result)) {
       return false;
     }
-    if (route.settings is Page) {
-      final entry = _routeQueue.map.remove(route.settings);
-      if (entry != null) {
-        entry.remove();
-        _updateRouteInfo(false);
-      }
-    }
+    _routeQueue.popRoute(route);
+
     return true;
   }
 
@@ -339,20 +332,12 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
   }
 
   void _until(UntilFn test) {
-    RouteQueueEntry? current = _routeQueue.current;
+    _routeQueue.removeUntil(test);
 
-    RouteQueueEntry? entry = current;
-    while (entry != null) {
-      if (test(entry)) break;
-      final pre = entry.pre;
-      entry = pre;
-    }
-
-    final nav = navigatorKey.currentState;
-    if (entry != null && entry != current && nav?.mounted == true) {
-      final page = entry.page;
-      nav!.popUntil((route) => route.settings == page);
-    }
+    // final nav = navigatorKey.currentState;
+    // if (entry != null && nav?.mounted == true) {
+    //   nav!.popUntil((route) => route.settings == entry.page);
+    // }
   }
 
   RouteQueueEntry goUntil(String location, UntilFn test) {

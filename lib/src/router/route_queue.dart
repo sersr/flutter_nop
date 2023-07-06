@@ -10,23 +10,76 @@ class RouteQueue extends RestorableProperty<List<RouteQueueEntry>?>
   List<Page>? _pages;
   List<Page> get pages => _pages ??= _newPages();
 
-  Map<Page, RouteQueueEntry>? _map;
-  Map<Page, RouteQueueEntry> get map => _map ?? const {};
+  final _map = <Page, RouteQueueEntry>{};
 
   List<Page> _newPages() {
     final list = <Page>[];
-    final map = <Page, RouteQueueEntry>{};
     RouteQueueEntry? r = _root;
     while (r != null) {
       final page = r._build();
       if (page != null) {
-        map[page] = r;
+        _map.putIfAbsent(page, () => r!);
         list.add(page);
       }
       r = r._next;
     }
-    _map = map;
     return list;
+  }
+
+  void popRoute(Route route) {
+    final entry = _map[route.settings];
+    if (entry == null) return;
+    final isTop = _current == entry;
+    assert(!isTop || entry.isActived);
+
+    entry.remove();
+    if (route is TransitionRoute) {
+      assert(!_entryCache.containsKey(route));
+      _entryCache[route] = entry;
+      route.completed.whenComplete(() {
+        _entryCache.remove(route);
+      });
+    }
+    if (isTop) {
+      updateRouteInfo(false);
+    }
+  }
+
+  RouteQueueEntry? getEntry(Route route) {
+    return _map[route.settings] ?? _entryCache[route];
+  }
+
+  @override
+  void copyFrom(RouteQueue other) {
+    if (other == this) return;
+    _map.clear();
+    super.copyFrom(other);
+  }
+
+  @override
+  void _remove(RouteQueueEntry entry, {bool notify = true}) {
+    assert(entry.page == null || _map.containsKey(entry.page));
+    _map.remove(entry.page);
+    super._remove(entry, notify: notify);
+  }
+
+  final _entryCache = <TransitionRoute, RouteQueueEntry>{};
+
+  RouteQueueEntry? removeUntil(UntilFn test) {
+    final current = _current;
+    RouteQueueEntry? entry = current;
+    while (entry != null) {
+      if (test(entry)) break;
+      final pre = entry.pre;
+      entry._removeCurrent(null, false);
+      updateRouteInfo(false);
+      entry = pre;
+    }
+    if (entry != current) {
+      refresh();
+      return entry;
+    }
+    return null;
   }
 
   RouteQueueEntry? _lastInfo;
@@ -132,6 +185,7 @@ class RouteQueue extends RestorableProperty<List<RouteQueueEntry>?>
       _root = root;
       _current = current;
       _length = value.length;
+      _map.clear();
       refresh();
     }
   }
@@ -168,12 +222,18 @@ mixin RouteQueueMixin {
   bool get isSingle => _root == _current && _root != null && _current != null;
 
   void forEach(UntilFn test, {bool reverse = false}) {
-    RouteQueueEntry? current = reverse ? _current : _root;
-    while (current != null) {
-      if (test(current)) return;
-      if (reverse) {
+    RouteQueueEntry? current;
+
+    if (reverse) {
+      current = _current;
+      while (current != null) {
+        if (test(current)) return;
         current = current._pre;
-      } else {
+      }
+    } else {
+      current = _root;
+      while (current != null) {
+        if (test(current)) return;
         current = current._next;
       }
     }
@@ -227,7 +287,7 @@ mixin RouteQueueMixin {
     refresh();
   }
 
-  void _remove(RouteQueueEntryMixin entry, {bool notify = true}) {
+  void _remove(covariant RouteQueueEntryMixin entry, {bool notify = true}) {
     if (_root == entry) {
       assert(entry._pre == null);
       _root = entry._next;
@@ -344,12 +404,14 @@ class RouteQueueEntry with RouteQueueEntryMixin {
   }
 
   static RouteQueueEntry? of(BuildContext context) {
-    final modal = ModalRoute.of(context);
-    final page = modal?.settings;
+    final route = ModalRoute.of(context);
+    if (route == null) return null;
+    final page = route.settings;
     if (page is RouteQueueEntryPage) {
       return page.entry;
     }
-    return null;
+    final router = RouteRestorable.maybeOf(context)?.delegate;
+    return router?.routeQueue.getEntry(route);
   }
 
   Page? _page;
@@ -412,7 +474,7 @@ class RouteQueueEntry with RouteQueueEntryMixin {
       final root = delegate.rootPage;
       final route = root.getNPageFromIndex(index)!;
 
-      /// reset global ids
+      /// reset route id
       route.resetId(id);
 
       return RouteQueueEntry._json(
@@ -473,9 +535,11 @@ mixin RouteQueueEntryMixin {
 
   Future<dynamic> get future => (_completer ??= Completer<dynamic>()).future;
 
-  bool get isCompleted => _completer != null && _completer!.isCompleted;
+  bool get _isCompleted => _completer != null && _completer!.isCompleted;
 
-  bool get isActived => !isCompleted && !_disposed;
+  bool get isCompleted => _isCompleted || _disposed;
+
+  bool get isActived => !isCompleted;
 
   bool _disposed = false;
 

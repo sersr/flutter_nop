@@ -115,7 +115,7 @@ class NPageMain extends NPage {
 
   NPage? getPageFromLocation(String location,
       [Map<String, dynamic>? params, Map<String, dynamic>? keys]) {
-    return NPage.resolve(this, location, params ?? {}, keys);
+    return NPage.resolve(this, location, params, keys);
   }
 }
 
@@ -145,18 +145,18 @@ class MaterialIgnorePage<T> extends MaterialPage<T> with RouteQueueEntryPage {
         page: this, allowSnapshotting: allowSnapshotting);
   }
 
-  static Widget wrap(RouteQueueEntry entry, Widget child) {
-    return Builder(builder: (context) {
-      final bucket = RouteRestorable.maybeOf(context)?.bucket;
+  static Widget wrap(
+      BuildContext context, RouteQueueEntry entry, Widget child) {
+    final bucket = RouteRestorable.maybeOf(context)?.bucket;
+    if (bucket == null) return child;
 
-      return UnmanagedRestorationScope(
-        bucket: bucket,
-        child: RestorationScope(
-          restorationId: entry.restorationId,
-          child: child,
-        ),
-      );
-    });
+    return UnmanagedRestorationScope(
+      bucket: bucket,
+      child: RestorationScope(
+        restorationId: entry.restorationId,
+        child: child,
+      ),
+    );
   }
 }
 
@@ -171,16 +171,7 @@ class _MaterialIgnorePageRoute<T> extends PageRoute<T>
 
   @override
   Widget buildContent(BuildContext context) {
-    final bucket = RouteRestorable.maybeOf(context)?.bucket;
-    if (bucket == null) return _page.child;
-
-    return UnmanagedRestorationScope(
-      bucket: bucket,
-      child: RestorationScope(
-        restorationId: _page.entry.restorationId,
-        child: _page.child,
-      ),
-    );
+    return MaterialIgnorePage.wrap(context, _page.entry, _page.child);
   }
 
   @override
@@ -336,12 +327,11 @@ class NPage {
 
   String getUrl(Map<dynamic, dynamic> params, Map<dynamic, dynamic> extra) {
     final path = fullPath;
-    final allMatchs = _matchs;
     var start = 0;
     final buffer = StringBuffer();
 
     int i = 0;
-    for (var m in allMatchs) {
+    for (var m in _matchs) {
       if (m.start > start) {
         buffer.write(path.substring(start, m.start));
       }
@@ -377,12 +367,12 @@ class NPage {
   }
 
   static NPage? resolve(NPageMain root, String location,
-      Map<String, dynamic> params, Map<String, dynamic>? keys) {
+      Map<String, dynamic>? params, Map<String, dynamic>? keys) {
     return _resolve(root, location, root.relative, params, keys);
   }
 
   static NPage? _resolve(NPage current, String location, bool relative,
-      Map<String, dynamic> params, Map<String, dynamic>? keys) {
+      Map<String, dynamic>? params, Map<String, dynamic>? keys) {
     final hasKeys = keys != null && keys.isNotEmpty;
     final pathEq = current.fullPath == location;
 
@@ -394,8 +384,7 @@ class NPage {
     var m = current._pathFullExp.firstMatch(location);
     if (m == null && hasKeys) {
       if (pathEq) {
-        // assert(current._params.every((e) => keys.containsKey(e)));
-        params.addAll(keys);
+        if (params != null) params.addAll(keys);
         return current;
       }
 
@@ -403,16 +392,18 @@ class NPage {
       final path = '$location$keysW';
 
       if (current._pathFullExp.hasMatch(path)) {
-        // assert(current._params.every((e) => keys.containsKey(e)));
-        params.addAll(keys);
+        if (params != null) params.addAll(keys);
         return current;
       }
     }
+
     if (m != null) {
       assert(current._params.length == m.groupCount);
-      final keys = current._params;
-      for (var i = 0; i < keys.length; i += 1) {
-        params[keys[i]] = m[1 + i];
+      if (params != null) {
+        final keys = current._params;
+        for (var i = 0; i < keys.length; i += 1) {
+          params[keys[i]] = m[1 + i];
+        }
       }
       return current;
     }
