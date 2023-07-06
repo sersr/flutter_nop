@@ -333,11 +333,6 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
 
   void _until(UntilFn test) {
     _routeQueue.removeUntil(test);
-
-    // final nav = navigatorKey.currentState;
-    // if (entry != null && nav?.mounted == true) {
-    //   nav!.popUntil((route) => route.settings == entry.page);
-    // }
   }
 
   RouteQueueEntry goUntil(String location, UntilFn test) {
