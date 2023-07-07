@@ -2,6 +2,8 @@ part of 'router.dart';
 
 typedef PageBuilder<S> = Page<S> Function(RouteQueueEntry entry);
 typedef RedirectBuilder = RouteQueueEntry Function(RouteQueueEntry entry);
+typedef ErrorPageBuilder = RouteQueueEntry Function(
+    String location, Map params, Map extra, Object? groupId);
 
 /// ```dart
 /// class JsonData {
@@ -76,13 +78,25 @@ class NPageMain extends NPage {
   NPageMain({
     this.relative = true,
     super.path,
-    super.pageBuilder,
     super.pages,
+    required super.pageBuilder,
     super.redirectBuilder,
+    this.errorPageBuilder,
   }) {
     NPage._fullPathToRegExg(this);
     _index = 0;
     resolveFullPath(this, relative, 1);
+  }
+
+  final ErrorPageBuilder? errorPageBuilder;
+
+  RouteQueueEntry errorBuild(
+      String location, Map params, Map extra, Object? groupId) {
+    if (errorPageBuilder != null) {
+      return errorPageBuilder!(location, params, extra, groupId);
+    }
+    return RouteQueueEntry.error(
+        path: location, params: params, queryParams: extra, groupId: groupId);
   }
 
   final bool relative;
@@ -205,7 +219,7 @@ class NPage {
     this.isPrimary = false,
     this.path = '/',
     this.pages = const [],
-    this.pageBuilder,
+    required this.pageBuilder,
     this.groupOwner,
     this.redirectBuilder,
   });
@@ -213,9 +227,45 @@ class NPage {
   final bool isPrimary;
   final String path;
   final List<NPage> pages;
-  final PageBuilder? pageBuilder;
+  final PageBuilder pageBuilder;
 
   final RedirectBuilder? redirectBuilder;
+
+  static final errorNPage = NPage(pageBuilder: (entry) {
+    return MaterialIgnorePage(
+      entry: entry,
+      child: ColoredBox(
+        color: Colors.white,
+        child: Stack(
+          children: [
+            ErrorWidget.withDetails(message: 'error path: ${entry.path}'),
+            Positioned(
+              left: 8,
+              top: 50,
+              child: Material(
+                color: Colors.transparent,
+                shape: const CircleBorder(),
+                clipBehavior: Clip.hardEdge,
+                child: InkWell(
+                  onTap: () {
+                    entry.remove();
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Icon(
+                      Icons.adaptive.arrow_back,
+                      color: Colors.white,
+                      size: 28,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  });
 
   RouteQueueEntry redirect(RouteQueueEntry entry, {RedirectBuilder? builder}) {
     if (redirectBuilder == null) return builder?.call(entry) ?? entry;
@@ -224,8 +274,10 @@ class NPage {
 
   String? _fullPath;
   String get fullPath => _fullPath ?? path;
-  late final int _index;
-  int get index => _index;
+
+  int? _index;
+  int get index => _index!;
+  bool get isErrorPage => _index == null;
 
   NPage? getNPageFromIndex(int index) {
     if (_index == index) return this;
@@ -234,6 +286,14 @@ class NPage {
       if (nPage != null) return nPage;
     }
     return null;
+  }
+
+  bool contains(NPage page) {
+    if (this == page) return true;
+    for (var child in pages) {
+      if (child.contains(page)) return true;
+    }
+    return false;
   }
 
   /// 完整匹配 `^$`

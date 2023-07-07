@@ -17,10 +17,10 @@ class RouteQueue extends RestorableProperty<List<RouteQueueEntry>?>
     RouteQueueEntry? r = _root;
     while (r != null) {
       final page = r._build();
-      if (page != null) {
-        _map.putIfAbsent(page, () => r!);
-        list.add(page);
-      }
+
+      _map.putIfAbsent(page, () => r!);
+      list.add(page);
+
       r = r._next;
     }
     return list;
@@ -196,7 +196,7 @@ class RouteQueue extends RestorableProperty<List<RouteQueueEntry>?>
     RouteQueueEntry? r = _root;
 
     while (r != null) {
-      list.add(r.toJson());
+      if (!r.isErrorEntry) list.add(r.toJson());
       assert(r._next != null || r == _current);
       r = r._next;
     }
@@ -331,13 +331,34 @@ class RouteQueueEntry with RouteQueueEntryMixin {
     required ValueKey<String> pageKey,
     Object? groupId,
     this.queryParams = const {},
-  })  : _pageKey = pageKey,
+  })  : assert(!nPage.isErrorPage),
+        _pageKey = pageKey,
         _groupId = NPage.ignoreToken(groupId),
         _id = nPage._newRouteId,
         _useId = NPage.canUseId(groupId),
         _path = path;
 
-  RouteQueueEntry._json({
+  static RouteQueueEntry error({
+    required String path,
+    Map params = const {},
+    Object? groupId,
+    Map queryParams = const {},
+  }) {
+    return RouteQueueEntry._internal(
+      path: path,
+      nPage: NPage.errorNPage,
+      params: params,
+      queryParams: queryParams,
+      groupId: groupId,
+      pageKey: const ValueKey('errorPage'),
+      useId: false,
+      id: -1,
+    );
+  }
+
+  bool get isErrorEntry => nPage.isErrorPage;
+
+  RouteQueueEntry._internal({
     String? path,
     required this.params,
     required this.nPage,
@@ -417,8 +438,8 @@ class RouteQueueEntry with RouteQueueEntryMixin {
   Page? _page;
 
   Page? get page => _page;
-  Page? _build() {
-    return _page ??= nPage.pageBuilder?.call(this);
+  Page _build() {
+    return _page ??= nPage.pageBuilder(this);
   }
 
   RouteQueueEntry redirect({
@@ -477,7 +498,7 @@ class RouteQueueEntry with RouteQueueEntryMixin {
       /// reset route id
       route.resetId(id);
 
-      return RouteQueueEntry._json(
+      return RouteQueueEntry._internal(
         id: id,
         path: path,
         useId: useId,
@@ -494,7 +515,12 @@ class RouteQueueEntry with RouteQueueEntryMixin {
   Map<String, dynamic> toJson() {
     var ps = NRouterJsonTransfrom.encodeMap(params);
     final qps = NRouterJsonTransfrom.encodeMap(queryParams);
-
+    if (isErrorEntry) {
+      return {
+        'page': path,
+        'isErrorPage': true,
+      };
+    }
     return {
       'path': _path,
       'id': _id,

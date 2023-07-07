@@ -233,7 +233,7 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
     _routeQueue.updateRouteInfo(replace);
   }
 
-  RouteQueueEntry? _parse(String location,
+  RouteQueueEntry _parse(String location,
       {Map<String, dynamic> params = const {},
       Map<String, dynamic>? extra,
       Object? groupId}) {
@@ -251,7 +251,9 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
 
     final realParams = <String, dynamic>{};
     final route = rootPage.getPageFromLocation(uri.path, realParams, params);
-    if (route == null) return null;
+    if (route == null) {
+      return rootPage.errorBuild(location, params, extra ?? const {}, groupId);
+    }
 
     return RouteQueueEntry(
       path: path,
@@ -263,32 +265,38 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
     );
   }
 
-  RouteQueueEntry _run(RouteQueueEntry entry, {bool update = true}) {
+  RouteQueueEntry _redirect(RouteQueueEntry entry) {
     final newEntry =
         entry.nPage.redirect(entry, builder: rootPage.redirectBuilder);
 
     assert(newEntry.pageKey == entry.pageKey);
+    return newEntry;
+  }
 
+  RouteQueueEntry _run(RouteQueueEntry entry, {bool update = true}) {
+    entry = _redirect(entry);
     if (SchedulerBinding.instance.schedulerPhase ==
         SchedulerPhase.persistentCallbacks) {
       // attach
-      newEntry.attach(_routeQueue);
+      entry.attach(_routeQueue);
 
       // delay
       SchedulerBinding.instance.addPostFrameCallback((timeStamp) {
-        _routeQueue.insert(newEntry);
+        _routeQueue.insert(entry);
       });
     } else {
-      _routeQueue.insert(newEntry);
+      _routeQueue.insert(entry);
     }
     if (update) _updateRouteInfo(false);
-    return newEntry;
+    return entry;
   }
 
   RouteQueueEntry createEntry(NPage page,
       {Map<String, dynamic> params = const {},
       Map<String, dynamic>? extra,
       Object? groupId}) {
+    assert(rootPage.contains(page));
+
     return RouteQueueEntry(
       params: params,
       nPage: page,
@@ -318,7 +326,8 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
       Map<String, dynamic>? extra,
       Object? groupId}) {
     final entry =
-        _parse(location, params: params, extra: extra, groupId: groupId)!;
+        _parse(location, params: params, extra: extra, groupId: groupId);
+
     return _run(entry);
   }
 
@@ -329,6 +338,41 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
     final entry =
         createEntry(page, params: params, extra: extra, groupId: groupId);
     return _run(entry);
+  }
+
+  RouteQueueEntry goReplacement(String location,
+      {Map<String, dynamic> params = const {},
+      Map<String, dynamic>? extra,
+      Object? groupId,
+      Object? result,
+      bool immediated = false}) {
+    final entry =
+        _parse(location, params: params, extra: extra, groupId: groupId);
+    return _goReplacement(entry, immediated, result);
+  }
+
+  RouteQueueEntry goPageRepalcement(NPage page, UntilFn test,
+      {Map<String, dynamic> params = const {},
+      Map<String, dynamic>? extra,
+      Object? groupId,
+      Object? result,
+      bool immediated = false}) {
+    final entry =
+        createEntry(page, params: params, extra: extra, groupId: groupId);
+    return _goReplacement(entry, immediated, result);
+  }
+
+  RouteQueueEntry _goReplacement(
+      RouteQueueEntry entry, bool immediated, Object? result) {
+    final queue = _routeQueue;
+    if (immediated && queue.current != null) {
+      entry.replace(queue.current!.pageKey);
+    }
+    queue.removeLast(result);
+    final newEntry = _redirect(entry);
+    queue.insert(newEntry);
+    queue.updateRouteInfo(true);
+    return newEntry;
   }
 
   void _until(UntilFn test) {
@@ -399,13 +443,6 @@ class RouterAction {
   }
 
   RouteQueueEntry goReplacement([Object? result, bool immediated = false]) {
-    final queue = router.routerDelegate._routeQueue;
-    if (immediated && queue.current != null) {
-      entry.replace(queue.current!.pageKey);
-    }
-    queue.removeLast();
-    final newEntry = router.routerDelegate._run(entry, update: false);
-    queue.updateRouteInfo(true);
-    return newEntry;
+    return router.routerDelegate._goReplacement(entry, immediated, result);
   }
 }
