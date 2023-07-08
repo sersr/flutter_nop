@@ -187,7 +187,7 @@ mixin GetTypePointers {
 
     assert(!containsKey(groupName, t), t);
 
-    assert(Log.w('[$globalPrefix${getGroupName(groupName)}], create: $t',
+    assert(Log.w('[$globalPrefix${getGroupName(groupName)}] create: $t',
         position: position ?? 0));
     addListener(t, listener, groupName);
     return listener;

@@ -48,9 +48,6 @@ mixin NopLifeCycle {
     if (lifeCycle is! NopLifeCycle) {
       _caches[lifeCycle] = listener;
     }
-    assert(Log.w(lifeCycle is NopLifeCycle
-        ? '${GetTypePointers.getGroupName(listener.group)}: ${lifeCycle.runtimeType}'
-        : '${lifeCycle.runtimeType}'));
 
     if (lifeCycle is NopLifeCycle) {
       if (lifeCycle._listener == null) {
@@ -58,6 +55,9 @@ mixin NopLifeCycle {
         lifeCycle.nopInit();
       }
     }
+    assert(Log.w(lifeCycle is NopLifeCycle
+        ? '[${lifeCycle._globalPrefix}${GetTypePointers.getGroupName(lifeCycle._listener?.group)}] ${lifeCycle.runtimeType}'
+        : '${lifeCycle.runtimeType}'));
   }
 
   static void disposeStart(Object lifeCycle) {
@@ -72,14 +72,16 @@ mixin NopLifeCycle {
     }
   }
 
+  String get _globalPrefix => isGlobalData ? 'Global::' : '';
+
   static void autoDispose(Object lifeCycle) {
+    assert(Log.w(lifeCycle is NopLifeCycle
+        ? '[${lifeCycle._globalPrefix}${GetTypePointers.getGroupName(lifeCycle._listener?.group)}] ${lifeCycle.runtimeType}'
+        : '${lifeCycle.runtimeType}'));
+
     if (lifeCycle is! NopLifeCycle) {
       _caches.remove(lifeCycle);
     }
-    assert(Log.w(lifeCycle is NopLifeCycle
-        ? '${GetTypePointers.getGroupName(lifeCycle._listener?.group)}: ${lifeCycle.runtimeType}'
-        : '${lifeCycle.runtimeType}'));
-
     if (lifeCycle is NopLifeCycle) {
       lifeCycle.nopDispose();
       lifeCycle._listener = null;

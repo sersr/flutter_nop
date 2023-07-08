@@ -140,7 +140,6 @@ class RouteRestorableState extends State<RouteRestorable>
 
   @override
   void restoreState(RestorationBucket? oldBucket, bool initialRestore) {
-    assert(Log.w('res: $restorationId'));
     registerForRestoration(routeQueue, '_routes');
   }
 }
