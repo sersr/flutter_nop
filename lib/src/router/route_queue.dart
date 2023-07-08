@@ -333,9 +333,8 @@ class RouteQueueEntry with RouteQueueEntryMixin {
     this.queryParams = const {},
   })  : assert(!nPage.isErrorPage),
         _pageKey = pageKey,
-        _groupId = NPage.ignoreToken(groupId),
+        _groupId = nPage.ignoreToken(groupId),
         _id = nPage._newRouteId,
-        _useId = NPage.canUseId(groupId),
         _path = path;
 
   static RouteQueueEntry error({
@@ -351,7 +350,6 @@ class RouteQueueEntry with RouteQueueEntryMixin {
       queryParams: queryParams,
       groupId: groupId,
       pageKey: const ValueKey('errorPage'),
-      useId: false,
       id: -1,
     );
   }
@@ -364,12 +362,10 @@ class RouteQueueEntry with RouteQueueEntryMixin {
     required this.nPage,
     Object? groupId,
     required int id,
-    required bool useId,
     required ValueKey<String> pageKey,
     this.queryParams = const {},
   })  : _pageKey = pageKey,
         _id = id,
-        _useId = useId,
         _groupId = groupId,
         _path = path;
 
@@ -407,8 +403,6 @@ class RouteQueueEntry with RouteQueueEntryMixin {
   @override
   String get restorationId => nPage.getRestorationId(_id);
 
-  final bool _useId;
-
   final int _id;
 
   @override
@@ -419,9 +413,8 @@ class RouteQueueEntry with RouteQueueEntryMixin {
 
   Object? get groupId {
     if (_cacheGroupId != null) return _cacheGroupId!;
-    if (!_useId) return _cacheGroupId = _groupId;
 
-    return _cacheGroupId = _groupId ?? nPage.getGroupIdWithId(_id);
+    return _cacheGroupId = _groupId ?? nPage.getGroupId(_id);
   }
 
   static RouteQueueEntry? of(BuildContext context) {
@@ -487,7 +480,6 @@ class RouteQueueEntry with RouteQueueEntryMixin {
           'params': Map params,
           'queryParams': Map queryParams,
           'groupId': Object? groupId,
-          'useId': bool useId,
           'index': int index,
           'id': int id,
           'pageKey': String pageKey,
@@ -501,7 +493,6 @@ class RouteQueueEntry with RouteQueueEntryMixin {
       return RouteQueueEntry._internal(
         id: id,
         path: path,
-        useId: useId,
         queryParams: queryParams,
         params: params,
         nPage: route,
@@ -528,7 +519,6 @@ class RouteQueueEntry with RouteQueueEntryMixin {
       'params': ps,
       'queryParams': qps,
       'groupId': _groupId,
-      'useId': _useId,
       'pageKey': pageKey.value,
     };
   }

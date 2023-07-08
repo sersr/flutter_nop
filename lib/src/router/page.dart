@@ -220,7 +220,7 @@ class NPage {
     this.path = '/',
     this.pages = const [],
     required this.pageBuilder,
-    this.groupOwner,
+    this.useGroupId = false,
     this.redirectBuilder,
   });
 
@@ -304,8 +304,7 @@ class NPage {
 
   final _params = <String>[];
 
-  /// [true] or [Npage Function()]
-  final Object? groupOwner;
+  final bool useGroupId;
 
   int _routeId = 0;
   int get historyCount => _routeId;
@@ -322,11 +321,7 @@ class NPage {
     }
   }
 
-  static bool canUseId(Object? groupId) {
-    return identical(groupId, newGroupKey);
-  }
-
-  static Object? ignoreToken(Object? groupId) {
+  Object? ignoreToken(Object? groupId) {
     if (identical(groupId, newGroupKey)) {
       return null;
     }
@@ -337,12 +332,9 @@ class NPage {
     return 'n_router_$_index+$id';
   }
 
-  String? getGroupIdWithId(int id) {
-    return switch (groupOwner) {
-      true => '${fullPath}_$id',
-      NPage Function() fn => fn().getGroupIdWithId(id),
-      _ => null,
-    };
+  String? getGroupId(int id) {
+    if (!useGroupId) return null;
+    return '$fullPath+$id';
   }
 
   /// 供外部使用
