@@ -229,10 +229,6 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
 
   RouteQueue get routeQueue => _routeQueue;
 
-  void _updateRouteInfo(bool replace) {
-    _routeQueue.updateRouteInfo(replace);
-  }
-
   RouteQueueEntry _parse(String location,
       {Map<String, dynamic> params = const {},
       Map<String, dynamic>? extra,
@@ -287,7 +283,7 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
     } else {
       _routeQueue.insert(entry);
     }
-    if (update) _updateRouteInfo(false);
+    if (update) _routeQueue.updateRouteInfo(false);
     return entry;
   }
 
@@ -402,7 +398,7 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
 
   void pop([Object? result]) {
     _pop(result);
-    _updateRouteInfo(false);
+    _routeQueue.updateRouteInfo(false);
   }
 
   void _pop([Object? result]) {

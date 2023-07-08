@@ -1,7 +1,6 @@
 import 'dart:collection';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:nop/utils.dart';
 
 import '../navigation/navigator_observer.dart';
@@ -9,7 +8,6 @@ import 'dependences_mixin.dart';
 import 'nop_dependencies.dart';
 import 'nop_listener.dart';
 import 'nop_pre_init.dart';
-import 'route.dart';
 import 'typedef.dart';
 
 extension GetType on BuildContext {
@@ -77,16 +75,17 @@ class Nop<C> extends StatefulWidget {
   static bool printEnabled = false;
 
   static T of<T>(BuildContext? context,
-      {Object? group, bool global = false, int position = 0}) {
+      {Object? group, bool global = false, int? position = 0}) {
     final nop = context?.dependOnInheritedWidgetOfExactType<_NopScoop>();
     if (nop != null) {
-      return nop.state.getType<T>(group, global);
+      return nop.state.getType<T>(group, global, position);
     } else {
       assert(!stricted ||
           context == null ||
           Log.e('Nop.page not found. You need to use Nop.page()') && false);
       final listener = GetTypePointers.defaultGetNopListener(T, null, group,
-          position: position += 2);
+          position: GetTypePointers.addPosition(position, step: 2));
+      listener.initIfNeed();
       return listener.data;
     }
   }
@@ -105,9 +104,9 @@ class Nop<C> extends StatefulWidget {
   }
 
   static T? maybeOf<T>(BuildContext context,
-      {Object? group, bool global = false}) {
+      {Object? group, bool global = false, int? position = 0}) {
     final nop = context.dependOnInheritedWidgetOfExactType<_NopScoop>();
-    return nop?.state.getType<T>(group, global);
+    return nop?.state.getType<T>(group, global, position);
   }
 
   /// 链表会自动管理生命周期
@@ -200,8 +199,8 @@ class _NopState<C> extends State<Nop<C>> with NopListenerHandle, NopRouteAware {
   }
 
   /// export
-  T getType<T>(Object? group, bool global) {
-    return getTypeListener(T, group, global: global).data;
+  T getType<T>(Object? group, bool global, int? position) {
+    return getTypeListener(T, group, global: global, position: position).data;
   }
 
   T? findTypeArg<T>(Object? group, bool global) {
@@ -211,14 +210,15 @@ class _NopState<C> extends State<Nop<C>> with NopListenerHandle, NopRouteAware {
   /// ---
 
   @override
-  NopListener getTypeListener(Type t, Object? group, {bool global = false}) {
+  NopListener getTypeListener(Type t, Object? group,
+      {int? position, bool global = false}) {
     if (!global) {
       group ??= getGroup(t);
     }
     var listener = getListener(t, group);
 
     if (listener == null) {
-      listener = getOrCreateDependence(t, group);
+      listener = getOrCreateDependence(t, group, position);
       _addListener(t, group, listener);
     }
 
@@ -258,7 +258,7 @@ class _NopState<C> extends State<Nop<C>> with NopListenerHandle, NopRouteAware {
     return GetTypePointers.defaultFindNopListener(t, dependence, group);
   }
 
-  NopListener getOrCreateDependence(Type t, Object? group) {
+  NopListener getOrCreateDependence(Type t, Object? group, int? position) {
     final pageState = getPageNopState(this);
 
     NopListener? listener;
@@ -285,26 +285,15 @@ class _NopState<C> extends State<Nop<C>> with NopListenerHandle, NopRouteAware {
     }
 
     listener ??= GetTypePointers.defaultGetNopListener(t, dependence, group,
-        isSelf: isSelf);
+        isSelf: isSelf,
+        position: GetTypePointers.addPosition(position, step: 4));
 
     return listener;
   }
 
-  @override
-  void update() {
-    if (mounted) {
-      if (SchedulerBinding.instance.schedulerPhase !=
-          SchedulerPhase.persistentCallbacks) {
-        setState(() {});
-      }
-    }
-  }
-
-  Object? _group;
-
   Object? getGroup(Type t) {
     if (widget.groupList.contains(GetTypePointers.getAlias(t))) {
-      return _group;
+      return widget.group;
     }
     return null;
   }
@@ -316,7 +305,6 @@ class _NopState<C> extends State<Nop<C>> with NopListenerHandle, NopRouteAware {
   void initState() {
     super.initState();
     isPage = widget.isPage;
-    _group = widget.group;
   }
 
   void _initData(dynamic data) {
@@ -345,14 +333,6 @@ class _NopState<C> extends State<Nop<C>> with NopListenerHandle, NopRouteAware {
       final parent = Nop._maybeOf(context);
       push(dependence,
           parent: parent == null ? null : getPageNopState(parent)?.dependence);
-    }
-
-    // get groupId from settings
-    if (_group == null) {
-      final settings = ModalRoute.of(context)?.settings;
-      if (settings is NopRouteSettings) {
-        _group = settings.group;
-      }
     }
 
     // init
@@ -390,9 +370,6 @@ class _NopState<C> extends State<Nop<C>> with NopListenerHandle, NopRouteAware {
     if (_caches.isEmpty) return;
     for (var group in _caches.values) {
       for (var item in group.values) {
-        if (item == _local) {
-          continue;
-        }
         item.remove(this);
       }
     }

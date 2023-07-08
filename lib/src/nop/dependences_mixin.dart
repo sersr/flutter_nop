@@ -56,18 +56,20 @@ mixin GetTypePointers {
     return _findTypeElement(getAlias(T), groupName);
   }
 
-  NopListener _getTypeArg(Type t, Object? groupName) {
+  NopListener _getTypeArg(Type t, Object? groupName, int? position) {
     t = getAlias(t);
     var listener = _findTypeArgAndAdd(t, groupName);
-    listener ??= _createListenerArg(t, groupName);
+    listener ??= _createListenerArg(t, groupName, position);
     return listener;
   }
 
   NopListener? _findTypeArgAndAdd(Type t, Object? groupName) {
     var listener = _findCurrentTypeArg(t, groupName);
-    listener ??= _findTypeOtherElement(t, groupName);
-    if (listener != null && !containsKey(groupName, t)) {
-      assert(Log.w('group: ${getGroupName(groupName)} create: $t'));
+    if (listener != null) return listener;
+    listener = _findTypeOtherElement(t, groupName);
+    if (listener != null) {
+      assert(!containsKey(groupName, t));
+      assert(Log.w('${getGroupName(groupName)}: Add $t'));
       addListener(t, listener, groupName);
     }
 
@@ -81,22 +83,26 @@ mixin GetTypePointers {
 
   static HashMap<T, V> createHashMap<T, V>() => HashMap<T, V>();
 
+  static int? addPosition(int? position, {int step = 1}) {
+    if (position == null) return null;
+    return position + step;
+  }
+
   static NopListener defaultGetNopListener(
       Type t, GetTypePointers? current, Object? groupName,
       {bool isSelf = true, int? position}) {
     if (current == null) {
-      assert(Log.w('Global: create $t', position: position ?? 6));
-      return globalDependences._getTypeArg(t, groupName);
+      return globalDependences._getTypeArg(
+          t, groupName, addPosition(position, step: 3));
     }
 
     t = getAlias(t);
 
-    NopListener? listener = current._findCurrentTypeArg(t, groupName);
+    var listener = current._findCurrentTypeArg(t, groupName) ??
+        globalDependences._findTypeElement(t, groupName);
 
     if (listener == null) {
       listener = current._findTypeOtherElement(t, groupName); // other
-      listener ??=
-          globalDependences._findTypeElement(t, groupName); // global singleton
 
       // other: should add listener
       if (listener != null && isSelf) {
@@ -104,7 +110,8 @@ mixin GetTypePointers {
       }
     }
 
-    listener ??= current._createListenerArg(t, groupName);
+    listener ??= current._createListenerArg(
+        t, groupName, addPosition(position, step: 2));
 
     return listener;
   }
@@ -173,12 +180,15 @@ mixin GetTypePointers {
     return groupName == null ? 'Default' : '$groupName';
   }
 
-  NopListener _createListenerArg(Type t, Object? groupName) {
+  String get globalPrefix => this == globalDependences ? 'Global::' : '';
+
+  NopListener _createListenerArg(Type t, Object? groupName, int? position) {
     var listener = createArg(t, groupName);
 
     assert(!containsKey(groupName, t), t);
 
-    assert(Log.w('group: ${getGroupName(groupName)}, create: $t'));
+    assert(Log.w('[$globalPrefix${getGroupName(groupName)}], create: $t',
+        position: position ?? 0));
     addListener(t, listener, groupName);
     return listener;
   }

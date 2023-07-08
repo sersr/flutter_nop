@@ -4,7 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:nop/nop.dart';
 
-import '../../nop_state.dart';
+import 'dependences_mixin.dart';
+import 'nop_dependencies.dart';
 
 /// 自动管理生命周期
 mixin NopLifeCycle {
@@ -26,11 +27,12 @@ mixin NopLifeCycle {
   NopListener? _listener;
 
   bool get mounted => _listener != null && _listener!.mounted;
+  bool get isGlobalData => _listener != null && _listener!.isGlobal;
 
   /// 自动创建对象
-  T getType<T>({Object? group}) {
+  T getType<T>({Object? group, int? position = 0}) {
     assert(mounted);
-    return _listener!.getType<T>(group: group);
+    return _listener!.getType<T>(group: group, position: position);
   }
 
   /// 查找已存在的共享对象，不会创建对象
@@ -95,7 +97,7 @@ mixin NopLifeCycle {
 }
 
 mixin NopListenerHandle {
-  void update();
+  // void update();
   bool get mounted;
   NopListener getTypeListener(Type t, Object? group, {bool global = false});
   NopListener? findTypeListener(Type t, Object? group, {bool global = false});
@@ -112,8 +114,11 @@ abstract class NopListener {
   bool get mounted =>
       _dependenceTree.isNotEmpty || handle != null && handle!.mounted;
 
-  T getType<T>({Object? group}) => getTypeArg(T, group: group);
+  T getType<T>({Object? group, int? position = 0}) =>
+      getTypeArg(T, group: group, position: position);
   T? getTypeOrNull<T>({Object? group}) => findType(T, group: group)?.data;
+
+  void initIfNeed();
 
   void remove(NopListenerHandle key);
 
@@ -121,15 +126,18 @@ abstract class NopListener {
 
   bool get canRemoved => _dependenceTree.isEmpty;
 
+  bool get isGlobal =>
+      _dependenceTree.contains(GetTypePointers.globalDependences);
+
   void onRemove();
 
-  dynamic getTypeArg(Type t, {Object? group}) {
+  dynamic getTypeArg(Type t, {Object? group, int? position = 0}) {
     assert(mounted);
-    return getListener(t, group: group).data;
+    return getListener(t, group: group, position: position).data;
   }
 
-  NopListener getListener(Type t, {Object? group}) {
-    return getTypeDefault(t, this, group);
+  NopListener getListener(Type t, {Object? group, int? position = 0}) {
+    return getTypeDefault(t, this, group, position);
   }
 
   NopListener? findType(Type t, {Object? group}) {
@@ -185,7 +193,8 @@ abstract class NopListener {
     _syncTypePointers = first;
   }
 
-  static NopListener getTypeDefault(Type t, NopListener owner, Object? group) {
+  static NopListener getTypeDefault(Type t, NopListener owner, Object? group,
+      [int? position = -4]) {
     t = GetTypePointers.getAlias(t);
 
     NopListener? listener = owner._dependenceGroups[group]?[t];
@@ -194,7 +203,8 @@ abstract class NopListener {
       listener = owner.handle?.getTypeListener(t, group, global: true);
       assert(owner._dependenceTree.isNotEmpty);
       listener ??= GetTypePointers.defaultGetNopListener(
-          t, owner._dependenceTree.first, group);
+          t, owner._dependenceTree.first, group,
+          position: GetTypePointers.addPosition(position, step: 5));
       owner.addListener(t, listener, group);
       assert(owner.scope.index >= listener.scope.index);
     }
@@ -294,14 +304,22 @@ class NopListenerDefault extends NopListener {
     assert(_handles.contains(key));
     _handles.remove(key);
 
-    final local = data;
-    if (local is Listenable) {
-      local.removeListener(key.update);
-    }
     onRemove();
   }
 
   bool _init = false;
+
+  @override
+  void initIfNeed() {
+    if (_init) return;
+
+    try {
+      NopLifeCycle.autoInit(data, this);
+    } catch (e, s) {
+      Log.e('${data.runtimeType} init error: $e\n$s', onlyDebug: false);
+    }
+    _init = true;
+  }
 
   @override
   void add(NopListenerHandle key) {
@@ -309,17 +327,6 @@ class NopListenerDefault extends NopListener {
     assert(!_handles.contains(key));
 
     _handles.add(key);
-    final local = data;
-    if (local is Listenable) {
-      local.addListener(key.update);
-    }
-    if (!_init) {
-      try {
-        NopLifeCycle.autoInit(data, this);
-      } catch (e, s) {
-        Log.e('${data.runtimeType} init error: $e\n$s', onlyDebug: false);
-      }
-      _init = true;
-    }
+    initIfNeed();
   }
 }
