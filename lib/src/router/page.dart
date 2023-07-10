@@ -82,6 +82,7 @@ class NPageMain extends NPage {
     required super.pageBuilder,
     super.redirectBuilder,
     this.errorPageBuilder,
+    super.groupList,
   }) {
     NPage._fullPathToRegExg(this);
     _index = 0;
@@ -222,12 +223,14 @@ class NPage {
     required this.pageBuilder,
     this.useGroupId = false,
     this.redirectBuilder,
+    this.groupList = const [],
   });
 
   final bool isPrimary;
   final String path;
   final List<NPage> pages;
   final PageBuilder pageBuilder;
+  final List<Type> groupList;
 
   final RedirectBuilder? redirectBuilder;
 

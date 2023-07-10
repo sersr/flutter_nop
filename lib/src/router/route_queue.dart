@@ -12,12 +12,16 @@ class RouteQueue extends RestorableProperty<List<RouteQueueEntry>?>
 
   final _map = <Page, RouteQueueEntry>{};
 
+  @visibleForTesting
+  void log() {
+    Log.w(_map.logPretty());
+  }
+
   List<Page> _newPages() {
     final list = <Page>[];
     RouteQueueEntry? r = _root;
     while (r != null) {
       final page = r._build();
-
       _map.putIfAbsent(page, () => r!);
       list.add(page);
 
@@ -27,27 +31,42 @@ class RouteQueue extends RestorableProperty<List<RouteQueueEntry>?>
   }
 
   void popRoute(Route route) {
-    final entry = _map[route.settings];
-    if (entry == null) return;
+    final entry = moveToCache(route);
     final isTop = _current == entry;
-    assert(!isTop || entry.isActived);
-
-    entry.remove();
-    if (route is TransitionRoute) {
-      assert(!_entryCache.containsKey(route));
-      _entryCache[route] = entry;
-      route.completed.whenComplete(() {
-        _entryCache.remove(route);
-      });
-    }
+    assert(entry == null || !isTop || entry.isActived);
+    entry?.remove();
     if (isTop) {
       updateRouteInfo(false);
     }
   }
 
-  RouteQueueEntry? getEntry(Route route) {
-    return _map[route.settings] ?? _entryCache[route];
+  RouteQueueEntry? moveToCache(Route route) {
+    final settings = route.settings;
+    RouteQueueEntry? entry;
+    if (settings is MaterialIgnorePage) {
+      entry = settings.entry;
+    } else {
+      entry = _map[route.settings];
+    }
+
+    if (entry == null) return null;
+
+    if (route is TransitionRoute) {
+      _entryCache.putIfAbsent(route, () {
+        route.completed.whenComplete(() {
+          Log.e('${entry!.path} completed.');
+          _entryCache.remove(route);
+          entry._removeListener();
+        });
+        return entry!;
+      });
+    }
+
+    return entry;
   }
+
+  RouteQueueEntry? getEntry(Route route) =>
+      moveToCache(route) ?? _entryCache[route];
 
   @override
   void copyFrom(RouteQueue other) {
@@ -60,6 +79,9 @@ class RouteQueue extends RestorableProperty<List<RouteQueueEntry>?>
   void _remove(RouteQueueEntry entry, {bool notify = true}) {
     assert(entry.page == null || _map.containsKey(entry.page));
     _map.remove(entry.page);
+    assert(Log.e('${entry.path} removed.'));
+    entry._pop();
+    // if (!_entryCache.containsKey(entry.page)) entry._removeListener();
     super._remove(entry, notify: notify);
   }
 
@@ -150,7 +172,7 @@ class RouteQueue extends RestorableProperty<List<RouteQueueEntry>?>
 
       last?._next = current;
       current
-        .._parent = parent
+        .._queue = parent
         .._pre = last;
       last = current;
       list.add(current);
@@ -172,7 +194,7 @@ class RouteQueue extends RestorableProperty<List<RouteQueueEntry>?>
   void initWithValue(List<RouteQueueEntry>? value) {
     if (value != null && value.isNotEmpty) {
       forEach((current) {
-        current._parent = null;
+        current._queue = null;
         current._pre = null;
         current._next = null;
         current._complete();
@@ -181,7 +203,7 @@ class RouteQueue extends RestorableProperty<List<RouteQueueEntry>?>
 
       final root = value.first;
       final current = value.last;
-      assert(root._parent == this && current._parent == this);
+      assert(root._queue == this && current._queue == this);
       _root = root;
       _current = current;
       _length = value.length;
@@ -244,12 +266,12 @@ mixin RouteQueueMixin {
 
     other.forEach((entry) {
       assert(!entry._disposed);
-      entry._parent = this;
+      entry._queue = this;
       return false;
     });
 
     forEach((current) {
-      current._parent = null;
+      current._queue = null;
       current._pre = null;
       current._next = null;
       current._complete();
@@ -264,12 +286,12 @@ mixin RouteQueueMixin {
     refresh();
   }
 
-  bool isCurrent(RouteQueueEntry entry) => entry._parent == this;
+  bool isCurrent(RouteQueueEntry entry) => entry._queue == this;
 
   void insert(RouteQueueEntry entry, {RouteQueueEntry? after}) {
-    assert(after == null || after._parent == this);
+    assert(after == null || after._queue == this);
     assert(entry.isAlone);
-    assert(entry._parent == null || entry._parent == this);
+    assert(entry._queue == null || entry._queue == this);
 
     if (entry._disposed) return;
 
@@ -281,7 +303,7 @@ mixin RouteQueueMixin {
       }
       _current = entry;
     }
-    entry._parent = this;
+    entry._queue = this;
     _root ??= entry;
     _length += 1;
     refresh();
@@ -323,7 +345,9 @@ mixin RouteQueueMixin {
   void refresh();
 }
 
-class RouteQueueEntry with RouteQueueEntryMixin {
+class RouteQueueEntry
+    with RouteQueueEntryMixin, GetTypePointers
+    implements LogPretty {
   RouteQueueEntry({
     String? path,
     required this.params,
@@ -387,10 +411,18 @@ class RouteQueueEntry with RouteQueueEntryMixin {
 
   final NPage nPage;
 
+  Object? getGroup<T>([Type? t]) {
+    if (nPage.groupList.contains(t ?? T)) {
+      return groupId;
+    }
+    return null;
+  }
+
   ValueKey<String> _pageKey;
   ValueKey<String> get pageKey => _pageKey;
 
   void replace(ValueKey<String> key) {
+    assert(!attached);
     _pageKey = key;
   }
 
@@ -420,12 +452,9 @@ class RouteQueueEntry with RouteQueueEntryMixin {
   static RouteQueueEntry? of(BuildContext context) {
     final route = ModalRoute.of(context);
     if (route == null) return null;
-    final page = route.settings;
-    if (page is RouteQueueEntryPage) {
-      return page.entry;
-    }
-    final router = RouteRestorable.maybeOf(context)?.delegate;
-    return router?.routeQueue.getEntry(route);
+    final queue = RouteRestorable.maybeOf(context)?.delegate.routeQueue;
+
+    return queue?.getEntry(route);
   }
 
   Page? _page;
@@ -503,7 +532,7 @@ class RouteQueueEntry with RouteQueueEntryMixin {
     throw RouteQueueFromJosnError(data: json);
   }
 
-  Map<String, dynamic> toJson() {
+  Map<String, dynamic> toJson({bool detail = false}) {
     var ps = NRouterJsonTransfrom.encodeMap(params);
     final qps = NRouterJsonTransfrom.encodeMap(queryParams);
     if (isErrorEntry) {
@@ -513,7 +542,7 @@ class RouteQueueEntry with RouteQueueEntryMixin {
       };
     }
     return {
-      'path': _path,
+      'path': detail ? path : _path,
       'id': _id,
       'index': nPage.index,
       'params': ps,
@@ -522,12 +551,37 @@ class RouteQueueEntry with RouteQueueEntryMixin {
       'pageKey': pageKey.value,
     };
   }
+
+  @override
+  (dynamic, int) logPretty(int level) {
+    return (toJson(detail: true), level);
+  }
+
+  @override
+  GetTypePointers? get child => _pre;
+
+  @override
+  GetTypePointers? get parent => _next;
+
+  bool _poped = false;
+  @override
+  bool get poped => _poped;
+
+  void _pop() {
+    _poped = true;
+  }
+
+  void _removeListener() {
+    visitListener((_, listener) {
+      listener.onDependenceRemove(this);
+    });
+  }
 }
 
 mixin RouteQueueEntryMixin {
   int get id;
   String get restorationId => 'n_router+$id';
-  RouteQueueMixin? _parent;
+  RouteQueueMixin? _queue;
 
   RouteQueueEntry? _pre;
   RouteQueueEntry? _next;
@@ -536,15 +590,15 @@ mixin RouteQueueEntryMixin {
   RouteQueueEntry? get next => _next;
 
   bool get isAlone => _pre == null && _next == null;
-  bool get attached => _parent != null;
+  bool get attached => _queue != null;
 
   void attach(RouteQueueMixin parent) {
-    assert(_parent == null);
-    _parent = parent;
+    assert(_queue == null);
+    _queue = parent;
   }
 
   void detach() {
-    _parent = null;
+    _queue = null;
   }
 
   Completer<dynamic>? _completer;
@@ -566,7 +620,7 @@ mixin RouteQueueEntryMixin {
   void _removeCurrent([dynamic result, bool update = true]) {
     if (_disposed) return;
 
-    final root = _parent;
+    final root = _queue;
     if (root == null) {
       /// 立即取消
       _complete();
@@ -575,7 +629,7 @@ mixin RouteQueueEntryMixin {
 
     _pre?._next = _next;
     _next?._pre = _pre;
-    _parent = null;
+    _queue = null;
     root._remove(this, notify: update);
     _pre = null;
     _next = null;

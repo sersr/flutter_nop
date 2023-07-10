@@ -1,12 +1,4 @@
-import 'dart:math';
-
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
-import 'package:nop/nop.dart';
-import '../../nav.dart';
-import 'router.dart';
-import 'web/history_state.dart';
+part of 'router.dart';
 
 typedef UntilFn = bool Function(RouteQueueEntry entry);
 
@@ -194,10 +186,7 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
 
   @override
   Widget build(BuildContext context) {
-    final navObservers = [
-      if (!router.observers.contains(Nav.observer)) Nav.observer,
-      ...router.observers,
-    ];
+    final navObservers = router.observers;
     return RouteRestorable(
       restorationId: restorationId,
       delegate: this,
