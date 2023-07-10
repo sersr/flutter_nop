@@ -1,5 +1,4 @@
 import 'dependences_mixin.dart';
-import 'nop_listener.dart';
 
 class NopDependence with GetTypePointers {
   NopDependence({this.debugName});
@@ -65,15 +64,20 @@ class NopDependence with GetTypePointers {
     _remove();
   }
 
+  // @override
+  // void addListener(Type t, NopListener listener, Object? groupName) {
+  //   super.addListener(t, listener, groupName);
+  //   listener.onDependenceAdd(this);
+  // }
+
+  bool _poped = false;
   @override
-  void addListener(Type t, NopListener listener, Object? groupName) {
-    super.addListener(t, listener, groupName);
-    listener.onDependenceAdd(this);
-  }
+  bool get poped => _poped;
 
   void _remove() {
     parent = null;
     child = null;
+    _poped = true;
     visitListener((_, item) {
       item.onDependenceRemove(this);
     });

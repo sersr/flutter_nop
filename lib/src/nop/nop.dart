@@ -1,5 +1,3 @@
-import 'dart:collection';
-
 import 'package:flutter/material.dart';
 import 'package:nop/utils.dart';
 
@@ -124,30 +122,18 @@ class Nop<C> extends StatefulWidget {
   State<Nop<C>> createState() => _NopState<C>();
 }
 
-class _NopState<C> extends State<Nop<C>> with NopListenerHandle, NopRouteAware {
-  final _caches = <Object?, HashMap<Type, NopListener>>{};
-
-  bool containsKey(Object? group, Type t) {
-    return _caches[group]?.containsKey(t) ?? false;
-  }
-
-  void setLocalListener(NopListener listener, Object? group) {
+class _NopState<C> extends State<Nop<C>> with NopRouteAware {
+  void setLocalListener(NopListener listener) {
     assert(_local == null);
-    _local = _caches.putIfAbsent(
-            group, GetTypePointers.createHashMap)[GetTypePointers.getAlias(C)] =
-        listener;
-    listener.add(this);
+    _local = listener;
   }
 
   NopListener? getListener(Type t, Object? group) {
-    return _caches.putIfAbsent(
-        group, GetTypePointers.createHashMap)[GetTypePointers.getAlias(t)];
-  }
-
-  void _addListener(t, Object? group, NopListener listener) {
-    t = GetTypePointers.getAlias(t);
-    _caches.putIfAbsent(group, GetTypePointers.createHashMap)[t] = listener;
-    listener.add(this);
+    if (group == null &&
+        GetTypePointers.getAlias(t) == GetTypePointers.getAlias(C)) {
+      return _local;
+    }
+    return null;
   }
 
   late final dependence = NopDependence();
@@ -208,8 +194,6 @@ class _NopState<C> extends State<Nop<C>> with NopListenerHandle, NopRouteAware {
   }
 
   /// ---
-
-  @override
   NopListener getTypeListener(Type t, Object? group,
       {int? position, bool global = false}) {
     if (!global) {
@@ -217,17 +201,13 @@ class _NopState<C> extends State<Nop<C>> with NopListenerHandle, NopRouteAware {
     }
     var listener = getListener(t, group);
 
-    if (listener == null) {
-      listener = getOrCreateDependence(t, group, position);
-      _addListener(t, group, listener);
-    }
+    listener ??= getOrCreateDependence(t, group, position);
 
     assert(!Nop.printEnabled || Log.i('get $t', position: 3));
 
     return listener;
   }
 
-  @override
   NopListener? findTypeListener(Type t, Object? group, {global = false}) {
     if (!global) {
       group ??= getGroup(t);
@@ -262,10 +242,8 @@ class _NopState<C> extends State<Nop<C>> with NopListenerHandle, NopRouteAware {
     final pageState = getPageNopState(this);
 
     NopListener? listener;
-    //  = pageState?.getListener(t, group);
-    // assert(listener == null || pageState != this);
 
-    NopDependence? dependence = pageState?.dependence;
+    var dependence = pageState?.dependence;
     bool isSelf = true;
 
     assert(pageState == null ||
@@ -280,8 +258,6 @@ class _NopState<C> extends State<Nop<C>> with NopListenerHandle, NopRouteAware {
       }
       isSelf = false;
       dependence = currentDependence;
-    } else {
-      dependence = pageState.dependence;
     }
 
     listener ??= GetTypePointers.defaultGetNopListener(t, dependence, group,
@@ -310,7 +286,7 @@ class _NopState<C> extends State<Nop<C>> with NopListenerHandle, NopRouteAware {
   void _initData(dynamic data) {
     if (data != null) {
       final listener = GetTypePointers.createUniqueListener(data);
-      setLocalListener(listener, null);
+      setLocalListener(listener);
     }
   }
 
@@ -338,8 +314,7 @@ class _NopState<C> extends State<Nop<C>> with NopListenerHandle, NopRouteAware {
     // init
     if (widget.value != null) {
       _initData(widget.value);
-    } else if (widget.create != null &&
-        !_caches.containsKey(GetTypePointers.getAlias(C))) {
+    } else if (widget.create != null) {
       final data = widget.create!(context);
       _initData(data);
     }
@@ -355,7 +330,6 @@ class _NopState<C> extends State<Nop<C>> with NopListenerHandle, NopRouteAware {
   void dispose() {
     Nav.observer.unsubscribe(this);
     _popDependence();
-    _clearCache();
     super.dispose();
   }
 
@@ -364,16 +338,6 @@ class _NopState<C> extends State<Nop<C>> with NopListenerHandle, NopRouteAware {
     if (_popped) return;
     _popped = true;
     if (isPage) pop(dependence);
-  }
-
-  void _clearCache() {
-    if (_caches.isEmpty) return;
-    for (var group in _caches.values) {
-      for (var item in group.values) {
-        item.remove(this);
-      }
-    }
-    _caches.clear();
   }
 
   @override

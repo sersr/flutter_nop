@@ -5,12 +5,13 @@ import 'package:flutter/scheduler.dart';
 import 'package:nop/nop.dart';
 
 import 'dependences_mixin.dart';
-import 'nop_dependencies.dart';
 
 /// 自动管理生命周期
 mixin NopLifeCycle {
   static final _caches = <Object, NopListener>{};
   Object? get groupId => _listener?.group;
+
+  bool get poped => _listener?.poped ?? true;
 
   @mustCallSuper
   void nopInit() {
@@ -44,6 +45,8 @@ mixin NopLifeCycle {
   void onDisposeStart() {}
   void onDisposeCancel() {}
 
+  String get label => _listener?.label ?? '';
+
   static void autoInit(Object lifeCycle, NopListener listener) {
     if (lifeCycle is! NopLifeCycle) {
       _caches[lifeCycle] = listener;
@@ -56,7 +59,7 @@ mixin NopLifeCycle {
       }
     }
     assert(Log.w(lifeCycle is NopLifeCycle
-        ? '[${lifeCycle._globalPrefix}${GetTypePointers.getGroupName(lifeCycle._listener?.group)}] ${lifeCycle.runtimeType}'
+        ? '${lifeCycle.label} ${lifeCycle.runtimeType}'
         : '${lifeCycle.runtimeType}'));
   }
 
@@ -72,11 +75,9 @@ mixin NopLifeCycle {
     }
   }
 
-  String get _globalPrefix => isGlobalData ? 'Global::' : '';
-
   static void autoDispose(Object lifeCycle) {
     assert(Log.w(lifeCycle is NopLifeCycle
-        ? '[${lifeCycle._globalPrefix}${GetTypePointers.getGroupName(lifeCycle._listener?.group)}] ${lifeCycle.runtimeType}'
+        ? '${lifeCycle.label} ${lifeCycle.runtimeType}'
         : '${lifeCycle.runtimeType}'));
 
     if (lifeCycle is! NopLifeCycle) {
@@ -98,13 +99,6 @@ mixin NopLifeCycle {
   }
 }
 
-mixin NopListenerHandle {
-  // void update();
-  bool get mounted;
-  NopListener getTypeListener(Type t, Object? group, {bool global = false});
-  NopListener? findTypeListener(Type t, Object? group, {bool global = false});
-}
-
 abstract class NopListener {
   NopListener(this.data, this.group);
   final dynamic data;
@@ -112,19 +106,13 @@ abstract class NopListener {
 
   NopShareScope scope = NopShareScope.shared;
 
-  NopListenerHandle? get handle;
-  bool get mounted =>
-      _dependenceTree.isNotEmpty || handle != null && handle!.mounted;
+  bool get mounted => _dependenceTree.isNotEmpty;
 
   T getType<T>({Object? group, int? position = 0}) =>
       getTypeArg(T, group: group, position: position);
   T? getTypeOrNull<T>({Object? group}) => findType(T, group: group)?.data;
 
   void initIfNeed();
-
-  void remove(NopListenerHandle key);
-
-  void add(NopListenerHandle key);
 
   bool get canRemoved => _dependenceTree.isEmpty;
 
@@ -146,6 +134,12 @@ abstract class NopListener {
     return getTypeOrNullDefault(t, this, group);
   }
 
+  String get _globalPrefix => isGlobal ? 'Global::' : '';
+
+  String get label => '[$_globalPrefix${GetTypePointers.getGroupName(group)}]';
+
+  bool get poped => _dependenceTree.every((e) => e.poped);
+
   final _dependenceGroups = <Object?, HashMap<Type, NopListener>>{};
   final _dependenceTree = <GetTypePointers>[];
 
@@ -153,10 +147,9 @@ abstract class NopListener {
     if (_dependenceTree.contains(value)) return;
     _dependenceTree.add(value);
 
-    assert(Log.w(data is NopLifeCycle
-        ? '${GetTypePointers.getGroupName(group)}:'
-            ' ${data.runtimeType} length: ${_dependenceTree.length}'
-        : '${data.runtimeType} length: ${_dependenceTree.length}'));
+    assert(
+        Log.w('$label ${data.runtimeType} length: ${_dependenceTree.length}'));
+
     _updateDependence();
   }
 
@@ -164,10 +157,8 @@ abstract class NopListener {
 
   void onDependenceRemove(GetTypePointers value) {
     final result = _dependenceTree.remove(value);
-    assert(Log.w(data is NopLifeCycle
-        ? '${GetTypePointers.getGroupName(group)}:'
-            ' ${data.runtimeType} length: ${_dependenceTree.length}'
-        : '${data.runtimeType} length: ${_dependenceTree.length}'));
+    assert(
+        Log.w('$label ${data.runtimeType} length: ${_dependenceTree.length}'));
 
     if (_dependenceTree.isEmpty) {
       onRemove();
@@ -188,8 +179,8 @@ abstract class NopListener {
         if (first.findCurrentTypeArg(t, group.key) != null) continue;
         final subListener = entry.value;
         first.addListener(t, subListener, group.key);
-
-        if (first is! NopDependence) subListener.onDependenceAdd(first);
+        assert(subListener._dependenceTree.contains(first));
+        // if (first is! NopDependence) subListener.onDependenceAdd(first);
       }
     }
     _syncTypePointers = first;
@@ -202,9 +193,9 @@ abstract class NopListener {
     NopListener? listener = owner._dependenceGroups[group]?[t];
 
     if (listener == null) {
-      listener = owner.handle?.getTypeListener(t, group, global: true);
+      // listener = owner.handle?.getTypeListener(t, group);
       assert(owner._dependenceTree.isNotEmpty);
-      listener ??= GetTypePointers.defaultGetNopListener(
+      listener = GetTypePointers.defaultGetNopListener(
           t, owner._dependenceTree.first, group,
           position: GetTypePointers.addPosition(position, step: 5));
       owner.addListener(t, listener, group);
@@ -220,8 +211,8 @@ abstract class NopListener {
 
     NopListener? listener = owner._dependenceGroups[group]?[t];
     if (listener == null) {
-      listener = owner.handle?.findTypeListener(t, group, global: true);
-      listener ??= GetTypePointers.defaultFindNopListener(
+      // listener = owner.handle?.findTypeListener(t, group);
+      listener = GetTypePointers.defaultFindNopListener(
           t, owner._dependenceTree.first, group);
       if (listener != null) {
         owner.addListener(t, listener, group);
@@ -234,7 +225,8 @@ abstract class NopListener {
 
   void addListener(Type t, NopListener listener, Object? group) {
     if (_dependenceGroups.containsKey(t) || listener == this) return;
-    _dependenceGroups.putIfAbsent(group, () => HashMap())[t] = listener;
+    _dependenceGroups.putIfAbsent(group, GetTypePointers.createHashMap)[t] =
+        listener;
     final sync = _syncTypePointers;
     if (sync == null) {
       _updateDependence();
@@ -242,8 +234,8 @@ abstract class NopListener {
     }
     if (sync.findCurrentTypeArg(t, group) != null) return;
     sync.addListener(t, listener, group);
-
-    if (sync is! NopDependence) listener.onDependenceAdd(sync);
+    assert(listener._dependenceTree.contains(sync));
+    // if (sync is! NopDependence) listener.onDependenceAdd(sync);
   }
 }
 
@@ -264,24 +256,20 @@ enum NopShareScope {
 
 class NopListenerDefault extends NopListener {
   NopListenerDefault(dynamic data, Object? group) : super(data, group);
-  final Set<NopListenerHandle> _handles = {};
-
-  @override
-  NopListenerHandle? get handle {
-    if (_handles.isNotEmpty) return _handles.first;
-    return null;
-  }
-
   @override
   void onRemove() {
     if (mounted) return;
     if (_secheduled) return;
     NopLifeCycle.disposeStart(data);
-    SchedulerBinding.instance.addPostFrameCallback((_) {
-      _secheduled = false;
+    if (SchedulerBinding.instance.hasScheduledFrame) {
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        _secheduled = false;
+        _onRemove();
+      });
+      _secheduled = true;
+    } else {
       _onRemove();
-    });
-    _secheduled = true;
+    }
   }
 
   void _onRemove() {
@@ -289,25 +277,11 @@ class NopListenerDefault extends NopListener {
       NopLifeCycle.disposeCancel(data);
       return;
     }
-    _dispose = true;
     NopLifeCycle.autoDispose(data);
     _init = false;
   }
 
-  bool get isEmpty => _handles.isEmpty;
-
   bool _secheduled = false;
-
-  bool _dispose = false;
-
-  @override
-  void remove(NopListenerHandle key) {
-    assert(!_dispose);
-    assert(_handles.contains(key));
-    _handles.remove(key);
-
-    onRemove();
-  }
 
   bool _init = false;
 
@@ -321,14 +295,5 @@ class NopListenerDefault extends NopListener {
       Log.e('${data.runtimeType} init error: $e\n$s', onlyDebug: false);
     }
     _init = true;
-  }
-
-  @override
-  void add(NopListenerHandle key) {
-    assert(!_dispose);
-    assert(!_handles.contains(key));
-
-    _handles.add(key);
-    initIfNeed();
   }
 }

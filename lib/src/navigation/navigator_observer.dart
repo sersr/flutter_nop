@@ -188,6 +188,7 @@ abstract mixin class NopRouteAware {
   /// /// `popDependence` 解决这个问题
   /// Navigator.pushNamedAndRemoveUntil(context, '/page',(route)=> false);
   /// ```
+  /// ? ? ? : popDependence(Route route)
   void popDependence() {}
 }
 

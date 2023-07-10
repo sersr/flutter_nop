@@ -11,6 +11,8 @@ mixin GetTypePointers {
   GetTypePointers? get parent;
   GetTypePointers? get child;
 
+  bool get poped => false;
+
   final _groupPointers = HashMap<Object?, HashMap<Type, NopListener>>();
 
   int get length => _groupPointers.values.fold(
@@ -31,6 +33,7 @@ mixin GetTypePointers {
     t = getAlias(t);
     assert(!containsKey(groupName, t), t);
     _groupPointers.putIfAbsent(groupName, createHashMap)[t] = listener;
+    listener.onDependenceAdd(this);
   }
 
   void visitListener(ListenerVisitor visitor) {
