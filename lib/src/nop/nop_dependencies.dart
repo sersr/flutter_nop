@@ -79,6 +79,7 @@ class NopDependence with GetTypePointers {
     child = null;
     _poped = true;
     visitListener((_, item) {
+      item.onPop();
       item.onRemoveDependence(this);
     });
   }

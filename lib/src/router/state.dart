@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:nop/utils.dart';
 
 import '../../router.dart';
 import '../nop/dependences_mixin.dart';
@@ -8,8 +7,8 @@ import '../nop/typedef.dart';
 
 extension Grass on BuildContext {
   /// [group] shared group
-  T grass<T>({Object? group, bool global = false}) {
-    return Green.of(this, group: group, global: global);
+  T grass<T>({Object? group, bool global = false, int? position = 1}) {
+    return Green.of(this, group: group, global: global, position: position);
   }
 
   T? findGrass<T>({Object? group, bool global = false}) {
@@ -39,8 +38,6 @@ class Green<C> extends StatefulWidget {
   final List<NopWidgetBuilder>? builders;
   final C Function(BuildContext context)? create;
   final C? value;
-
-  static bool printEnabled = false;
 
   static T of<T>(BuildContext? context,
       {Object? group, bool global = false, int? position = 0}) {
@@ -85,16 +82,14 @@ class Green<C> extends StatefulWidget {
 }
 
 class _GreenState<C> extends State<Green<C>> {
-  void setLocalListener(NopListener listener) {
-    assert(_local == null);
-    _local = listener;
-  }
+  NopListener? getLocal(Type t, int? position) {
+    if (_local == null && _init) return null;
 
-  NopListener? getListener(Type t, Object? group) {
-    if (group == null &&
-        GetTypePointers.getAlias(t) == GetTypePointers.getAlias(C)) {
+    if (GetTypePointers.getAlias(t) == GetTypePointers.getAlias(C)) {
+      _initOnce(position);
       return _local;
     }
+
     return null;
   }
 
@@ -108,61 +103,79 @@ class _GreenState<C> extends State<Green<C>> {
   }
 
   /// ---
+  ///
 
   NopListener getTypeListener(Type t, Object? group,
       {bool global = false, int? position}) {
+    if (group == null) {
+      final listener = getLocal(t, position);
+      if (listener != null) {
+        return listener;
+      }
+    }
+
     final dependence = RouteQueueEntry.of(context);
+
     if (!global) {
       group ??= dependence?.getGroup(t);
     }
 
-    var listener = getListener(t, group);
-
-    listener ??= GetTypePointers.defaultGetNopListener(t, dependence, group,
+    return GetTypePointers.defaultGetNopListener(t, dependence, group,
         position: GetTypePointers.addPosition(position, step: 3));
-
-    assert(!Green.printEnabled || Log.i('get $t', position: 3));
-
-    return listener;
   }
 
   NopListener? findTypeListener(Type t, Object? group, {bool global = false}) {
+    if (group == null && _local != null) {
+      final listener = getLocal(t, null);
+      if (listener != null) {
+        return listener;
+      }
+    }
+
     final dependence = RouteQueueEntry.of(context);
+
     if (!global) {
       group ??= dependence?.getGroup(t);
     }
 
-    return getListener(t, group) ??
-        GetTypePointers.defaultFindNopListener(t, dependence, group);
+    return GetTypePointers.defaultFindNopListener(t, dependence, group);
   }
 
   NopListener? _local;
 
-  void _initData(dynamic data) {
-    if (data != null) {
-      final listener = GetTypePointers.createUniqueListener(data, C);
-      setLocalListener(listener);
-    }
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _initOnce();
+  bool _shouldClean = false;
+  void _initData(dynamic data, int? position) {
+    final dependence = RouteQueueEntry.of(context);
+    final (listener, shouldClean) = GetTypePointers.createUniqueListener(
+        data, C, dependence, GetTypePointers.addPosition(position, step: 7));
+    _local = listener;
+    _shouldClean = shouldClean;
   }
 
   bool _init = false;
-  void _initOnce() {
+  void _initOnce(int? position) {
     if (_init) return;
     _init = true;
 
     // init
     if (widget.value != null) {
-      _initData(widget.value);
+      _initData(widget.value, position);
     } else if (widget.create != null) {
       final data = widget.create!(context);
-      _initData(data);
+      assert(data != null);
+
+      _initData(data, position);
     }
+  }
+
+  @override
+  void dispose() {
+    if (_shouldClean && _local != null) {
+      final listener = _local!;
+      _local = null;
+      listener.uniqueDispose();
+    }
+    super.dispose();
   }
 
   @override

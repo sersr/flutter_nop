@@ -80,7 +80,7 @@ class Nop<C> extends StatefulWidget {
     } else {
       assert(!stricted ||
           context == null ||
-          Log.e('Nop.page not found. You need to use Nop.page()') && false);
+          Log.e('Nop.page not found. You need to use Nop.page().') && false);
       final listener = GetTypePointers.defaultGetNopListener(T, null, group,
           position: GetTypePointers.addPosition(position, step: 2));
       return listener.data;
@@ -122,14 +122,10 @@ class Nop<C> extends StatefulWidget {
 }
 
 class _NopState<C> extends State<Nop<C>> with NopRouteAware {
-  void setLocalListener(NopListener listener) {
-    assert(_local == null);
-    _local = listener;
-  }
-
-  NopListener? getListener(Type t, Object? group) {
+  NopListener? getLocal(Type t, Object? group, int? position) {
     if (group == null &&
         GetTypePointers.getAlias(t) == GetTypePointers.getAlias(C)) {
+      _initOnce(position);
       return _local;
     }
     return null;
@@ -198,11 +194,11 @@ class _NopState<C> extends State<Nop<C>> with NopRouteAware {
     if (!global) {
       group ??= getGroup(t);
     }
-    var listener = getListener(t, group);
+    var listener = getLocal(t, group, position);
 
     listener ??= getOrCreateDependence(t, group, position);
 
-    assert(!Nop.printEnabled || Log.i('get $t', position: 3));
+    assert(!Nop.printEnabled || Log.i('get $t.', position: 3));
 
     return listener;
   }
@@ -211,17 +207,20 @@ class _NopState<C> extends State<Nop<C>> with NopRouteAware {
     if (!global) {
       group ??= getGroup(t);
     }
-    NopListener? listener = getListener(t, group);
-    if (listener != null) return listener;
+    NopListener? listener;
+    if (_local != null) {
+      listener = getLocal(t, group, null);
+      if (listener != null) return listener;
+    }
 
     final pageState = getPageNopState(this);
+    NopDependence? dependence;
 
-    listener = pageState?.getListener(t, group);
-
-    NopDependence? dependence = pageState?.dependence;
-
-    if (dependence != null) {
-      listener = dependence.findCurrentTypeArg(t, group);
+    if (pageState != null && pageState._local != null) {
+      dependence = pageState.dependence;
+      assert(pageState._init);
+      listener = pageState.getLocal(t, group, null) ??
+          dependence.findCurrentTypeArg(t, group);
       if (listener != null) return listener;
     }
 
@@ -275,6 +274,7 @@ class _NopState<C> extends State<Nop<C>> with NopRouteAware {
 
   bool isPage = false;
   NopListener? _local;
+  bool _shouldClean = false;
 
   @override
   void initState() {
@@ -282,11 +282,12 @@ class _NopState<C> extends State<Nop<C>> with NopRouteAware {
     isPage = widget.isPage;
   }
 
-  void _initData(dynamic data) {
-    if (data != null) {
-      final listener = GetTypePointers.createUniqueListener(data, C);
-      setLocalListener(listener);
-    }
+  void _initData(dynamic data, int? position) {
+    final dependence = getPageNopState(this)?.dependence;
+    final (listener, shouldClean) = GetTypePointers.createUniqueListener(
+        data, C, dependence, GetTypePointers.addPosition(position, step: 7));
+    _local = listener;
+    _shouldClean = shouldClean;
   }
 
   @override
@@ -296,26 +297,32 @@ class _NopState<C> extends State<Nop<C>> with NopRouteAware {
     if (route != null) {
       Nav.observer.subscribe(this, route);
     }
-    _initOnce();
+    _push();
   }
 
-  bool _init = false;
-  void _initOnce() {
-    if (_init) return;
-    _init = true;
+  bool _pushed = false;
 
-    if (isPage) {
+  void _push() {
+    if (isPage && !_pushed) {
+      _pushed = true;
       final parent = Nop._maybeOf(context);
       push(dependence,
           parent: parent == null ? null : getPageNopState(parent)?.dependence);
     }
+  }
+
+  bool _init = false;
+  void _initOnce(int? position) {
+    if (_init) return;
+    _init = true;
 
     // init
     if (widget.value != null) {
-      _initData(widget.value);
+      _initData(widget.value, position);
     } else if (widget.create != null) {
       final data = widget.create!(context);
-      _initData(data);
+      assert(data != null);
+      _initData(data, position);
     }
   }
 
@@ -329,6 +336,12 @@ class _NopState<C> extends State<Nop<C>> with NopRouteAware {
   void dispose() {
     Nav.observer.unsubscribe(this);
     _popDependence();
+
+    if (_shouldClean && _local != null) {
+      final listener = _local!;
+      _local = null;
+      listener.uniqueDispose();
+    }
     super.dispose();
   }
 

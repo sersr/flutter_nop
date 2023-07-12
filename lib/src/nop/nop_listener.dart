@@ -50,39 +50,40 @@ mixin NopLifeCycle {
 
   String get label => _listener?.label ?? '';
 
-  static void autoInit(Object lifeCycle, NopListener listener) {
-    if (lifeCycle is! NopLifeCycle) {
-      _caches[lifeCycle] = listener;
+  static void autoInit(NopListener listener) {
+    final data = listener.data;
+    if (data is! NopLifeCycle) {
+      _caches[data] = listener;
     }
 
-    if (lifeCycle is NopLifeCycle) {
-      if (lifeCycle._listener == null) {
-        lifeCycle._listener = listener;
-        lifeCycle.nopInit();
+    if (data is NopLifeCycle) {
+      if (data._listener == null) {
+        data._listener = listener;
+        data.nopInit();
       }
     }
-    assert(Log.w(checkIsNopLisenter(lifeCycle)!.label));
+    assert(Log.w(listener.label));
   }
 
-  static void autoDispose(Object lifeCycle) {
-    assert(Log.w(checkIsNopLisenter(lifeCycle)!.label));
+  static void autoDispose(NopListener listener) {
+    final data = listener.data;
+    assert(Log.w(listener.label));
 
-    if (lifeCycle is! NopLifeCycle) {
-      _caches.remove(lifeCycle);
+    if (data is! NopLifeCycle) {
+      _caches.remove(data);
     }
-    if (lifeCycle is NopLifeCycle) {
-      lifeCycle.nopDispose();
-      lifeCycle._listener = null;
-    } else if (lifeCycle is ChangeNotifier) {
-      lifeCycle.dispose();
+    if (data is NopLifeCycle) {
+      data.nopDispose();
+      data._listener = null;
     }
   }
 
-  static void autoPop(Object lifeCycle) {
-    assert(Log.w(checkIsNopLisenter(lifeCycle)!.label));
+  static void autoPop(NopListener listener) {
+    final data = listener.data;
+    assert(Log.w(listener.label));
 
-    if (lifeCycle is NopLifeCycle) {
-      lifeCycle.onPop();
+    if (data is NopLifeCycle) {
+      data.onPop();
     }
   }
 
@@ -95,7 +96,7 @@ mixin NopLifeCycle {
 }
 
 abstract class NopListener {
-  NopListener(this.data, this.group, this._t);
+  NopListener(this.data, this.group, Type t) : _t = t;
   final dynamic data;
   final Object? group;
   final Type _t;
@@ -108,15 +109,26 @@ abstract class NopListener {
       getTypeArg(T, group: group, position: position);
   T? getTypeOrNull<T>({Object? group}) => findType(T, group: group)?.data;
 
-  @protected
-  void initIfNeed();
-
   bool get canRemoved => _dependenceTree.isEmpty;
 
   bool get isGlobal =>
       _dependenceTree.contains(GetTypePointers.globalDependences);
 
   void onRemove();
+
+  bool _init = false;
+
+  void initWithFirstDependence(GetTypePointers dependence, int? position) {
+    assert(!_init && _dependenceTree.isEmpty);
+    _init = true;
+
+    _dependenceTree.add(dependence);
+
+    assert(Log.w('$label created.',
+        position: GetTypePointers.addPosition(position) ?? 0));
+
+    NopLifeCycle.autoInit(this);
+  }
 
   dynamic getTypeArg(Type t, {Object? group, int? position = 0}) {
     assert(mounted);
@@ -140,12 +152,21 @@ abstract class NopListener {
         tag = 'Global::$group';
       }
     }
+    if (scope == NopShareScope.unique) {
+      tag = 'Local';
+    }
 
     tag ??= group?.toString() ?? '';
     return '[$tag]::$_t';
   }
 
-  bool get popped => _dependenceTree.every((e) => e.popped);
+  bool _popped = false;
+  bool get popped {
+    if (scope == NopShareScope.unique) {
+      return _popped;
+    }
+    return _dependenceTree.every((e) => e.popped);
+  }
 
   final _dependenceTree = <GetTypePointers>[];
 
@@ -156,10 +177,10 @@ abstract class NopListener {
 
   void onAddDependence(GetTypePointers value) {
     if (_dependenceTree.contains(value)) return;
-    _dependenceTree.add(value);
-    assert(Log.w('$label ${_dependenceTree.length}'));
+    assert(_init, 'You must call `initWithFirstDependence` first.');
 
-    initIfNeed();
+    _dependenceTree.add(value);
+    assert(Log.w('$label ${_dependenceTree.length}.'));
   }
 
   @Deprecated('use onRemoveDependence instead.')
@@ -169,17 +190,27 @@ abstract class NopListener {
 
   void onRemoveDependence(GetTypePointers value) {
     _dependenceTree.remove(value);
-    assert(Log.w('$label ${_dependenceTree.length}'));
+    assert(Log.w('$label ${_dependenceTree.length}.'));
 
     if (_dependenceTree.isEmpty) {
       onRemove();
-      return;
     }
+  }
+
+  void uniqueDispose() {
+    assert(scope == NopShareScope.unique);
+
+    _popped = true;
+    onPop();
+
+    assert(_dependenceTree.length == 1);
+    _dependenceTree.clear();
+    onRemove();
   }
 
   void onPop() {
     if (popped && mounted) {
-      NopLifeCycle.autoPop(data);
+      NopLifeCycle.autoPop(this);
     }
   }
 
@@ -225,30 +256,15 @@ enum NopShareScope {
   /// 不共享，独立的
   unique,
 
-  /// _listener is null
+  /// [NopLifeCycle._listener] is null
   detached,
 }
 
 class NopListenerDefault extends NopListener {
-  NopListenerDefault(super.data, super.group, super._t);
+  NopListenerDefault(super.data, super.group, super.t);
   @override
   void onRemove() {
     if (mounted) return;
-    NopLifeCycle.autoDispose(data);
-    _init = false;
-  }
-
-  bool _init = false;
-
-  @override
-  void initIfNeed() {
-    if (_init) return;
-
-    try {
-      NopLifeCycle.autoInit(data, this);
-    } catch (e, s) {
-      Log.e('${data.runtimeType} init error: $e\n$s', onlyDebug: false);
-    }
-    _init = true;
+    NopLifeCycle.autoDispose(this);
   }
 }
