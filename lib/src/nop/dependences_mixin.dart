@@ -11,7 +11,7 @@ mixin GetTypePointers {
   GetTypePointers? get parent;
   GetTypePointers? get child;
 
-  bool get poped => false;
+  bool get popped => false;
 
   final _groupPointers = HashMap<Object?, HashMap<Type, NopListener>>();
 
@@ -33,7 +33,7 @@ mixin GetTypePointers {
     t = getAlias(t);
     assert(!containsKey(groupName, t), t);
     _groupPointers.putIfAbsent(groupName, createHashMap)[t] = listener;
-    listener.onDependenceAdd(this);
+    listener.onAddDependence(this);
   }
 
   void visitListener(ListenerVisitor visitor) {
@@ -72,7 +72,7 @@ mixin GetTypePointers {
     listener = _findTypeOtherElement(t, groupName);
     if (listener != null) {
       assert(!containsKey(groupName, t));
-      assert(Log.w('${getGroupName(groupName)}: Add $t'));
+      assert(Log.w('${getLabel(groupName)}: Add $t'));
       addListener(t, listener, groupName);
     }
 
@@ -94,7 +94,7 @@ mixin GetTypePointers {
   static NopListener defaultGetNopListener(
       Type t, GetTypePointers? current, Object? groupName,
       {bool isSelf = true, int? position}) {
-    if (current == null) {
+    if (current == null || current == globalDependences) {
       return globalDependences._getTypeArg(
           t, groupName, addPosition(position, step: 3));
     }
@@ -126,12 +126,12 @@ mixin GetTypePointers {
         globalDependences._findTypeElement(t, groupName);
   }
 
-  static NopListener createUniqueListener(dynamic data) {
+  static NopListener createUniqueListener(dynamic data, Type t) {
     var listener = NopLifeCycle.checkIsNopLisenter(data);
     if (listener != null) {
       return listener;
     }
-    listener = nopListenerCreater(data, null);
+    listener = nopListenerCreater(data, null, t);
     listener.scope = NopShareScope.unique;
     return listener;
   }
@@ -139,7 +139,7 @@ mixin GetTypePointers {
   static NopListener createArg(Type t, Object? groupName) {
     final factory = _get(t);
     final data = factory();
-    final listener = nopListenerCreater(data, groupName);
+    final listener = nopListenerCreater(data, groupName, t);
     if (groupName != null) {
       listener.scope = NopShareScope.group;
     } else {
@@ -148,11 +148,11 @@ mixin GetTypePointers {
     return listener;
   }
 
-  static NopListener Function(dynamic data, Object? groupName)
+  static NopListener Function(dynamic data, Object? groupName, Type t)
       nopListenerCreater = _defaultCreate;
 
-  static NopListener _defaultCreate(dynamic data, Object? group) =>
-      NopListenerDefault(data, group);
+  static NopListener _defaultCreate(dynamic data, Object? group, Type t) =>
+      NopListenerDefault(data, group, t);
 
   static GetTypePointers? _globalDependences;
 
@@ -179,18 +179,22 @@ mixin GetTypePointers {
     return _factory ??= getFactory;
   }
 
-  static String getGroupName(Object? groupName) {
-    return groupName == null ? 'Default' : '$groupName';
+  String getLabel(Object? groupName) {
+    if (this == globalDependences) {
+      if (groupName == null) {
+        return 'Global';
+      }
+      return 'Global::$groupName';
+    }
+    return groupName?.toString() ?? '';
   }
-
-  String get globalPrefix => this == globalDependences ? 'Global::' : '';
 
   NopListener _createListenerArg(Type t, Object? groupName, int? position) {
     var listener = createArg(t, groupName);
 
     assert(!containsKey(groupName, t), t);
 
-    assert(Log.w('[$globalPrefix${getGroupName(groupName)}] create: $t',
+    assert(Log.w('[${getLabel(groupName)}]::$t created.',
         position: position ?? 0));
     addListener(t, listener, groupName);
     return listener;

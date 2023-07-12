@@ -72,14 +72,14 @@ class NopDependence with GetTypePointers {
 
   bool _poped = false;
   @override
-  bool get poped => _poped;
+  bool get popped => _poped;
 
   void _remove() {
     parent = null;
     child = null;
     _poped = true;
     visitListener((_, item) {
-      item.onDependenceRemove(this);
+      item.onRemoveDependence(this);
     });
   }
 

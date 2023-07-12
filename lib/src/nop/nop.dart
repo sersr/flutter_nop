@@ -83,7 +83,6 @@ class Nop<C> extends StatefulWidget {
           Log.e('Nop.page not found. You need to use Nop.page()') && false);
       final listener = GetTypePointers.defaultGetNopListener(T, null, group,
           position: GetTypePointers.addPosition(position, step: 2));
-      listener.initIfNeed();
       return listener.data;
     }
   }
@@ -285,7 +284,7 @@ class _NopState<C> extends State<Nop<C>> with NopRouteAware {
 
   void _initData(dynamic data) {
     if (data != null) {
-      final listener = GetTypePointers.createUniqueListener(data);
+      final listener = GetTypePointers.createUniqueListener(data, C);
       setLocalListener(listener);
     }
   }
