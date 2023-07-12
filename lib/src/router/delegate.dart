@@ -184,9 +184,11 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
     return false;
   }
 
+  late final _obverser = _RouteQueueObverser(_routeQueue);
+
   @override
   Widget build(BuildContext context) {
-    final navObservers = router.observers;
+    final navObservers = [_obverser, ...router.observers];
     return RouteRestorable(
       restorationId: restorationId,
       delegate: this,

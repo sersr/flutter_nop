@@ -8,7 +8,7 @@ import '../nop/typedef.dart';
 
 extension Grass on BuildContext {
   /// [group] shared group
-  T getGrass<T>({Object? group, bool global = false}) {
+  T grass<T>({Object? group, bool global = false}) {
     return Green.of(this, group: group, global: global);
   }
 
@@ -58,7 +58,6 @@ class Green<C> extends StatefulWidget {
 
     final listener = GetTypePointers.defaultGetNopListener(T, dependence, group,
         position: GetTypePointers.addPosition(position, step: 2));
-    listener.initIfNeed();
     return listener.data;
   }
 
@@ -141,7 +140,7 @@ class _GreenState<C> extends State<Green<C>> {
 
   void _initData(dynamic data) {
     if (data != null) {
-      final listener = GetTypePointers.createUniqueListener(data);
+      final listener = GetTypePointers.createUniqueListener(data, C);
       setLocalListener(listener);
     }
   }

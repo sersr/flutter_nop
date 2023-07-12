@@ -1,5 +1,15 @@
 part of 'router.dart';
 
+/// [RouteQueue]的移除操作并不会触发[Navigator.onPopPage]回调
+class _RouteQueueObverser extends NavigatorObserver {
+  _RouteQueueObverser(this.queue);
+  final RouteQueue queue;
+  @override
+  void didPush(Route route, Route? previousRoute) {
+    queue.moveToCache(route);
+  }
+}
+
 class RouteQueue extends RestorableProperty<List<RouteQueueEntry>?>
     with RouteQueueMixin {
   RouteQueue(this.delegate);
@@ -31,38 +41,37 @@ class RouteQueue extends RestorableProperty<List<RouteQueueEntry>?>
   }
 
   void popRoute(Route route) {
-    final entry = moveToCache(route);
-    final isTop = _current == entry;
-    assert(entry == null || !isTop || entry.isActived);
-    entry?.remove();
-    if (isTop) {
+    final entry = _getEntry(route);
+
+    if (entry != null) {
+      entry.remove();
       updateRouteInfo(false);
     }
   }
 
   RouteQueueEntry? moveToCache(Route route) {
-    final settings = route.settings;
-    RouteQueueEntry? entry;
-    if (settings is MaterialIgnorePage) {
-      entry = settings.entry;
-    } else {
-      entry = _map[route.settings];
-    }
+    final entry = _getEntry(route);
 
     if (entry == null) return null;
 
     if (route is TransitionRoute) {
       _entryCache.putIfAbsent(route, () {
         route.completed.whenComplete(() {
-          Log.e('${entry!.path} completed.');
           _entryCache.remove(route);
           entry._removeListener();
         });
-        return entry!;
+        return entry;
       });
     }
 
     return entry;
+  }
+
+  RouteQueueEntry? _getEntry(Route route) {
+    return switch (route.settings) {
+      MaterialIgnorePage page => page.entry,
+      _ => _map[route.settings],
+    };
   }
 
   RouteQueueEntry? getEntry(Route route) =>
@@ -79,9 +88,7 @@ class RouteQueue extends RestorableProperty<List<RouteQueueEntry>?>
   void _remove(RouteQueueEntry entry, {bool notify = true}) {
     assert(entry.page == null || _map.containsKey(entry.page));
     _map.remove(entry.page);
-    assert(Log.e('${entry.path} removed.'));
     entry._pop();
-    // if (!_entryCache.containsKey(entry.page)) entry._removeListener();
     super._remove(entry, notify: notify);
   }
 
@@ -563,17 +570,20 @@ class RouteQueueEntry
   @override
   GetTypePointers? get parent => _next;
 
-  bool _poped = false;
+  bool _popped = false;
   @override
-  bool get poped => _poped;
+  bool get popped => _popped;
 
   void _pop() {
-    _poped = true;
+    _popped = true;
+    visitListener((_, listener) {
+      listener.onPop();
+    });
   }
 
   void _removeListener() {
     visitListener((_, listener) {
-      listener.onDependenceRemove(this);
+      listener.onRemoveDependence(this);
     });
   }
 }
