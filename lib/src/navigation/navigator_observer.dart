@@ -52,10 +52,6 @@ class NavGlobal extends NavInterface {
 
   final _alias = <Type, Type>{};
 
-  // void addAliasType<P extends Type, C extends P>(P parent, C child) {
-  //   _alias[parent] = child;
-  // }
-
   /// 子类可以转化成父类
   void addAlias<P, C extends P>() {
     _alias[P] = C; // 可以根据父类类型获取到子类对象
@@ -68,7 +64,6 @@ class NavGlobal extends NavInterface {
   void addAliasAll<P extends Type, C extends P>(Iterable<P> parents, C child) {
     for (var item in parents) {
       _alias[item] = child;
-      // addAliasType(item, child);
     }
   }
 }

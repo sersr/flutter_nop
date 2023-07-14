@@ -80,10 +80,11 @@ class RouteRestorableState extends State<RouteRestorable>
     final pre = routeQueue.pre;
     if (stateEntry != null && stateEntry.eq(pre)) {
       // assert(Log.i('pre:'));
-      // assert(Log.w(pre!.toJson().logPretty()));
+      // assert(Log.w(pre?.toJson(detail: true).logPretty()));
       // assert(Log.i('state:'));
-      // assert(Log.w(stateEntry.toJson().logPretty()));
-      delegate._pop();
+      // assert(Log.w(stateEntry.toJson(detail: true).logPretty()));
+      assert(!routeQueue.isSingle);
+      routeQueue._current?._removeCurrent(update: false);
     } else {
       RouteQueueEntry? entry = stateEntry;
 
@@ -106,11 +107,7 @@ class RouteRestorableState extends State<RouteRestorable>
         );
       }
 
-      routeQueue.insert(entry);
-      if (state == null) {
-        // update new route state
-        routeQueue.updateRouteInfo(true);
-      }
+      routeQueue.insert(entry, update: false);
     }
     return SynchronousFuture(true);
   }
@@ -166,7 +163,6 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
 
     routeQueue.insert(entry);
     assert(routeQueue.current == entry);
-    routeQueue.updateRouteInfo(true);
   }
 
   bool _restore() {
@@ -174,9 +170,7 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
       // assert(Log.w('state: ${data.logPretty()}', showTag: false));
       final n = RouteQueue.fromJson(data, this);
       if (n != null) {
-        routeQueue.copyFrom(n);
-        // ? ? ?
-        routeQueue.updateRouteInfo(true);
+        routeQueue._copyFrom(n);
         return true;
       }
     }
@@ -210,7 +204,7 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
     if (!route.didPop(result)) {
       return false;
     }
-    _routeQueue.popRoute(route);
+    _routeQueue._popRoute(route, result);
 
     return true;
   }
@@ -259,12 +253,12 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
     return newEntry;
   }
 
-  RouteQueueEntry _run(RouteQueueEntry entry, {bool update = true}) {
+  RouteQueueEntry _run(RouteQueueEntry entry) {
     entry = _redirect(entry);
     if (SchedulerBinding.instance.schedulerPhase ==
         SchedulerPhase.persistentCallbacks) {
       // attach
-      entry.attach(_routeQueue);
+      entry._queue = _routeQueue;
 
       // delay
       SchedulerBinding.instance.addPostFrameCallback((timeStamp) {
@@ -273,7 +267,6 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
     } else {
       _routeQueue.insert(entry);
     }
-    if (update) _routeQueue.updateRouteInfo(false);
     return entry;
   }
 
@@ -351,13 +344,13 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
   RouteQueueEntry _goReplacement(
       RouteQueueEntry entry, bool immediated, Object? result) {
     final queue = _routeQueue;
-    if (immediated && queue.current != null) {
-      entry.replace(queue.current!.pageKey);
+    final current = queue.current;
+    if (immediated && current != null) {
+      entry.replace(current.pageKey);
     }
-    queue.removeLast(result);
+    current?._removeCurrent(result: result, update: false);
     final newEntry = _redirect(entry);
-    queue.insert(newEntry);
-    queue.updateRouteInfo(true);
+    queue.insert(newEntry, replace: true);
     return newEntry;
   }
 
@@ -388,7 +381,6 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
 
   void pop([Object? result]) {
     _pop(result);
-    _routeQueue.updateRouteInfo(false);
   }
 
   void _pop([Object? result]) {
@@ -403,7 +395,7 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
 
   @override
   Future<void> setNewRoutePath(configuration) {
-    _routeQueue.copyFrom(configuration);
+    _routeQueue._copyFrom(configuration);
     return SynchronousFuture(null);
   }
 }
@@ -428,7 +420,7 @@ class RouterAction {
     return go();
   }
 
-  RouteQueueEntry goReplacement([Object? result, bool immediated = false]) {
+  RouteQueueEntry goReplacement({Object? result, bool immediated = false}) {
     return router.routerDelegate._goReplacement(entry, immediated, result);
   }
 }

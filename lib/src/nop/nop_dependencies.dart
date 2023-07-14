@@ -64,12 +64,6 @@ class NopDependence with GetTypePointers {
     _remove();
   }
 
-  // @override
-  // void addListener(Type t, NopListener listener, Object? groupName) {
-  //   super.addListener(t, listener, groupName);
-  //   listener.onDependenceAdd(this);
-  // }
-
   bool _poped = false;
   @override
   bool get popped => _poped;
