@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../router.dart';
 import '../nop/dependences_mixin.dart';
 import '../nop/nop_listener.dart';
-import '../nop/typedef.dart';
 
 extension Grass on BuildContext {
   /// [group] shared group
@@ -21,7 +20,6 @@ class Green<C> extends StatefulWidget {
   const Green({
     Key? key,
     required this.child,
-    this.builders,
     this.create,
   })  : value = null,
         super(key: key);
@@ -30,12 +28,10 @@ class Green<C> extends StatefulWidget {
     Key? key,
     this.value,
     required this.child,
-    this.builders,
   })  : create = null,
         super(key: key);
 
   final Widget child;
-  final List<NopWidgetBuilder>? builders;
   final C Function(BuildContext context)? create;
   final C? value;
 
@@ -180,15 +176,7 @@ class _GreenState<C> extends State<Green<C>> {
 
   @override
   Widget build(BuildContext context) {
-    Widget child = widget.child;
-    if (widget.builders != null) {
-      child = NopPreInit(
-        builders: widget.builders,
-        child: widget.child,
-      );
-    }
-
-    return _GreenScope(state: this, child: child);
+    return _GreenScope(state: this, child: widget.child);
   }
 }
 
@@ -203,58 +191,5 @@ class _GreenScope extends InheritedWidget {
   @override
   bool updateShouldNotify(covariant _GreenScope oldWidget) {
     return state != oldWidget.state;
-  }
-}
-
-/// 统一初始化对象
-class NopPreInit extends StatefulWidget {
-  const NopPreInit({
-    Key? key,
-    this.builders,
-    required this.child,
-  }) : super(key: key);
-
-  final List<NopWidgetBuilder>? builders;
-  final Widget child;
-
-  @override
-  State<NopPreInit> createState() => _NopPreInitState();
-}
-
-class _NopPreInitState extends State<NopPreInit> {
-  @override
-  void initState() {
-    super.initState();
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // if (!_initFirst) {
-    //   _initFirst = true;
-    //   _init(widget.groupList, widget.group);
-    //   _init(widget.list, null);
-    // }
-  }
-
-  // bool _initFirst = false;
-
-  // void _init(List<Type> types, Object? group) {
-  //   for (var item in types) {
-  //     widget.init(item, context, group);
-  //   }
-  // }
-
-  @override
-  Widget build(BuildContext context) {
-    Widget child = widget.child;
-    final builders = widget.builders;
-
-    if (builders != null && builders.isNotEmpty) {
-      for (var build in builders) {
-        child = build(context, child);
-      }
-    }
-    return child;
   }
 }
