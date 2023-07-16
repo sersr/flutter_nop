@@ -50,7 +50,7 @@ class Green<C> extends StatefulWidget {
     }
 
     final listener = GetTypePointers.defaultGetNopListener(T, dependence, group,
-        position: GetTypePointers.addPosition(position, step: 2));
+        position: GetTypePointers.addPosition(position));
     return listener.data;
   }
 

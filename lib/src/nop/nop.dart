@@ -82,7 +82,7 @@ class Nop<C> extends StatefulWidget {
           context == null ||
           Log.e('Nop.page not found. You need to use Nop.page().') && false);
       final listener = GetTypePointers.defaultGetNopListener(T, null, group,
-          position: GetTypePointers.addPosition(position, step: 2));
+          position: GetTypePointers.addPosition(position));
       return listener.data;
     }
   }
