@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:nop/nop.dart';
 
 import '../../flutter_nop.dart';
+import '../nop/route.dart';
 
 typedef BuildFactory<T> = T Function();
 

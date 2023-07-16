@@ -2,5 +2,7 @@ library flutter_nop;
 
 export 'change_notifier.dart';
 export 'nav.dart';
-export 'nop_state.dart';
 export 'overlay.dart';
+export 'src/dependence/dependences_mixin.dart';
+export 'src/dependence/nop_dependencies.dart';
+export 'src/dependence/nop_listener.dart';

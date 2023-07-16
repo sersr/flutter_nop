@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:nop/utils.dart';
 
 import '../navigation/navigator_observer.dart';
-import 'dependences_mixin.dart';
-import 'nop_dependencies.dart';
-import 'nop_listener.dart';
+import '../dependence/dependences_mixin.dart';
+import '../dependence/nop_dependencies.dart';
+import '../dependence/nop_listener.dart';
 import 'nop_pre_init.dart';
 import 'typedef.dart';
 

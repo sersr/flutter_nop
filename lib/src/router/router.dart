@@ -8,7 +8,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:nop/nop.dart';
 
-import '../nop/dependences_mixin.dart';
+import '../dependence/dependences_mixin.dart';
 import 'web/history_state.dart';
 
 part 'delegate.dart';
