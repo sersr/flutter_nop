@@ -162,6 +162,8 @@ class MaterialIgnorePage<T> extends MaterialPage<T> with RouteQueueEntryPage {
 
   static Widget wrap(
       BuildContext context, RouteQueueEntry entry, Widget child) {
+    if (entry.isErrorEntry) return child;
+
     final bucket = RouteRestorable.maybeOf(context)?.bucket;
     if (bucket == null) return child;
 
