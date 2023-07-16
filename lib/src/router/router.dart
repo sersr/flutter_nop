@@ -138,4 +138,9 @@ class NRouter implements RouterConfig<RouteQueue> {
   void pop([Object? result]) {
     routerDelegate.pop(result);
   }
+
+  @pragma('vm:prefer-inline')
+  void maybePop([Object? result]) {
+    routerDelegate.maybePop();
+  }
 }
