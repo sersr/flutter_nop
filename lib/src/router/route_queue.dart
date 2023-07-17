@@ -10,10 +10,53 @@ class _RouteQueueObverser extends NavigatorObserver {
   }
 }
 
-class RouteQueue extends RestorableProperty<List<RouteQueueEntry>?>
-    with RouteQueueMixin {
+class _RouteQueueRestoration
+    extends RestorableProperty<List<RouteQueueEntry>?> {
+  _RouteQueueRestoration(this.routeQueue) {
+    routeQueue._addRestoration(this);
+  }
+  final RouteQueue routeQueue;
+
+  @override
+  List<RouteQueueEntry>? createDefaultValue() {
+    return null;
+  }
+
+  @override
+  List<RouteQueueEntry>? fromPrimitives(Object? data) {
+    return routeQueue.fromPrimitives(data);
+  }
+
+  @override
+  void initWithValue(List<RouteQueueEntry>? value) {
+    return routeQueue.initWithValue(value);
+  }
+
+  @override
+  Object? toPrimitives() {
+    return routeQueue.toPrimitives();
+  }
+
+  @override
+  void dispose() {
+    routeQueue._removeRestoration(this);
+    super.dispose();
+  }
+}
+
+class RouteQueue with ChangeNotifier, RouteQueueMixin {
   RouteQueue(this.delegate);
   final NRouterDelegate delegate;
+
+  final _restorations = <_RouteQueueRestoration>[];
+
+  void _addRestoration(_RouteQueueRestoration value) {
+    _restorations.add(value);
+  }
+
+  void _removeRestoration(_RouteQueueRestoration value) {
+    _restorations.remove(value);
+  }
 
   List<Page>? _pages;
   List<Page> get pages => _pages ??= _newPages();
@@ -142,10 +185,13 @@ class RouteQueue extends RestorableProperty<List<RouteQueueEntry>?>
   RouteQueueEntry? _lastInfo;
 
   void _updateRouteInfo([bool replace = false]) {
-    if (kIsWeb) {
+    if (kIsWeb && delegate.updateLocation) {
       replace |= _lastInfo == null || _lastInfo!.eq(_current);
 
+      // maybe: goUntil((entry) => false);
+      if (_current == null) return;
       _lastInfo = _current;
+
       final state = toPrimitives();
 
       SystemNavigator.selectMultiEntryHistory();
@@ -160,6 +206,14 @@ class RouteQueue extends RestorableProperty<List<RouteQueueEntry>?>
     notifyListeners();
   }
 
+  @override
+  void notifyListeners() {
+    for (var e in _restorations) {
+      e.notifyListeners();
+    }
+    super.notifyListeners();
+  }
+
   RouteQueueEntry? getEntryFromId(int id) {
     RouteQueueEntry? entry;
     forEach((e) {
@@ -170,11 +224,6 @@ class RouteQueue extends RestorableProperty<List<RouteQueueEntry>?>
       return false;
     });
     return entry;
-  }
-
-  @override
-  List<RouteQueueEntry>? createDefaultValue() {
-    return null;
   }
 
   static List? pageList(Object? data) {
@@ -217,7 +266,6 @@ class RouteQueue extends RestorableProperty<List<RouteQueueEntry>?>
     return list;
   }
 
-  @override
   List<RouteQueueEntry>? fromPrimitives(Object? data) {
     switch (data) {
       case {'list': List listMap}:
@@ -226,7 +274,6 @@ class RouteQueue extends RestorableProperty<List<RouteQueueEntry>?>
     return null;
   }
 
-  @override
   void initWithValue(List<RouteQueueEntry>? value) {
     if (value != null && value.isNotEmpty) {
       forEach((current) {
@@ -249,7 +296,6 @@ class RouteQueue extends RestorableProperty<List<RouteQueueEntry>?>
     }
   }
 
-  @override
   Map toPrimitives() {
     final list = <Map<String, dynamic>>[];
     RouteQueueEntry? r = _root;

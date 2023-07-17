@@ -44,12 +44,14 @@ class NRouter implements RouterConfig<RouteQueue> {
     Map<String, dynamic>? extra,
     Object? groupId,
     this.observers = const [],
+    this.updateLocation = false,
   }) {
     routerDelegate = NRouterDelegate(
         restorationId: restorationId, rootPage: rootPage, router: this);
     routerDelegate.init(restorationId, params, extra, groupId);
   }
   final NPageMain rootPage;
+  final bool updateLocation;
   final List<NavigatorObserver> observers;
 
   /// 根据给出路径判断是否有效

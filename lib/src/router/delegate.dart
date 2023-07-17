@@ -37,8 +37,8 @@ class _NRouterScope extends InheritedWidget {
 
 class RouteRestorableState extends State<RouteRestorable>
     with WidgetsBindingObserver, RestorationMixin {
-  late RouteQueue routeQueue;
   NRouterDelegate get delegate => widget.delegate;
+  RouteQueue get routeQueue => delegate.routeQueue;
 
   @override
   Widget build(BuildContext context) {
@@ -46,10 +46,13 @@ class RouteRestorableState extends State<RouteRestorable>
         routeQueue: routeQueue, state: this, child: widget.child);
   }
 
+  /// internal state
+  late _RouteQueueRestoration _restoration;
+
   @override
   void initState() {
     super.initState();
-    routeQueue = widget.routeQueue;
+    _restoration = _RouteQueueRestoration(routeQueue);
     WidgetsBinding.instance.addObserver(this);
   }
 
@@ -65,6 +68,8 @@ class RouteRestorableState extends State<RouteRestorable>
   /// 从[RouteInformation.state]获取`stateEntry`
   @override
   Future<bool> didPushRouteInformation(RouteInformation routeInformation) {
+    if (!delegate.updateLocation) return SynchronousFuture(false);
+
     final state = routeInformation.state;
     final list = RouteQueue.pageList(state) ?? const [];
 
@@ -117,13 +122,8 @@ class RouteRestorableState extends State<RouteRestorable>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _restoration.dispose();
     super.dispose();
-  }
-
-  @override
-  void didUpdateWidget(covariant RouteRestorable oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    routeQueue = widget.routeQueue;
   }
 
   @override
@@ -131,7 +131,7 @@ class RouteRestorableState extends State<RouteRestorable>
 
   @override
   void restoreState(RestorationBucket? oldBucket, bool initialRestore) {
-    registerForRestoration(routeQueue, '_routes');
+    registerForRestoration(_restoration, '_routes');
   }
 }
 
@@ -142,6 +142,8 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
   final String? restorationId;
   final NPageMain rootPage;
   final NRouter router;
+
+  bool get updateLocation => router.updateLocation;
 
   void init(
     String? restorationId,
@@ -168,6 +170,7 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
   }
 
   bool _restore() {
+    if (!updateLocation) return false;
     if (historyState case {'state': Map data}) {
       // assert(Log.w('state: ${data.logPretty()}', showTag: false));
       final n = RouteQueue.fromJson(data, this);
