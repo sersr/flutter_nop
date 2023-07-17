@@ -150,7 +150,7 @@ class RouteQueue extends RestorableProperty<List<RouteQueueEntry>?>
 
       SystemNavigator.selectMultiEntryHistory();
       SystemNavigator.routeInformationUpdated(
-          uri: Uri.tryParse(_current!.path), state: state, replace: replace);
+          location: _current!.path, state: state, replace: replace);
     }
   }
 

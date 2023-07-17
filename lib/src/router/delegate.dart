@@ -68,7 +68,7 @@ class RouteRestorableState extends State<RouteRestorable>
     final state = routeInformation.state;
     final list = RouteQueue.pageList(state) ?? const [];
 
-    assert(Log.e('uri: ${routeInformation.uri}'));
+    assert(Log.e('uri: ${routeInformation.location}'));
 
     RouteQueueEntry? stateEntry;
     if (list case [..., Map last]) {
@@ -89,7 +89,9 @@ class RouteRestorableState extends State<RouteRestorable>
       RouteQueueEntry? entry = stateEntry;
 
       if (entry == null) {
-        final uri = routeInformation.uri;
+        final uri = Uri.tryParse(routeInformation.location ?? '');
+        if (uri == null) return SynchronousFuture(false);
+
         final realParams = <String, dynamic>{};
 
         final route =
