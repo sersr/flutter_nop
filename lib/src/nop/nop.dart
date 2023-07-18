@@ -1,25 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:nop/utils.dart';
 
-import '../navigation/navigator_observer.dart';
 import '../dependence/dependences_mixin.dart';
-import '../dependence/nop_dependencies.dart';
 import '../dependence/nop_listener.dart';
+import '../navigation/navigator_observer.dart';
+import 'nop_dependencies.dart';
 import 'nop_pre_init.dart';
 import 'typedef.dart';
 
 extension GetType on BuildContext {
   /// [group] shared group
-  T getType<T>({Object? group, bool global = false}) {
-    return Nop.of(this, group: group, global: global, position: 1);
+  T getType<T>({Object? group, bool global = false, int? position = 1}) {
+    return Nop.of(this, group: group, global: global, position: position);
   }
 
   T? findType<T>({Object? group, bool global = false}) {
     return Nop.findwithContext(this, group: group, global: global);
   }
 
-  T? getTypeOr<T>({Object? group, bool global = false}) {
-    return Nop.maybeOf(this, group: group, global: global);
+  T? getTypeOr<T>({Object? group, bool global = false, int? position = 1}) {
+    return Nop.maybeOf(this, group: group, global: global, position: position);
   }
 }
 
@@ -74,6 +74,10 @@ class Nop<C> extends StatefulWidget {
 
   static T of<T>(BuildContext? context,
       {Object? group, bool global = false, int? position = 0}) {
+    assert(() {
+      position = position == null ? null : position! + 1;
+      return true;
+    }());
     final nop = context?.dependOnInheritedWidgetOfExactType<_NopScoop>();
     if (nop != null) {
       return nop.state.getType<T>(group, global, position);
@@ -81,8 +85,12 @@ class Nop<C> extends StatefulWidget {
       assert(!stricted ||
           context == null ||
           Log.e('Nop.page not found. You need to use Nop.page().') && false);
-      final listener = GetTypePointers.defaultGetNopListener(T, null, group,
-          position: position);
+      final listener = Node.defaultGetNopListener(
+          T,
+          _NopState.currentDependence,
+          GetTypePointers.globalDependences,
+          group,
+          position);
       return listener.data;
     }
   }
@@ -94,14 +102,17 @@ class Nop<C> extends StatefulWidget {
   }
 
   static T? find<T>({Object? group}) {
-    NopListener? listener =
-        GetTypePointers.globalDependences.findType<T>(group);
-    listener ??= _NopState.currentDependence?.findType<T>(group);
+    final listener = Node.defaultFindNopListener(T, _NopState.currentDependence,
+        GetTypePointers.globalDependences, group);
     return listener?.data;
   }
 
   static T? maybeOf<T>(BuildContext context,
       {Object? group, bool global = false, int? position = 0}) {
+    assert(() {
+      position = position == null ? null : position! + 1;
+      return true;
+    }());
     final nop = context.dependOnInheritedWidgetOfExactType<_NopScoop>();
     return nop?.state.getType<T>(group, global, position);
   }
@@ -181,6 +192,10 @@ class _NopState<C> extends State<Nop<C>> with NopRouteAware {
 
   /// export
   T getType<T>(Object? group, bool global, int? position) {
+    assert(() {
+      position = position == null ? null : position! + 1;
+      return true;
+    }());
     return getTypeListener(T, group, global: global, position: position).data;
   }
 
@@ -191,6 +206,10 @@ class _NopState<C> extends State<Nop<C>> with NopRouteAware {
   /// ---
   NopListener getTypeListener(Type t, Object? group,
       {int? position, bool global = false}) {
+    assert(() {
+      position = position == null ? null : position! + 1;
+      return true;
+    }());
     if (!global) {
       group ??= getGroup(t);
     }
@@ -220,7 +239,7 @@ class _NopState<C> extends State<Nop<C>> with NopRouteAware {
       dependence = pageState.dependence;
       assert(pageState._init);
       listener = pageState.getLocal(t, group, null) ??
-          dependence.findCurrentTypeArg(t, group);
+          dependence.findCurrent(t, group);
       if (listener != null) return listener;
     }
 
@@ -233,7 +252,8 @@ class _NopState<C> extends State<Nop<C>> with NopRouteAware {
     }
 
     assert(listener == null || pageState != this);
-    return GetTypePointers.defaultFindNopListener(t, dependence, group);
+    return Node.defaultFindNopListener(
+        t, dependence, GetTypePointers.globalDependences, group);
   }
 
   NopListener getOrCreateDependence(Type t, Object? group, int? position) {
@@ -242,7 +262,6 @@ class _NopState<C> extends State<Nop<C>> with NopRouteAware {
     NopListener? listener;
 
     var dependence = pageState?.dependence;
-    bool isSelf = true;
 
     assert(pageState == null ||
         !pageState._popped ||
@@ -251,15 +270,17 @@ class _NopState<C> extends State<Nop<C>> with NopRouteAware {
     // [pageState.dependence] 有可能被移除
     if (pageState == null || pageState._popped) {
       if (dependence != null) {
-        listener = dependence.findCurrentTypeArg(t, group);
+        listener = dependence.findCurrent(t, group);
         if (listener != null) return listener;
       }
-      isSelf = false;
       dependence = currentDependence;
     }
-
-    listener ??= GetTypePointers.defaultGetNopListener(t, dependence, group,
-        isSelf: isSelf, position: position, step: 4);
+    assert(() {
+      position = position == null ? null : position! + 1;
+      return true;
+    }());
+    listener ??= Node.defaultGetNopListener(
+        t, dependence, GetTypePointers.globalDependences, group, position);
 
     return listener;
   }

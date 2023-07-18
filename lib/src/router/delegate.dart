@@ -359,12 +359,12 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
     return newEntry;
   }
 
-  void _until(UntilFn test) {
-    _routeQueue.removeUntil(test);
+  void _until(UntilFn test, {bool ignore = false}) {
+    _routeQueue.removeUntil(test, ignore);
   }
 
   RouteQueueEntry goUntil(String location, UntilFn test) {
-    _until(test);
+    _until(test, ignore: true);
     return go(location);
   }
 
@@ -372,7 +372,7 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
       {Map<String, dynamic> params = const {},
       Map<String, dynamic>? extra,
       Object? groupId}) {
-    _until(test);
+    _until(test, ignore: true);
     return goPage(page, params: params, extra: extra, groupId: groupId);
   }
 
@@ -380,8 +380,8 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
   Future<bool> maybePop() =>
       navigatorKey.currentState?.maybePop() ?? SynchronousFuture(false);
 
-  void popUntil(UntilFn test) {
-    _until(test);
+  void popUntil(UntilFn test, bool ignore) {
+    _until(test, ignore: ignore);
   }
 
   void pop([Object? result]) {
@@ -421,7 +421,7 @@ class RouterAction {
   }
 
   RouteQueueEntry goUntil(UntilFn test) {
-    router.routerDelegate._until(test);
+    router.routerDelegate._until(test, ignore: true);
     return go();
   }
 

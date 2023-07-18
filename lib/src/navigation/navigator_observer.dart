@@ -38,6 +38,7 @@ class NavGlobal extends NavInterface {
 
   final _factorys = HashMap<Type, BuildFactory>();
   void put<T>(BuildFactory<T> factory) {
+    assert(!_alias.containsKey(T) || Log.e('${_alias[T]} already exists.'));
     _factorys[T] = factory;
   }
 
@@ -55,6 +56,7 @@ class NavGlobal extends NavInterface {
 
   /// 子类可以转化成父类
   void addAlias<P, C extends P>() {
+    assert(!_factorys.containsKey(P) || Log.e('$P already exists.'));
     _alias[P] = C; // 可以根据父类类型获取到子类对象
   }
 

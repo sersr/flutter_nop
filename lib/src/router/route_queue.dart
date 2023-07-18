@@ -44,7 +44,7 @@ class _RouteQueueRestoration
   }
 }
 
-class RouteQueue with ChangeNotifier, RouteQueueMixin {
+class RouteQueue with ChangeNotifier, _RouteQueueMixin {
   RouteQueue(this.delegate);
   final NRouterDelegate delegate;
 
@@ -166,11 +166,13 @@ class RouteQueue with ChangeNotifier, RouteQueueMixin {
 
   final _entryCache = <TransitionRoute, RouteQueueEntry>{};
 
-  RouteQueueEntry? removeUntil(UntilFn test) {
+  RouteQueueEntry? removeUntil(UntilFn test, bool ignore) {
     final current = _current;
     RouteQueueEntry? entry = current;
     while (entry != null) {
       if (test(entry)) break;
+      assert(ignore || entry != _root, 'no pages.\nroot page will be removed.');
+
       final pre = entry.pre;
       entry._removeCurrent(refresh: false);
       entry = pre;
@@ -204,6 +206,11 @@ class RouteQueue with ChangeNotifier, RouteQueueMixin {
   void refresh() {
     _pages = _newPages();
     notifyListeners();
+  }
+
+  @override
+  void _attach(RouteQueueEntry entry) {
+    entry._queue = this;
   }
 
   @override
@@ -312,7 +319,7 @@ class RouteQueue with ChangeNotifier, RouteQueueMixin {
   }
 }
 
-mixin RouteQueueMixin {
+mixin _RouteQueueMixin {
   RouteQueueEntry? _root;
   RouteQueueEntry? _current;
   RouteQueueEntry? get root => _root;
@@ -361,13 +368,15 @@ mixin RouteQueueMixin {
       }
       _current = entry;
     }
-    entry._queue = this;
+    _attach(entry);
     _root ??= entry;
     _length += 1;
     refresh();
   }
 
-  void _remove(covariant RouteQueueEntryMixin entry, bool notify, bool update) {
+  void _attach(RouteQueueEntry entry);
+
+  void _remove(RouteQueueEntry entry, bool notify, bool update) {
     if (_root == entry) {
       assert(entry._pre == null);
       _root = entry._next;
@@ -403,9 +412,7 @@ mixin RouteQueueMixin {
   void refresh();
 }
 
-class RouteQueueEntry
-    with RouteQueueEntryMixin, GetTypePointers
-    implements LogPretty {
+class RouteQueueEntry with _RouteQueueEntryMixin, Node implements LogPretty {
   RouteQueueEntry({
     String? path,
     required this.params,
@@ -615,10 +622,10 @@ class RouteQueueEntry
   }
 
   @override
-  GetTypePointers? get child => _pre;
+  Node? get child => _pre;
 
   @override
-  GetTypePointers? get parent => _next;
+  Node? get parent => _next;
 
   bool _popped = false;
   @override
@@ -636,12 +643,49 @@ class RouteQueueEntry
       listener.onRemoveDependence(this);
     });
   }
+
+  @override
+  dynamic build(Type t) {
+    return _queue?.delegate.router.getArg(t)();
+  }
+
+  RouteQueue? _removed;
+  @override
+  void _onRemove(RouteQueue root, bool refresh, bool update) {
+    _removed = root;
+    root._remove(this, refresh, update);
+  }
+
+  NopListener? findType(Type t, {Object? group}) {
+    final router = (_queue ?? _removed!).delegate.router;
+
+    return findListener(router.getAlias(t), group);
+  }
+
+  NopListener getRouteListener(Type t, Object? group, int? position) {
+    assert(() {
+      position = position == null ? null : position! + 1;
+      return true;
+    }());
+
+    final router = (_queue ?? _removed!).delegate.router;
+    final global = router.globalDependence;
+    t = router.getAlias(t);
+
+    return Node.defaultGetNopListener(t, this, global, group, position);
+  }
+
+  @override
+  NopListener nopListenerCreater(data, Object? groupName, Type t) {
+    assert(attached);
+    return RouteListener(data, groupName, t);
+  }
 }
 
-mixin RouteQueueEntryMixin {
+mixin _RouteQueueEntryMixin {
   int get id;
   String get restorationId => 'n_router+$id';
-  RouteQueueMixin? _queue;
+  RouteQueue? _queue;
 
   RouteQueueEntry? _pre;
   RouteQueueEntry? _next;
@@ -668,6 +712,8 @@ mixin RouteQueueEntryMixin {
     _removeCurrent(result: result);
   }
 
+  void _onRemove(RouteQueue root, bool refresh, bool update);
+
   void _removeCurrent(
       {dynamic result, bool refresh = true, bool update = true}) {
     if (_disposed) return;
@@ -682,7 +728,7 @@ mixin RouteQueueEntryMixin {
     _pre?._next = _next;
     _next?._pre = _pre;
     _queue = null;
-    root._remove(this, refresh, update);
+    _onRemove(root, refresh, update);
     _pre = null;
     _next = null;
     _complete(result);

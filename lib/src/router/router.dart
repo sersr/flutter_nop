@@ -9,10 +9,12 @@ import 'package:flutter/services.dart';
 import 'package:nop/nop.dart';
 
 import '../dependence/dependences_mixin.dart';
+import '../dependence/nop_listener.dart';
 import 'web/history_state.dart';
 
 part 'delegate.dart';
 part 'page.dart';
+part 'route_listener.dart';
 part 'route_queue.dart';
 
 /// Example:
@@ -132,8 +134,8 @@ class NRouter implements RouterConfig<RouteQueue> {
   }
 
   @pragma('vm:prefer-inline')
-  void popUntil(UntilFn test) {
-    routerDelegate.popUntil(test);
+  void popUntil(UntilFn test, {bool ignore = false}) {
+    routerDelegate.popUntil(test, ignore);
   }
 
   @pragma('vm:prefer-inline')
@@ -145,4 +147,127 @@ class NRouter implements RouterConfig<RouteQueue> {
   void maybePop([Object? result]) {
     routerDelegate.maybePop();
   }
+
+  late var _global = NRouterGlobalDependence(this);
+
+  void clear() {
+    final old = _global;
+    _global = NRouterGlobalDependence(this);
+    old.clear();
+  }
+
+  NRouterGlobalDependence get globalDependence => _global;
+
+  /// factroy
+
+  final _factorys = <Type, BuildFactory>{};
+  void put<T>(BuildFactory<T> factory) {
+    assert(!_alias.containsKey(T) || Log.e('${_alias[T]} already exists.'));
+    _factorys[T] = factory;
+  }
+
+  BuildFactory<T> get<T>() {
+    assert(_factorys.containsKey(T), 'You need to call Nav.put<$T>()');
+    return _factorys[T] as BuildFactory<T>;
+  }
+
+  BuildFactory getArg(Type t) {
+    assert(_factorys.containsKey(t), 'You need to call Nav.put<$t>()');
+    return _factorys[t] as BuildFactory;
+  }
+
+  final _alias = <Type, Type>{};
+
+  /// 子类可以转化成父类
+  void addAlias<P, C extends P>() {
+    assert(!_factorys.containsKey(P) || Log.e('$P already exists.'));
+    _alias[P] = C; // 可以根据父类类型获取到子类对象
+  }
+
+  Type getAlias(Type t) {
+    return _alias[t] ?? t;
+  }
+
+  void addAliasAll<P extends Type, C extends P>(Iterable<P> parents, C child) {
+    for (var item in parents) {
+      _alias[item] = child;
+    }
+  }
+
+  T grass<T>({
+    BuildContext? context,
+    Type? t,
+    Object? group,
+    bool global = false,
+    int? position = 0,
+  }) {
+    assert(() {
+      position = position == null ? null : position! + 1;
+      return true;
+    }());
+    return _getListener(
+      context: context,
+      t: t ?? T,
+      group: group,
+      global: global,
+      position: position,
+    ).data;
+  }
+
+  NopListener _getListener({
+    BuildContext? context,
+    required Type t,
+    Object? group,
+    bool global = false,
+    int? position,
+  }) {
+    assert(() {
+      position = position == null ? null : position! + 1;
+      return true;
+    }());
+
+    RouteQueueEntry? dependence;
+    if (context != null) {
+      dependence = RouteQueueEntry.of(context);
+      if (dependence != null) {
+        if (!global) {
+          group ??= dependence.getGroup(t);
+        }
+      }
+    }
+
+    t = getAlias(t);
+    return Node.defaultGetNopListener(
+        t, dependence, globalDependence, group, position);
+  }
+
+  T? find<T>(
+      {BuildContext? context, Type? t, Object? group, bool global = false}) {
+    return _findListener(
+            context: context, t: t ?? T, group: group, global: global)
+        ?.data;
+  }
+
+  NopListener? _findListener(
+      {BuildContext? context,
+      required Type t,
+      Object? group,
+      bool global = false}) {
+    RouteQueueEntry? dependence;
+
+    if (context != null) {
+      dependence = RouteQueueEntry.of(context);
+
+      if (dependence != null) {
+        if (!global) {
+          group ??= dependence.getGroup(t);
+        }
+      }
+    }
+
+    t = getAlias(t);
+    return Node.defaultFindNopListener(t, dependence, globalDependence, group);
+  }
 }
+
+typedef BuildFactory<T> = T Function();

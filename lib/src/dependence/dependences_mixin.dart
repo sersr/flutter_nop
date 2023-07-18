@@ -1,19 +1,14 @@
-import 'dart:collection';
-
+import 'package:flutter/foundation.dart';
 import 'package:nop/utils.dart';
 
-import '../navigation/navigator_observer.dart';
-import 'nop_dependencies.dart';
 import 'nop_listener.dart';
 
-/// [GetTypePointers]
-mixin GetTypePointers {
-  GetTypePointers? get parent;
-  GetTypePointers? get child;
-
+mixin Node {
+  Node? get parent;
+  Node? get child;
   bool get popped => false;
 
-  final _groupPointers = HashMap<Object?, HashMap<Type, NopListener>>();
+  final _groupPointers = <Object?, Map<Type, NopListener>>{};
 
   int get length => _groupPointers.values.fold(
       0, (previousValue, element) => previousValue + element.values.length);
@@ -22,18 +17,25 @@ mixin GetTypePointers {
     return _groupPointers[group]?.containsKey(t) ?? false;
   }
 
-  bool contains(GetTypePointers other) {
+  bool contains(Node other) {
     bool contains = false;
     visitElement((current) => contains = current == other);
 
     return contains;
   }
 
-  void addListener(Type t, NopListener listener, Object? groupName) {
-    t = getAlias(t);
+  void addListener(
+      Type t, NopListener listener, Object? groupName, int? position) {
     assert(!containsKey(groupName, t), t);
-    _groupPointers.putIfAbsent(groupName, createHashMap)[t] = listener;
+    _groupPointers.putIfAbsent(groupName, () => {})[t] = listener;
     listener.onAddDependence(this);
+    assert(() {
+      position = position == null ? null : position! + 1;
+      return true;
+    }());
+    assert(listener.length <= 1 ||
+        Log.w('${listener.label} Add: ${listener.length}.',
+            position: position ?? 0));
   }
 
   void visitListener(ListenerVisitor visitor) {
@@ -47,155 +49,24 @@ mixin GetTypePointers {
 
   bool get isEmpty => _groupPointers.isEmpty;
 
-  NopListener? findTypeArg(Type t, Object? groupName) {
-    return _findTypeElement(getAlias(t), groupName);
-  }
+  // NopListener _createListenerArg(Type t, Object? groupName, int? position) {
+  //   var listener = createArg(t, groupName);
 
-  NopListener? findTypeArgOther(Type t, Object? groupName) {
-    return _findTypeOtherElement(getAlias(t), groupName);
-  }
+  //   assert(!containsKey(groupName, t), t);
 
-  NopListener? findType<T>(Object? groupName) {
-    return _findTypeElement(getAlias(T), groupName);
-  }
+  //   listener.initWithFirstDependence(this, position: position);
+  //   addListener(t, listener, groupName);
 
-  NopListener _getTypeArg(Type t, Object? groupName, int? position) {
-    t = getAlias(t);
-    var listener = _findTypeArgAndAdd(t, groupName);
-    listener ??= _createListenerArg(t, groupName, position);
-    return listener;
-  }
+  //   return listener;
+  // }
 
-  NopListener? _findTypeArgAndAdd(Type t, Object? groupName) {
-    var listener = _findCurrentTypeArg(t, groupName);
-    if (listener != null) return listener;
-    listener = _findTypeOtherElement(t, groupName);
-    if (listener != null) {
-      assert(!containsKey(groupName, t));
-      assert(Log.w('${listener.label} Add $t.'));
-      addListener(t, listener, groupName);
-    }
-
-    return listener;
-  }
-
-  NopListener? findCurrentTypeArg(Type t, Object? groupName) {
-    t = getAlias(t);
-    return _groupPointers[groupName]?[t];
-  }
-
-  static HashMap<T, V> createHashMap<T, V>() => HashMap<T, V>();
-
-  static NopListener defaultGetNopListener(
-      Type t, GetTypePointers? current, Object? groupName,
-      {bool isSelf = true, int? position, int step = 1}) {
-    if (current == null || current == globalDependences) {
-      return globalDependences._getTypeArg(
-          t, groupName, position == null ? null : position + step + 3);
-    }
-
-    t = getAlias(t);
-
-    var listener = current._findCurrentTypeArg(t, groupName) ??
-        globalDependences._findTypeElement(t, groupName);
-
-    if (listener == null) {
-      listener = current._findTypeOtherElement(t, groupName); // other
-
-      // other: should add listener
-      if (listener != null && isSelf) {
-        current.addListener(t, listener, groupName);
-      }
-    }
-
-    listener ??= current._createListenerArg(
-        t, groupName, position == null ? null : position + step + 2);
-
-    return listener;
-  }
-
-  static NopListener? defaultFindNopListener(
-      Type t, GetTypePointers? current, Object? groupName) {
-    t = getAlias(t);
-    return current?._findTypeElement(t, groupName) ??
-        globalDependences._findTypeElement(t, groupName);
-  }
-
-  static (NopListener, bool) createUniqueListener(
-      dynamic data, Type t, GetTypePointers? dependence,
-      {int? position, int step = 1}) {
-    var listener = NopLifeCycle.checkIsNopLisenter(data);
-    if (listener != null) {
-      return (listener, false);
-    }
-    listener = nopListenerCreater(data, null, t);
-    listener.scope = NopShareScope.unique;
-    listener.initWithFirstDependence(dependence ?? globalDependences,
-        position: position, step: step);
-    return (listener, true);
-  }
-
-  static NopListener createArg(Type t, Object? groupName) {
-    final factory = _get(t);
-    final data = factory();
-    final listener = nopListenerCreater(data, groupName, t);
-    if (groupName != null) {
-      listener.scope = NopShareScope.group;
-    } else {
-      listener.scope = NopShareScope.shared;
-    }
-    return listener;
-  }
-
-  static NopListener Function(dynamic data, Object? groupName, Type t)
-      nopListenerCreater = _defaultCreate;
-
-  static NopListener _defaultCreate(dynamic data, Object? group, Type t) =>
-      NopListenerDefault(data, group, t);
-
-  static GetTypePointers? _globalDependences;
-
-  static GetTypePointers globalDependences =
-      _globalDependences ??= NopDependence();
-
-  static clear() {
-    final dep = _globalDependences;
-    _globalDependences = null;
-    if (dep is NopDependence) {
-      dep.removeCurrent();
-    }
-  }
-
-  static Type Function(Type t) getAlias = Nav.getAlias;
-
-  static GetFactory getFactory = Nav.getArg;
-
-  static GetFactory? _factory;
-
-  static GetFactory get _get {
-    if (_factory != null) return _factory!;
-    assert(Log.w('init once.'));
-    return _factory ??= getFactory;
-  }
-
-  NopListener _createListenerArg(Type t, Object? groupName, int? position) {
-    var listener = createArg(t, groupName);
-
-    assert(!containsKey(groupName, t), t);
-
-    listener.initWithFirstDependence(this, position: position);
-    addListener(t, listener, groupName);
-
-    return listener;
-  }
-
-  void visitElement(bool Function(GetTypePointers current) visitor) {
+  void visitElement(bool Function(Node current) visitor) {
     if (visitor(this)) return;
     visitOtherElement(visitor);
   }
 
-  void visitOtherElement(bool Function(GetTypePointers current) visitor) {
-    GetTypePointers? current = parent;
+  void visitOtherElement(bool Function(Node current) visitor) {
+    Node? current = parent;
     var success = false;
     while (current != null) {
       if (success = visitor(current)) return;
@@ -211,30 +82,123 @@ mixin GetTypePointers {
     }
   }
 
-  NopListener? _findTypeElement(Type t, Object? groupName) {
+  @protected
+  NopListener? findTypeElement(Type t, Object? groupName) {
     NopListener? listener;
 
     visitElement((current) =>
-        (listener = current._findCurrentTypeArg(t, groupName)) != null);
+        (listener = current.findCurrentTypeArg(t, groupName)) != null);
 
     return listener;
   }
 
-  NopListener? _findTypeOtherElement(Type t, Object? groupName) {
+  @protected
+  NopListener? findTypeOtherElement(Type t, Object? groupName) {
     NopListener? listener;
 
     visitOtherElement((current) {
       assert(current != this);
-      return (listener = current._findCurrentTypeArg(t, groupName)) != null;
+      return (listener = current.findCurrentTypeArg(t, groupName)) != null;
     });
 
     return listener;
   }
 
-  NopListener? _findCurrentTypeArg(Type t, Object? groupName) {
+  @protected
+  NopListener? findCurrentTypeArg(Type t, Object? groupName) {
     return _groupPointers[groupName]?[t];
+  }
+
+  NopListener nopListenerCreater(dynamic data, Object? groupName, Type t);
+
+  dynamic build(Type t);
+
+  NopListener _createArg(Type t, Object? groupName) {
+    final data = build(t);
+
+    final listener = nopListenerCreater(data, groupName, t);
+    if (groupName != null) {
+      listener.scope = NopShareScope.group;
+    } else {
+      listener.scope = NopShareScope.shared;
+    }
+    return listener;
+  }
+
+  @protected
+  NopListener createListenerArg(Type t, Object? groupName, int? position) {
+    var listener = _createArg(t, groupName);
+
+    assert(!containsKey(groupName, t), t);
+    assert(() {
+      position = position == null ? null : position! + 1;
+      return true;
+    }());
+    listener.initWithFirstDependence(this, position: position);
+    addListener(t, listener, groupName, position);
+
+    return listener;
+  }
+
+  NopListener? findListener(Type t, Object? groupName) {
+    return findTypeElement(t, groupName);
+  }
+
+  NopListener getListener(Type t, Object? groupName, int? position) {
+    assert(() {
+      position = position == null ? null : position! + 1;
+      return true;
+    }());
+    return findTypeArgAndAdd(t, groupName, position) ??
+        createListenerArg(t, groupName, position);
+  }
+
+  NopListener? findTypeArgAndAdd(Type t, Object? groupName, position) {
+    var listener = findCurrentTypeArg(t, groupName);
+    if (listener != null) return listener;
+    listener = findTypeOtherElement(t, groupName);
+    if (listener != null) {
+      assert(() {
+        position = position == null ? null : position! + 1;
+        return true;
+      }());
+      assert(!containsKey(groupName, t));
+      addListener(t, listener, groupName, position);
+    }
+
+    return listener;
+  }
+
+  static NopListener defaultGetNopListener(Type t, Node? current,
+      Node globalDependence, Object? groupName, int? position) {
+    assert(() {
+      position = position == null ? null : position! + 1;
+      return true;
+    }());
+    if (current == null || current == globalDependence) {
+      return globalDependence.getListener(t, groupName, position);
+    }
+
+    var listener = current.findCurrentTypeArg(t, groupName) ??
+        globalDependence.findTypeElement(t, groupName);
+
+    if (listener == null) {
+      listener = current.findTypeOtherElement(t, groupName); // other
+
+      // other: should add listener
+      if (listener != null) {
+        current.addListener(t, listener, groupName, position);
+      }
+    }
+
+    return listener ??= current.createListenerArg(t, groupName, position);
+  }
+
+  static NopListener? defaultFindNopListener(
+      Type t, Node? current, Node globalDependences, Object? groupName) {
+    return current?.findTypeElement(t, groupName) ??
+        globalDependences.findTypeElement(t, groupName);
   }
 }
 
-typedef GetFactory<T> = BuildFactory<T> Function(Type t);
 typedef ListenerVisitor = void Function(Object? group, NopListener listener);

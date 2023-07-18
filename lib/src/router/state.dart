@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../router.dart';
-import '../dependence/dependences_mixin.dart';
 import '../dependence/nop_listener.dart';
+import 'router.dart';
 
 extension Grass on BuildContext {
   /// [group] shared group
@@ -10,8 +9,12 @@ extension Grass on BuildContext {
     return Green.of(this, group: group, global: global, position: position);
   }
 
+  Object? get groupId {
+    return RouteQueueEntry.of(this)?.groupId;
+  }
+
   T? findGrass<T>({Object? group, bool global = false}) {
-    return Green.find(context: this, group: group, global: global);
+    return Green.find(this, group: group, global: global);
   }
 }
 
@@ -35,42 +38,33 @@ class Green<C> extends StatefulWidget {
   final C Function(BuildContext context)? create;
   final C? value;
 
-  static T of<T>(BuildContext? context,
+  static T of<T>(BuildContext context,
       {Object? group, bool global = false, int? position = 0}) {
-    RouteQueueEntry? dependence;
-    if (context != null) {
-      final nop = context.dependOnInheritedWidgetOfExactType<_GreenScope>();
-      if (nop != null) {
-        return nop.state.getType<T>(group, global, position);
-      }
-      dependence = RouteQueueEntry.of(context);
-      if (!global) {
-        group ??= dependence?.getGroup<T>();
-      }
+    assert(() {
+      position = position == null ? null : position! + 1;
+      return true;
+    }());
+
+    final nop = context.dependOnInheritedWidgetOfExactType<_GreenScope>();
+    if (nop != null) {
+      return nop.state.getTypeListener(T, group, position: position);
     }
 
-    final listener = GetTypePointers.defaultGetNopListener(T, dependence, group,
-        position: position);
-    return listener.data;
+    return NRouter.of(context).grass<T>(
+        context: context, group: group, global: global, position: position);
   }
 
-  static T? find<T>(
-      {BuildContext? context, Object? group, bool global = false}) {
-    RouteQueueEntry? dependence;
-    if (context != null) {
+  static T? find<T>(BuildContext context,
+      {Object? group, bool global = false}) {
+    if (!global) {
       final nop = context.dependOnInheritedWidgetOfExactType<_GreenScope>();
       if (nop != null) {
-        return nop.state.findTypeArg(group, global);
-      }
-      dependence = RouteQueueEntry.of(context);
-      if (!global) {
-        group ??= dependence?.getGroup<T>();
+        return nop.state.findTypeListener(T, group);
       }
     }
 
-    final listener =
-        GetTypePointers.defaultFindNopListener(T, dependence, group);
-    return listener?.data;
+    return NRouter.of(context)
+        .find<T>(context: context, group: group, global: global);
   }
 
   @override
@@ -80,8 +74,14 @@ class Green<C> extends StatefulWidget {
 class _GreenState<C> extends State<Green<C>> {
   NopListener? getLocal(Type t, int? position) {
     if (_local == null && _init) return null;
-
-    if (GetTypePointers.getAlias(t) == GetTypePointers.getAlias(C)) {
+    final router = NRouter.of(context);
+    final lt = router.getAlias(t);
+    final rt = router.getAlias(C);
+    if (lt == rt) {
+      assert(() {
+        position = position == null ? null : position! + 1;
+        return true;
+      }());
       _initOnce(position);
       return _local;
     }
@@ -89,68 +89,71 @@ class _GreenState<C> extends State<Green<C>> {
     return null;
   }
 
-  /// export
-  T getType<T>(Object? group, bool global, int? position) {
-    return getTypeListener(T, group, global: global, position: position).data;
-  }
-
-  T? findTypeArg<T>(Object? group, bool global) {
-    return findTypeListener(T, group, global: global)?.data;
-  }
-
-  /// ---
-  ///
-
-  NopListener getTypeListener(Type t, Object? group,
-      {bool global = false, int? position}) {
+  dynamic getTypeListener(Type t, Object? group, {int? position}) {
+    assert(() {
+      position = position == null ? null : position! + 1;
+      return true;
+    }());
     if (group == null) {
       final listener = getLocal(t, position);
       if (listener != null) {
-        return listener;
+        return listener.data;
       }
     }
 
-    final dependence = RouteQueueEntry.of(context);
-
-    if (!global) {
-      group ??= dependence?.getGroup(t);
-    }
-
-    return GetTypePointers.defaultGetNopListener(t, dependence, group,
-        position: position, step: 3);
+    return NRouter.of(context).grass(
+        context: context,
+        t: t,
+        group: group,
+        global: false,
+        position: position);
   }
 
-  NopListener? findTypeListener(Type t, Object? group, {bool global = false}) {
+  dynamic findTypeListener(Type t, Object? group) {
     if (group == null && _local != null) {
       final listener = getLocal(t, null);
       if (listener != null) {
-        return listener;
+        return listener.data;
       }
     }
 
-    final dependence = RouteQueueEntry.of(context);
-
-    if (!global) {
-      group ??= dependence?.getGroup(t);
-    }
-
-    return GetTypePointers.defaultFindNopListener(t, dependence, group);
+    return NRouter.of(context)
+        .find(context: context, t: t, group: group, global: false);
   }
 
   NopListener? _local;
 
   bool _shouldClean = false;
   void _initData(dynamic data, int? position) {
-    final dependence = RouteQueueEntry.of(context);
-    final (listener, shouldClean) = GetTypePointers.createUniqueListener(
-        data, C, dependence,
-        position: position, step: 7);
+    assert(() {
+      position = position == null ? null : position! + 1;
+      return true;
+    }());
+    var listener = NopLifeCycle.checkIsNopLisenter(data);
+    assert(listener == null ||
+        listener is RouteListener ||
+        listener is RouteLocalListener);
+
+    _shouldClean = listener == null;
+    if (listener == null) {
+      final dependence = RouteQueueEntry.of(context);
+      listener = dependence?.nopListenerCreater(data, null, C) ??
+          RouteLocalListener(data, null, C, NRouter.of(context));
+      listener.scope = NopShareScope.unique;
+      listener.initWithFirstDependence(
+          dependence ?? NRouter.of(context).globalDependence,
+          position: position);
+    }
+
     _local = listener;
-    _shouldClean = shouldClean;
   }
 
   bool _init = false;
   void _initOnce(int? position) {
+    assert(() {
+      position = position == null ? null : position! + 1;
+      return true;
+    }());
     if (_init) return;
     _init = true;
 
