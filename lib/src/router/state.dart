@@ -50,7 +50,7 @@ class Green<C> extends StatefulWidget {
     }
 
     final listener = GetTypePointers.defaultGetNopListener(T, dependence, group,
-        position: GetTypePointers.addPosition(position));
+        position: position);
     return listener.data;
   }
 
@@ -117,7 +117,7 @@ class _GreenState<C> extends State<Green<C>> {
     }
 
     return GetTypePointers.defaultGetNopListener(t, dependence, group,
-        position: GetTypePointers.addPosition(position, step: 3));
+        position: position, step: 3);
   }
 
   NopListener? findTypeListener(Type t, Object? group, {bool global = false}) {
@@ -143,7 +143,8 @@ class _GreenState<C> extends State<Green<C>> {
   void _initData(dynamic data, int? position) {
     final dependence = RouteQueueEntry.of(context);
     final (listener, shouldClean) = GetTypePointers.createUniqueListener(
-        data, C, dependence, GetTypePointers.addPosition(position, step: 7));
+        data, C, dependence,
+        position: position, step: 7);
     _local = listener;
     _shouldClean = shouldClean;
   }

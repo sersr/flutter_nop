@@ -118,14 +118,15 @@ abstract class NopListener {
 
   bool _init = false;
 
-  void initWithFirstDependence(GetTypePointers dependence, int? position) {
+  void initWithFirstDependence(GetTypePointers dependence,
+      {int? position, int step = 1}) {
     assert(!_init && _dependenceTree.isEmpty);
     _init = true;
 
     _dependenceTree.add(dependence);
 
     assert(Log.w('$label created.',
-        position: GetTypePointers.addPosition(position) ?? 0));
+        position: position == null ? 0 : position + step));
 
     NopLifeCycle.autoInit(this);
   }
@@ -221,7 +222,7 @@ abstract class NopListener {
     assert(owner._dependenceTree.isNotEmpty);
     final dependence = owner.getDependence();
     final listener = GetTypePointers.defaultGetNopListener(t, dependence, group,
-        position: GetTypePointers.addPosition(position, step: 5));
+        position: position, step: 5);
     assert(listener.isGlobal || listener._dependenceTree.contains(dependence));
 
     return listener;

@@ -86,17 +86,12 @@ mixin GetTypePointers {
 
   static HashMap<T, V> createHashMap<T, V>() => HashMap<T, V>();
 
-  static int? addPosition(int? position, {int step = 1}) {
-    if (position == null) return null;
-    return position + step;
-  }
-
   static NopListener defaultGetNopListener(
       Type t, GetTypePointers? current, Object? groupName,
-      {bool isSelf = true, int? position}) {
+      {bool isSelf = true, int? position, int step = 1}) {
     if (current == null || current == globalDependences) {
       return globalDependences._getTypeArg(
-          t, groupName, addPosition(position, step: 3));
+          t, groupName, position == null ? null : position + step + 3);
     }
 
     t = getAlias(t);
@@ -114,7 +109,7 @@ mixin GetTypePointers {
     }
 
     listener ??= current._createListenerArg(
-        t, groupName, addPosition(position, step: 2));
+        t, groupName, position == null ? null : position + step + 2);
 
     return listener;
   }
@@ -127,14 +122,16 @@ mixin GetTypePointers {
   }
 
   static (NopListener, bool) createUniqueListener(
-      dynamic data, Type t, GetTypePointers? dependence, int? position) {
+      dynamic data, Type t, GetTypePointers? dependence,
+      {int? position, int step = 1}) {
     var listener = NopLifeCycle.checkIsNopLisenter(data);
     if (listener != null) {
       return (listener, false);
     }
     listener = nopListenerCreater(data, null, t);
     listener.scope = NopShareScope.unique;
-    listener.initWithFirstDependence(dependence ?? globalDependences, position);
+    listener.initWithFirstDependence(dependence ?? globalDependences,
+        position: position, step: step);
     return (listener, true);
   }
 
@@ -186,7 +183,7 @@ mixin GetTypePointers {
 
     assert(!containsKey(groupName, t), t);
 
-    listener.initWithFirstDependence(this, position);
+    listener.initWithFirstDependence(this, position: position);
     addListener(t, listener, groupName);
 
     return listener;
