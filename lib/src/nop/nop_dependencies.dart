@@ -7,22 +7,21 @@ import 'nop_listener.dart';
 
 /// [GetTypePointers]
 mixin GetTypePointers on Node {
-  NopListener? findTypeArg(Type t, Object? groupName) {
-    return findTypeElement(getAlias(t), groupName);
-  }
+  // NopListener? findTypeArg(Type t, Object? groupName) {
+  //   return findTypeElement(getAlias(t), groupName);
+  // }
 
-  NopListener? findTypeArgOther(Type t, Object? groupName) {
-    return findTypeOtherElement(getAlias(t), groupName);
-  }
+  // NopListener? findTypeArgOther(Type t, Object? groupName) {
+  //   return findTypeOtherElement(getAlias(t), groupName);
+  // }
 
-  NopListener? findType<T>(Object? groupName) {
-    return findTypeElement(getAlias(T), groupName);
-  }
+  // NopListener? findType<T>(Object? groupName) {
+  //   return findTypeElement(getAlias(T), groupName);
+  // }
 
-  NopListener? findCurrent(Type t, Object? groupName) {
-    t = getAlias(t);
-    return findCurrentTypeArg(t, groupName);
-  }
+  // NopListener? findCurrent(Type t, Object? groupName) {
+  //   return findCurrentTypeArg(getAlias(t), groupName);
+  // }
 
   @override
   NopListener nopListenerCreater(dynamic data, Object? groupName, Type t) {
@@ -32,8 +31,7 @@ mixin GetTypePointers on Node {
   static HashMap<T, V> createHashMap<T, V>() => HashMap<T, V>();
 
   static (NopListener, bool) createUniqueListener(
-      dynamic data, Type t, GetTypePointers? dependence,
-      {int? position, int step = 1}) {
+      dynamic data, Type t, GetTypePointers? dependence, int? position) {
     var listener = NopLifeCycle.checkIsNopLisenter(data);
     if (listener != null) {
       return (listener, false);
@@ -58,7 +56,7 @@ mixin GetTypePointers on Node {
     final dep = _globalDependences;
     _globalDependences = null;
     if (dep is NopDependence) {
-      dep.removeCurrent();
+      dep.completed();
     }
   }
 
@@ -134,24 +132,36 @@ class NopDependence with Node, GetTypePointers {
     child = newChild;
   }
 
-  void removeCurrent() {
-    parent?.child = child;
-    child?.parent = parent;
-    _remove();
-  }
-
   bool _poped = false;
   @override
   bool get popped => _poped;
 
+  void onPop() {
+    if (_poped) return;
+    _poped = true;
+
+    _remove();
+
+    visitListener((_, listener) {
+      listener.onPop();
+    });
+  }
+
   void _remove() {
+    parent?.child = child;
+    child?.parent = parent;
     parent = null;
     child = null;
-    _poped = true;
+  }
+
+  void completed() {
+    onPop();
+
     visitListener((_, item) {
-      item.onPop();
       item.onRemoveDependence(this);
     });
+
+    dispose();
   }
 
   @override

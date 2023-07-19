@@ -9,6 +9,11 @@ class NopListenerDefault extends NopListener {
 
   @override
   NopListener getListener(Type t, {Object? group, int? position = 0}) {
+    assert(() {
+      position = position == null ? null : position! + 1;
+      return true;
+    }());
+
     return getTypeDefault(t, this, group, position);
   }
 
@@ -17,8 +22,8 @@ class NopListenerDefault extends NopListener {
     return getTypeOrNullDefault(t, this, group);
   }
 
-  static NopListener getTypeDefault(Type t, NopListener owner, Object? group,
-      [int? position = -4]) {
+  static NopListener getTypeDefault(
+      Type t, NopListener owner, Object? group, int? position) {
     assert(() {
       position = position == null ? null : position! + 1;
       return true;

@@ -17,7 +17,7 @@ mixin NopLifeCycle {
 
   @mustCallSuper
   void nopDispose() {
-    assert(!mounted);
+    assert(!mounted, _listener?._dependenceTree);
   }
 
   void onPop() {}
@@ -66,7 +66,7 @@ mixin NopLifeCycle {
         data.nopInit();
       }
     }
-    // assert(Log.w(listener.label));
+    assert(Log.w(listener.label));
   }
 
   static void autoDispose(NopListener listener) {
@@ -222,6 +222,8 @@ abstract class NopListener {
 
   void onRemove() {
     assert(!mounted);
+    Log.w(_dependenceTree.length);
+
     NopLifeCycle.autoDispose(this);
   }
 

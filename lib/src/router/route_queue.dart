@@ -412,7 +412,9 @@ mixin _RouteQueueMixin {
   void refresh();
 }
 
-class RouteQueueEntry with _RouteQueueEntryMixin, Node implements LogPretty {
+class RouteQueueEntry
+    with _RouteQueueEntryMixin, Node, RouteDependenceMixin
+    implements LogPretty {
   RouteQueueEntry({
     String? path,
     required this.params,
@@ -642,6 +644,7 @@ class RouteQueueEntry with _RouteQueueEntryMixin, Node implements LogPretty {
     visitListener((_, listener) {
       listener.onRemoveDependence(this);
     });
+    dispose();
   }
 
   @override
@@ -662,18 +665,8 @@ class RouteQueueEntry with _RouteQueueEntryMixin, Node implements LogPretty {
     return findListener(router.getAlias(t), group);
   }
 
-  NopListener getRouteListener(Type t, Object? group, int? position) {
-    assert(() {
-      position = position == null ? null : position! + 1;
-      return true;
-    }());
-
-    final router = (_queue ?? _removed!).delegate.router;
-    final global = router.globalDependence;
-    t = router.getAlias(t);
-
-    return Node.defaultGetNopListener(t, this, global, group, position);
-  }
+  @override
+  NRouter get _router => (_queue ?? _removed!).delegate.router;
 
   @override
   NopListener nopListenerCreater(data, Object? groupName, Type t) {

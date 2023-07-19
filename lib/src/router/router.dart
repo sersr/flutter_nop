@@ -148,12 +148,10 @@ class NRouter implements RouterConfig<RouteQueue> {
     routerDelegate.maybePop();
   }
 
-  late var _global = NRouterGlobalDependence(this);
+  late final _global = NRouterGlobalDependence(this);
 
   void clear() {
-    final old = _global;
-    _global = NRouterGlobalDependence(this);
-    old.clear();
+    _global.clear();
   }
 
   NRouterGlobalDependence get globalDependence => _global;

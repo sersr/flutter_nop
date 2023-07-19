@@ -35,7 +35,7 @@ void main() {
       first.insertChild(four);
       forEach(first);
 
-      second.removeCurrent();
+      second.completed();
       forEach(first);
     });
   });

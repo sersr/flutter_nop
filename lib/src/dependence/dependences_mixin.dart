@@ -47,6 +47,10 @@ mixin Node {
     }
   }
 
+  void dispose() {
+    _groupPointers.clear();
+  }
+
   bool get isEmpty => _groupPointers.isEmpty;
 
   // NopListener _createListenerArg(Type t, Object? groupName, int? position) {

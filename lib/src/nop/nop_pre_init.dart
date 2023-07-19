@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'typedef.dart';
+typedef NopWidgetBuilder = Widget Function(BuildContext context, Widget child);
 
 /// 统一初始化对象
 class NopPreInit extends StatefulWidget {

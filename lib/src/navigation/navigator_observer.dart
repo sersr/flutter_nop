@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:nop/nop.dart';
 
 import '../../flutter_nop.dart';
+import '../nop/dependence_observer.dart';
 import '../nop/route.dart';
 
 typedef BuildFactory<T> = T Function();
@@ -18,6 +19,8 @@ class NavGlobal extends NavInterface {
   factory NavGlobal() => _instance;
 
   final NavObserver observer = NavObserver();
+
+  DependenceManager get dependenceManager => observer.dependenceManager;
 
   bool enabledPrint = false;
 
@@ -77,6 +80,8 @@ class NavObserver extends NavigatorObserver {
   Route? _currentRoute;
   Route? get currentRoute => _currentRoute;
 
+  final dependenceManager = DependenceManager();
+
   NopPageRouteMixin? get nopRoute {
     if (_currentRoute is NopPageRouteMixin) {
       return _currentRoute as NopPageRouteMixin;
@@ -100,44 +105,24 @@ class NavObserver extends NavigatorObserver {
     return route?.settings.arguments;
   }
 
-  final Map<Route<dynamic>, Set<NopRouteAware>> _listeners =
-      <Route<dynamic>, Set<NopRouteAware>>{};
-  void subscribe(NopRouteAware routeAware, Route<dynamic> route) {
-    final Set<NopRouteAware> subscribers =
-        _listeners.putIfAbsent(route, () => <NopRouteAware>{});
-    if (subscribers.add(routeAware)) {}
-  }
-
-  void unsubscribe(NopRouteAware routeAware) {
-    final routes = _listeners.keys.toList();
-    for (final route in routes) {
-      final Set<NopRouteAware>? subscribers = _listeners[route];
-      if (subscribers != null) {
-        subscribers.remove(routeAware);
-        if (subscribers.isEmpty) {
-          _listeners.remove(route);
-        }
-      }
-    }
-  }
-
   @override
   void didPop(Route route, Route? previousRoute) {
     _currentRoute = previousRoute;
-    _popOrRemove(route);
+    dependenceManager.didPop(route);
     assert(!Nav.enabledPrint || Log.i(route.settings.name));
   }
 
   @override
   void didPush(Route route, Route? previousRoute) {
     _currentRoute = route;
+    dependenceManager.didPush(route);
     assert(!Nav.enabledPrint || Log.i(route.settings.name));
   }
 
   @override
   void didRemove(Route route, Route? previousRoute) {
-    _popOrRemove(route);
     assert(!Nav.enabledPrint || Log.i(route.settings.name));
+    dependenceManager.didRemove(route);
   }
 
   @override
@@ -145,49 +130,9 @@ class NavObserver extends NavigatorObserver {
     if (newRoute != null) {
       _currentRoute = newRoute;
     }
-    if (oldRoute != null) {
-      _popOrRemove(oldRoute);
-    }
     assert(!Nav.enabledPrint ||
         Log.i('${newRoute?.settings.name}  ${oldRoute?.settings.name}'));
   }
-
-  void _popOrRemove(Route<dynamic> route) {
-    final subscribers = _listeners[route]?.toList();
-
-    if (subscribers != null) {
-      for (final routeAware in subscribers) {
-        routeAware.popDependence();
-      }
-    }
-  }
-
-  void dispose(Route? route) {}
-}
-
-abstract mixin class NopRouteAware {
-  /// 当前[Route]开始退出,调用`didPop`
-  ///
-  /// 路由的生命的周期已经结束，但是[State]的生命周期在动画之后才会结束
-  ///
-  /// 如果调用[Navigator.pushNamedAndRemoveUntil]等方法，且和移除的[Route]使用相同
-  /// 的依赖，在不调用此方法前，只依赖于[State]的生命周期管理，对象并不会重新创建:
-  /// ```dart
-  /// /// route name: '/page'
-  /// class Page extends StatelessWidget {
-  ///   Widget build(BuildContext context) {
-  ///   /// 不会重新创建新的对象
-  ///   final controller = context.getType<SomeController>();
-  ///  }
-  /// }
-  /// // ...
-  /// /// current route: '/page'
-  /// /// 希望: 上一个页面的对象会被释放，并且新的页面会重新创建新的对象
-  /// /// `popDependence` 解决这个问题
-  /// Navigator.pushNamedAndRemoveUntil(context, '/page',(route)=> false);
-  /// ```
-  /// ? ? ? : popDependence(Route route)
-  void popDependence() {}
 }
 
 // ignore: non_constant_identifier_names
