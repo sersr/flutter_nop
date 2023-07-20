@@ -54,7 +54,7 @@ class Nop<C> extends StatefulWidget {
       position = position == null ? null : position! + 1;
       return true;
     }());
-    final nop = context?.dependOnInheritedWidgetOfExactType<_NopScoop>();
+    final nop = context?.dependOnInheritedWidgetOfExactType<_NopScope>();
     if (nop != null) {
       return nop.state.getType<T>(group, global, position);
     } else {
@@ -65,14 +65,17 @@ class Nop<C> extends StatefulWidget {
 
   static T? findwithContext<T>(BuildContext context,
       {Object? group, bool global = false}) {
-    final nop = context.dependOnInheritedWidgetOfExactType<_NopScoop>();
+    final nop = context.dependOnInheritedWidgetOfExactType<_NopScope>();
     if (nop != null) return nop.state.findTypeArg<T>(group, global);
     return _findFromRouteOrCurrent<T>(context, group: group);
   }
 
   static T? find<T>({Object? group}) {
-    final listener = Node.defaultFindNopListener(GetTypePointers.getAlias(T),
-        _NopState.currentDependence, GetTypePointers.globalDependences, group);
+    final listener = Node.defaultFindNopListener(
+        GetTypePointers.getAlias(T),
+        _NopState.getRouteDependence(null),
+        GetTypePointers.globalDependences,
+        group);
     return listener?.data;
   }
 
@@ -82,7 +85,7 @@ class Nop<C> extends StatefulWidget {
       position = position == null ? null : position! + 1;
       return true;
     }());
-    final nop = context.dependOnInheritedWidgetOfExactType<_NopScoop>();
+    final nop = context.dependOnInheritedWidgetOfExactType<_NopScope>();
     if (nop != null) return nop.state.getType<T>(group, global, position);
     return _getFromRouteOrCurrent(context, group: group, position: position);
   }
@@ -100,8 +103,6 @@ class Nop<C> extends StatefulWidget {
       dependence = _NopState.getRouteDependence(context);
     }
 
-    dependence ??= _NopState.currentDependence;
-
     return Node.defaultGetNopListener(
             t, dependence, GetTypePointers.globalDependences, group, position)
         .data;
@@ -109,8 +110,7 @@ class Nop<C> extends StatefulWidget {
 
   static T? _findFromRouteOrCurrent<T>(BuildContext context,
       {Type? t, Object? group}) {
-    final dependence =
-        _NopState.getRouteDependence(context) ?? _NopState.currentDependence;
+    final dependence = _NopState.getRouteDependence(context);
     t = GetTypePointers.getAlias(t ?? T);
 
     return Node.defaultFindNopListener(
@@ -212,10 +212,7 @@ class _NopState<C> extends State<Nop<C>> {
   NopListener? _local;
   bool _shouldClean = false;
 
-  static NopDependence? get currentDependence =>
-      Nav.dependenceManager.currentDependence;
-
-  static NopDependence? getRouteDependence(BuildContext context) =>
+  static NopDependence? getRouteDependence(BuildContext? context) =>
       Nav.dependenceManager.getRouteDependence(context);
 
   void _initData(dynamic data, int? position) {
@@ -268,20 +265,19 @@ class _NopState<C> extends State<Nop<C>> {
       );
     }
 
-    return _NopScoop(state: this, child: child);
+    return _NopScope(state: this, child: child);
   }
 }
 
-class _NopScoop extends InheritedWidget {
-  const _NopScoop({
-    Key? key,
-    required Widget child,
+class _NopScope extends InheritedWidget {
+  const _NopScope({
+    required super.child,
     required this.state,
-  }) : super(key: key, child: child);
+  });
   final _NopState state;
 
   @override
-  bool updateShouldNotify(covariant _NopScoop oldWidget) {
+  bool updateShouldNotify(covariant _NopScope oldWidget) {
     return state != oldWidget.state;
   }
 }

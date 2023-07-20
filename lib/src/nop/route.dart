@@ -77,7 +77,7 @@ mixin NopRouteActionMixin<T> {
 class NopRoute {
   final String name;
   final String fullName;
-  final List<NopRoute> Function()? childrenLate;
+  final List<NopRoute>? children;
   final Widget Function(BuildContext context, dynamic arguments, Object? group)
       builder;
   final String desc;
@@ -90,15 +90,9 @@ class NopRoute {
     required this.builder,
     this.groupOwnerLate,
     String? groupKey,
-    this.childrenLate,
+    this.children,
     this.desc = '',
   }) : groupKey = groupKey ?? defaultGroupKey;
-
-  List<NopRoute>? _children;
-
-  List<NopRoute> get children {
-    return _children ??= childrenLate?.call() ?? const [];
-  }
 
   NopRoute? _owner;
   NopRoute? get groupOwner {
@@ -137,15 +131,14 @@ class NopRoute {
 
   static Object? getGroupIdFromBuildContext(BuildContext? context) {
     if (context == null) return null;
-    try {
-      final route = ModalRoute.of(context);
-      if (route is NopPageRouteMixin) {
-        final settings = route.nopSettings;
 
-        return settings.group;
-      }
-      Log.e('route <${route.runtimeType}> is not NopPageRouteMixin.');
-    } catch (_) {}
+    final route = ModalRoute.of(context);
+    if (route is NopPageRouteMixin) {
+      final settings = route.nopSettings;
+
+      return settings.group;
+    }
+    Log.e('route <${route.runtimeType}> is not NopPageRouteMixin.');
 
     return null;
   }
@@ -312,7 +305,8 @@ class NopRoute {
       );
     }
 
-    for (var child in current.children) {
+    if (current.children == null) return null;
+    for (var child in current.children!) {
       assert(child != current);
       final route = _onMatch(child, settings, pathName, query);
       if (route != null) return route;
