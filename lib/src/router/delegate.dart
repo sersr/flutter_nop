@@ -391,7 +391,7 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
   void _pop([Object? result]) {
     final last = _routeQueue.current;
     if (last != null && last != _routeQueue.root) {
-      last.remove(result);
+      last._removeCurrent(result: result);
     }
   }
 

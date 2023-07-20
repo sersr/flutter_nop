@@ -1,7 +1,6 @@
 import 'package:flutter/src/widgets/container.dart';
 import 'package:flutter/src/widgets/framework.dart';
 import 'package:flutter_nop/nop_state.dart';
-import 'package:flutter_nop/src/nop/nop.dart';
 import 'package:nop_annotations/annotation/route_annotation.dart';
 
 part 'route_gen.g.dart';

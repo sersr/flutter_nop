@@ -83,7 +83,7 @@ class NRouter implements RouterConfig<RouteQueue> {
   bool removeCurrent(BuildContext context, [dynamic result]) {
     final entry = ofEntry(context);
     if (entry != null) {
-      entry.remove(result);
+      entry._removeCurrent(result: result);
       return true;
     }
     return false;
@@ -192,10 +192,22 @@ class NRouter implements RouterConfig<RouteQueue> {
     }
   }
 
+  T global<T>({Object? group, int? position}) {
+    assert(() {
+      position = position == null ? null : position! + 1;
+      return true;
+    }());
+
+    return Node.defaultGetNopListener(
+            T, null, globalDependence, group, position)
+        .data;
+  }
+
   T grass<T>({
     BuildContext? context,
     Type? t,
     Object? group,
+    bool useEntryGroup = true,
     bool global = false,
     int? position = 0,
   }) {
@@ -207,6 +219,7 @@ class NRouter implements RouterConfig<RouteQueue> {
       context: context,
       t: t ?? T,
       group: group,
+      useEntryGroup: useEntryGroup,
       global: global,
       position: position,
     ).data;
@@ -216,6 +229,7 @@ class NRouter implements RouterConfig<RouteQueue> {
     BuildContext? context,
     required Type t,
     Object? group,
+    bool useEntryGroup = true,
     bool global = false,
     int? position,
   }) {
@@ -228,10 +242,14 @@ class NRouter implements RouterConfig<RouteQueue> {
     if (context != null) {
       dependence = RouteQueueEntry.of(context);
       if (dependence != null) {
-        if (!global) {
+        if (useEntryGroup) {
           group ??= dependence.getGroup(t);
         }
       }
+    }
+
+    if (dependence == null && !global) {
+      dependence = routerDelegate.routeQueue._current;
     }
 
     t = getAlias(t);
@@ -240,9 +258,15 @@ class NRouter implements RouterConfig<RouteQueue> {
   }
 
   T? find<T>(
-      {BuildContext? context, Type? t, Object? group, bool global = false}) {
+      {BuildContext? context,
+      Type? t,
+      Object? group,
+      bool useEntryGroup = true}) {
     return _findListener(
-            context: context, t: t ?? T, group: group, global: global)
+            context: context,
+            t: t ?? T,
+            group: group,
+            useEntryGroup: useEntryGroup)
         ?.data;
   }
 
@@ -250,18 +274,20 @@ class NRouter implements RouterConfig<RouteQueue> {
       {BuildContext? context,
       required Type t,
       Object? group,
-      bool global = false}) {
+      bool useEntryGroup = false}) {
     RouteQueueEntry? dependence;
 
     if (context != null) {
       dependence = RouteQueueEntry.of(context);
 
       if (dependence != null) {
-        if (!global) {
+        if (!useEntryGroup) {
           group ??= dependence.getGroup(t);
         }
       }
     }
+
+    dependence ??= routerDelegate.routeQueue._current;
 
     t = getAlias(t);
     return Node.defaultFindNopListener(t, dependence, globalDependence, group);

@@ -5,16 +5,27 @@ import 'router.dart';
 
 extension Grass on BuildContext {
   /// [group] shared group
-  T grass<T>({Object? group, bool global = false, int? position = 1}) {
-    return Green.of(this, group: group, global: global, position: position);
+  T grass<T>({
+    Object? group,
+    bool global = false,
+    bool useEntryGroup = true,
+    int? position = 1,
+  }) {
+    return Green.of(
+      this,
+      group: group,
+      useEntryGroup: useEntryGroup,
+      global: global,
+      position: position,
+    );
   }
 
   Object? get groupId {
     return RouteQueueEntry.of(this)?.groupId;
   }
 
-  T? findGrass<T>({Object? group, bool global = false}) {
-    return Green.find(this, group: group, global: global);
+  T? findGrass<T>({Object? group, bool useEntryGroup = true}) {
+    return Green.find(this, group: group, useEntryGroup: useEntryGroup);
   }
 }
 
@@ -38,8 +49,13 @@ class Green<C> extends StatefulWidget {
   final C Function(BuildContext context)? create;
   final C? value;
 
-  static T of<T>(BuildContext context,
-      {Object? group, bool global = false, int? position = 0}) {
+  static T of<T>(
+    BuildContext context, {
+    Object? group,
+    bool useEntryGroup = true,
+    bool global = false,
+    int? position = 0,
+  }) {
     assert(() {
       position = position == null ? null : position! + 1;
       return true;
@@ -47,16 +63,20 @@ class Green<C> extends StatefulWidget {
 
     final nop = context.dependOnInheritedWidgetOfExactType<_GreenScope>();
     if (nop != null) {
-      return nop.state.getTypeListener(T, group, position: position);
+      return nop.state.getTypeListener(T, group, global, position: position);
     }
 
     return NRouter.of(context).grass<T>(
-        context: context, group: group, global: global, position: position);
+        context: context,
+        group: group,
+        useEntryGroup: useEntryGroup,
+        global: global,
+        position: position);
   }
 
   static T? find<T>(BuildContext context,
-      {Object? group, bool global = false}) {
-    if (!global) {
+      {Object? group, bool useEntryGroup = true}) {
+    if (!useEntryGroup) {
       final nop = context.dependOnInheritedWidgetOfExactType<_GreenScope>();
       if (nop != null) {
         return nop.state.findTypeListener(T, group);
@@ -64,7 +84,7 @@ class Green<C> extends StatefulWidget {
     }
 
     return NRouter.of(context)
-        .find<T>(context: context, group: group, global: global);
+        .find<T>(context: context, group: group, useEntryGroup: useEntryGroup);
   }
 
   @override
@@ -89,7 +109,7 @@ class _GreenState<C> extends State<Green<C>> {
     return null;
   }
 
-  dynamic getTypeListener(Type t, Object? group, {int? position}) {
+  dynamic getTypeListener(Type t, Object? group, bool global, {int? position}) {
     assert(() {
       position = position == null ? null : position! + 1;
       return true;
@@ -105,7 +125,8 @@ class _GreenState<C> extends State<Green<C>> {
         context: context,
         t: t,
         group: group,
-        global: false,
+        useEntryGroup: true,
+        global: global,
         position: position);
   }
 
@@ -118,7 +139,7 @@ class _GreenState<C> extends State<Green<C>> {
     }
 
     return NRouter.of(context)
-        .find(context: context, t: t, group: group, global: false);
+        .find(context: context, t: t, group: group, useEntryGroup: true);
   }
 
   NopListener? _local;

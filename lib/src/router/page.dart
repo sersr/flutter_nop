@@ -253,6 +253,7 @@ class NPage {
                 clipBehavior: Clip.hardEdge,
                 child: InkWell(
                   onTap: () {
+                    assert(entry.isTopPage);
                     entry.remove();
                   },
                   child: Padding(

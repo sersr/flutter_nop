@@ -445,8 +445,6 @@ class RouteQueueEntry
     );
   }
 
-  bool get isErrorEntry => nPage.isErrorPage;
-
   RouteQueueEntry._internal({
     String? path,
     required this.params,
@@ -477,6 +475,9 @@ class RouteQueueEntry
   }
 
   final NPage nPage;
+  bool get isErrorEntry => nPage.isErrorPage;
+
+  bool get isTopPage => _queue?._current == this;
 
   Object? getGroup<T>([Type? t]) {
     if (nPage.groupList.contains(t ?? T)) {

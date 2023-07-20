@@ -59,7 +59,7 @@ class RouteLocalListener extends NopListener {
 
   @override
   NopListener? findType(Type t, {Object? group}) {
-    return router._findListener(t: t, group: group, global: true);
+    return router._findListener(t: t, group: group, useEntryGroup: true);
   }
 
   @override
@@ -69,7 +69,7 @@ class RouteLocalListener extends NopListener {
       return true;
     }());
     return router._getListener(
-        t: t, group: group, global: true, position: position);
+        t: t, group: group, useEntryGroup: true, position: position);
   }
 }
 
