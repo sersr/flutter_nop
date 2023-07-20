@@ -8,6 +8,8 @@ mixin NopLifeCycle {
   static final _caches = <Object, NopListener>{};
   Object? get groupId => _listener?.group;
 
+  bool get isSingleton => false;
+
   bool get poped => _listener?.popped ?? true;
 
   @mustCallSuper
@@ -41,13 +43,13 @@ mixin NopLifeCycle {
       position = position == null ? null : position! + 1;
       return true;
     }());
-    return _listener!.getType<T>(group: group, position: position);
+    return _listener!.getListener(T, group: group, position: position).data;
   }
 
   /// 查找已存在的共享对象，不会创建对象
   T? getTypeOrNull<T>({Object? group}) {
     assert(mounted);
-    return _listener!.getTypeOrNull<T>(group: group);
+    return _listener!.findType(T, group: group)?.data;
   }
 
   void onUniqueListenerRemoved(dynamic data) {}
@@ -66,12 +68,12 @@ mixin NopLifeCycle {
         data.nopInit();
       }
     }
-    assert(Log.w(listener.label));
+    // assert(Log.w(listener.label));
   }
 
   static void autoDispose(NopListener listener) {
     final data = listener.data;
-    assert(Log.w(listener.label));
+    // assert(Log.w(listener.label));
 
     if (data is! NopLifeCycle) {
       _caches.remove(data);
@@ -111,16 +113,6 @@ abstract class NopListener {
 
   bool get mounted => _dependenceTree.isNotEmpty;
 
-  T getType<T>({Object? group, int? position = 0}) {
-    assert(() {
-      position = position == null ? null : position! + 1;
-      return true;
-    }());
-    return getTypeArg(T, group: group, position: position);
-  }
-
-  T? getTypeOrNull<T>({Object? group}) => findType(T, group: group)?.data;
-
   bool get canRemoved => _dependenceTree.isEmpty;
   int get length => _dependenceTree.length;
 
@@ -140,15 +132,6 @@ abstract class NopListener {
     assert(Log.w('$label created.', position: position ?? 0));
 
     NopLifeCycle.autoInit(this);
-  }
-
-  dynamic getTypeArg(Type t, {Object? group, int? position = 0}) {
-    assert(mounted);
-    assert(() {
-      position = position == null ? null : position! + 1;
-      return true;
-    }());
-    return getListener(t, group: group, position: position).data;
   }
 
   NopListener getListener(Type t, {Object? group, int? position = 0});
@@ -182,22 +165,12 @@ abstract class NopListener {
 
   final _dependenceTree = <Node>[];
 
-  @Deprecated('use onAddDependence instead.')
-  void onDependenceAdd(Node value) {
-    onAddDependence(value);
-  }
-
   void onAddDependence(Node value) {
     if (_dependenceTree.contains(value)) return;
     assert(_init, 'You must call `initWithFirstDependence` first.');
 
     _dependenceTree.add(value);
     // assert(Log.w('$label ${_dependenceTree.length}.'));
-  }
-
-  @Deprecated('use onRemoveDependence instead.')
-  void onDependenceRemove(Node value) {
-    onRemoveDependence(value);
   }
 
   void onRemoveDependence(Node value) {
@@ -222,7 +195,6 @@ abstract class NopListener {
 
   void onRemove() {
     assert(!mounted);
-    Log.w(_dependenceTree.length);
 
     NopLifeCycle.autoDispose(this);
   }
