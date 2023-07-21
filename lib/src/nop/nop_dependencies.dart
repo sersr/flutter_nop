@@ -47,17 +47,12 @@ mixin GetTypePointers on Node {
     return (listener, true);
   }
 
-  static GetTypePointers? _globalDependences;
+  static final _globalDependences = NopDependence(isGlobal: true);
 
-  static GetTypePointers globalDependences =
-      _globalDependences ??= NopDependence();
+  static GetTypePointers get globalDependences => _globalDependences;
 
   static clear() {
-    final dep = _globalDependences;
-    _globalDependences = null;
-    if (dep is NopDependence) {
-      dep.completed();
-    }
+    _globalDependences.clear();
   }
 
   static Type Function(Type t) getAlias = Nav.getAlias;
@@ -75,12 +70,14 @@ mixin GetTypePointers on Node {
 typedef GetFactory<T> = BuildFactory<T> Function(Type t);
 
 class NopDependence with Node, GetTypePointers {
-  NopDependence({this.debugName});
+  NopDependence({this.debugName, this.isGlobal = false});
   final String? debugName;
   @override
   NopDependence? parent;
   @override
   NopDependence? child;
+
+  final bool isGlobal;
 
   bool get isAlone => parent == null && child == null;
 
@@ -162,6 +159,12 @@ class NopDependence with Node, GetTypePointers {
     });
 
     dispose();
+  }
+
+  void clear() {
+    assert(isGlobal);
+    completed();
+    _poped = false;
   }
 
   @override

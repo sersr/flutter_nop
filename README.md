@@ -1,6 +1,5 @@
 状态管理，路由生成
 
-demo01: [shudu](https://github.com/sersr/shudu)
 demo02: [router_demo](https://github.com/sersr/router_demo)
 
 ## 状态管理

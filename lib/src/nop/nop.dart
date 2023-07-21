@@ -28,18 +28,27 @@ class Nop<C> extends StatefulWidget {
     required this.child,
     this.builders,
     this.create,
-    this.groupList = const [],
-    this.group,
-  }) : value = null;
+  })  : value = null,
+        group = null,
+        groupList = const [];
 
   const Nop.value({
     super.key,
     this.value,
     required this.child,
     this.builders,
+  })  : create = null,
+        group = null,
+        groupList = const [];
+
+  const Nop.page({
+    super.key,
+    required this.child,
+    this.builders,
     this.groupList = const [],
     this.group,
-  }) : create = null;
+  })  : create = null,
+        value = null;
 
   final Widget child;
   final List<NopWidgetBuilder>? builders;
@@ -71,12 +80,11 @@ class Nop<C> extends StatefulWidget {
   }
 
   static T? find<T>({Object? group}) {
-    final listener = Node.defaultFindNopListener(
+    return Node.defaultFindData(
         GetTypePointers.getAlias(T),
         _NopState.getRouteDependence(null),
         GetTypePointers.globalDependences,
         group);
-    return listener?.data;
   }
 
   static T? maybeOf<T>(BuildContext context,
@@ -103,9 +111,8 @@ class Nop<C> extends StatefulWidget {
       dependence = _NopState.getRouteDependence(context);
     }
 
-    return Node.defaultGetNopListener(
-            t, dependence, GetTypePointers.globalDependences, group, position)
-        .data;
+    return Node.defaultGetData(
+        t, dependence, GetTypePointers.globalDependences, group, position);
   }
 
   static T? _findFromRouteOrCurrent<T>(BuildContext context,
@@ -113,9 +120,8 @@ class Nop<C> extends StatefulWidget {
     final dependence = _NopState.getRouteDependence(context);
     t = GetTypePointers.getAlias(t ?? T);
 
-    return Node.defaultFindNopListener(
-            t, dependence, GetTypePointers.globalDependences, group)
-        ?.data;
+    return Node.defaultFindData(
+        t, dependence, GetTypePointers.globalDependences, group);
   }
 
   /// 链表会自动管理生命周期
@@ -129,52 +135,17 @@ class Nop<C> extends StatefulWidget {
 }
 
 class _NopState<C> extends State<Nop<C>> {
-  NopListener? getLocal(Type t, Object? group, int? position) {
+  T? getLocal<T>(int? position) {
     assert(() {
       position = position == null ? null : position! + 1;
       return true;
     }());
-    if (group == widget.group &&
-        GetTypePointers.getAlias(t) == GetTypePointers.getAlias(C)) {
+    if (GetTypePointers.getAlias(T) == GetTypePointers.getAlias(C)) {
       _initOnce(position);
-      return _local;
+      return _local?.data;
     }
     return null;
   }
-
-  // static void push(NopDependence dependence, {NopDependence? parent}) {
-  //   assert(dependence.parent == null && dependence.child == null);
-  //   if (currentDependence == null) {
-  //     currentDependence = dependence;
-  //   } else {
-  //     if (dependence == parent) {
-  //       parent = currentDependence;
-  //     } else {
-  //       parent ??= currentDependence;
-  //     }
-  //     parent!.insertChild(dependence);
-  //     updateCurrentDependences();
-  //   }
-  // }
-
-  // static void updateCurrentDependences() {
-  //   assert(currentDependence != null);
-  //   if (!currentDependence!.isLast) {
-  //     currentDependence = currentDependence!.lastChildOrSelf;
-  //   }
-  // }
-
-  // static void pop(NopDependence dependence) {
-  //   if (dependence == currentDependence) {
-  //     // dependence.child == null
-  //     if (dependence.parent != null) {
-  //       currentDependence = dependence.parent;
-  //     } else {
-  //       currentDependence = dependence.child;
-  //     }
-  //   }
-  //   dependence.removeCurrent();
-  // }
 
   /// export
   T getType<T>(Object? group, bool global, int? position) {
@@ -183,29 +154,56 @@ class _NopState<C> extends State<Nop<C>> {
       return true;
     }());
 
+    if (group == null) {
+      final data = getLocal(position);
+      if (data != null) {
+        return data;
+      }
+    }
+
     if (!global) {
       group ??= getGroup(T);
     }
-    final data = getLocal(T, group, position)?.data ??
-        Nop._getFromRouteOrCurrent<T>(context,
-            group: group, position: position);
-
-    return data;
+    return Nop._getFromRouteOrCurrent<T>(context,
+        group: group, position: position);
   }
 
   T? findTypeArg<T>(Object? group, bool global) {
+    if (group == null && _local != null) {
+      final data = getLocal(null);
+      if (data != null) {
+        return data;
+      }
+    }
+
     if (!global) {
       group ??= getGroup(T);
     }
 
-    return getLocal(T, group, null)?.data ??
-        Nop._findFromRouteOrCurrent(context, group: group);
+    return Nop._findFromRouteOrCurrent(context, group: group);
   }
 
+  bool get isPage => widget.group != null && widget.groupList.isNotEmpty;
+
   Object? getGroup(Type t) {
-    if (widget.groupList.contains(GetTypePointers.getAlias(t))) {
-      return widget.group;
+    if (isPage) {
+      return _getGroup(t, widget.group, widget.groupList);
     }
+
+    final page = context.dependOnInheritedWidgetOfExactType<_NopPageScope>();
+
+    return switch (page) {
+      _NopPageScope(:final group, :final groupList) =>
+        _getGroup(t, group, groupList),
+      _ => null,
+    };
+  }
+
+  static Object? _getGroup(Type t, Object? group, List<Type> groupList) {
+    if (groupList.contains(GetTypePointers.getAlias(t))) {
+      return group;
+    }
+
     return null;
   }
 
@@ -265,7 +263,31 @@ class _NopState<C> extends State<Nop<C>> {
       );
     }
 
+    if (isPage) {
+      child = _NopPageScope(
+        group: widget.group,
+        groupList: widget.groupList,
+        child: child,
+      );
+    }
+
     return _NopScope(state: this, child: child);
+  }
+}
+
+class _NopPageScope extends InheritedWidget {
+  const _NopPageScope({
+    required super.child,
+    this.group,
+    required this.groupList,
+  });
+
+  final Object? group;
+  final List<Type> groupList;
+
+  @override
+  bool updateShouldNotify(covariant _NopPageScope oldWidget) {
+    return group != oldWidget.groupList && groupList != oldWidget.groupList;
   }
 }
 

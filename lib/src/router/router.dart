@@ -16,6 +16,7 @@ part 'delegate.dart';
 part 'page.dart';
 part 'route_listener.dart';
 part 'route_queue.dart';
+part 'state.dart';
 
 /// Example:
 /// ```dart
@@ -198,14 +199,11 @@ class NRouter implements RouterConfig<RouteQueue> {
       return true;
     }());
 
-    return Node.defaultGetNopListener(
-            T, null, globalDependence, group, position)
-        .data;
+    return Node.defaultGetData(T, null, globalDependence, group, position);
   }
 
   T grass<T>({
     BuildContext? context,
-    Type? t,
     Object? group,
     bool useEntryGroup = true,
     bool global = false,
@@ -215,66 +213,29 @@ class NRouter implements RouterConfig<RouteQueue> {
       position = position == null ? null : position! + 1;
       return true;
     }());
-    return _getListener(
-      context: context,
-      t: t ?? T,
-      group: group,
-      useEntryGroup: useEntryGroup,
-      global: global,
-      position: position,
-    ).data;
-  }
-
-  NopListener _getListener({
-    BuildContext? context,
-    required Type t,
-    Object? group,
-    bool useEntryGroup = true,
-    bool global = false,
-    int? position,
-  }) {
-    assert(() {
-      position = position == null ? null : position! + 1;
-      return true;
-    }());
 
     RouteQueueEntry? dependence;
+
     if (context != null) {
       dependence = RouteQueueEntry.of(context);
       if (dependence != null) {
         if (useEntryGroup) {
-          group ??= dependence.getGroup(t);
+          group ??= dependence.getGroup(T);
         }
       }
     }
 
+    // if global is true, can not use _current [RouteQueueEntry]
     if (dependence == null && !global) {
       dependence = routerDelegate.routeQueue._current;
     }
 
-    t = getAlias(t);
-    return Node.defaultGetNopListener(
-        t, dependence, globalDependence, group, position);
+    return Node.defaultGetData(
+        getAlias(T), dependence, globalDependence, group, position);
   }
 
   T? find<T>(
-      {BuildContext? context,
-      Type? t,
-      Object? group,
-      bool useEntryGroup = true}) {
-    return _findListener(
-            context: context,
-            t: t ?? T,
-            group: group,
-            useEntryGroup: useEntryGroup)
-        ?.data;
-  }
-
-  NopListener? _findListener(
-      {BuildContext? context,
-      required Type t,
-      Object? group,
-      bool useEntryGroup = false}) {
+      {BuildContext? context, Object? group, bool useEntryGroup = true}) {
     RouteQueueEntry? dependence;
 
     if (context != null) {
@@ -282,15 +243,15 @@ class NRouter implements RouterConfig<RouteQueue> {
 
       if (dependence != null) {
         if (!useEntryGroup) {
-          group ??= dependence.getGroup(t);
+          group ??= dependence.getGroup(T);
         }
       }
     }
 
     dependence ??= routerDelegate.routeQueue._current;
 
-    t = getAlias(t);
-    return Node.defaultFindNopListener(t, dependence, globalDependence, group);
+    return Node.defaultFindData(
+        getAlias(T), dependence, globalDependence, group);
   }
 }
 

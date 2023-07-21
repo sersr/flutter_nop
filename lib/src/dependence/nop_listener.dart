@@ -1,6 +1,5 @@
-import 'package:flutter/foundation.dart';
 import 'package:nop/nop.dart';
-
+import 'package:flutter/material.dart';
 import 'dependences_mixin.dart';
 
 /// 自动管理生命周期
@@ -12,22 +11,23 @@ mixin NopLifeCycle {
 
   bool get poped => _listener?.popped ?? true;
 
-  @mustCallSuper
-  void nopInit() {
-    assert(mounted);
-  }
+  void nopInit() {}
 
-  @mustCallSuper
-  void nopDispose() {
-    assert(!mounted, _listener?._dependenceTree);
-  }
+  /// 当前对象的生命周期超出[_listener]时，再次初始化时调用。
+  ///
+  /// 比如调用[Navigator.pushReplacementNamed]时，新的页面和当前一致，
+  /// 此时因为页面动画还未结束并未调用[nopDispose]，也没有从[_caches]移除对象。
+  ///
+  /// 当初始化[autoInit]时发现[_caches]中还存在对象时调用[nopReInit]，[_listener]也会被替换。
+  void nopReInit() {}
+  void nopDispose() {}
 
   void onPop() {}
 
   NopListener? _listener;
 
   bool get mounted => _listener != null && _listener!.mounted;
-  bool get isGlobalData => _listener != null && _listener!.isGlobal;
+  bool get isGlobal => _listener != null && _listener!.isGlobal;
 
   NopShareScope get scope => _listener?.scope ?? NopShareScope.detached;
 
@@ -43,30 +43,33 @@ mixin NopLifeCycle {
       position = position == null ? null : position! + 1;
       return true;
     }());
-    return _listener!.getListener(T, group: group, position: position).data;
+    return _listener!.get(group: group, position: position);
   }
 
   /// 查找已存在的共享对象，不会创建对象
   T? getTypeOrNull<T>({Object? group}) {
     assert(mounted);
-    return _listener!.findType(T, group: group)?.data;
+    return _listener!.find(group: group);
   }
-
-  void onUniqueListenerRemoved(dynamic data) {}
 
   String get label => _listener?.label ?? '';
 
   static void autoInit(NopListener listener) {
     final data = listener.data;
-    if (data is! NopLifeCycle) {
-      _caches[data] = listener;
-    }
 
     if (data is NopLifeCycle) {
       if (data._listener == null) {
         data._listener = listener;
         data.nopInit();
+      } else {
+        // `data` may be a static/const object.
+        data._listener!._ignore = true;
+        data._listener = listener;
+        data.nopReInit();
       }
+    } else {
+      _caches[data]?._ignore = true;
+      _caches[data] = listener;
     }
     // assert(Log.w(listener.label));
   }
@@ -75,21 +78,19 @@ mixin NopLifeCycle {
     final data = listener.data;
     // assert(Log.w(listener.label));
 
-    if (data is! NopLifeCycle) {
-      _caches.remove(data);
-    }
     if (data is NopLifeCycle) {
       data.nopDispose();
       data._listener = null;
+    } else {
+      _caches.remove(data);
     }
   }
 
   static void autoPop(NopListener listener) {
-    final data = listener.data;
     // assert(Log.w(listener.label));
-
-    if (data is NopLifeCycle) {
-      data.onPop();
+    switch (listener.data) {
+      case NopLifeCycle nop:
+        nop.onPop();
     }
   }
 
@@ -104,6 +105,7 @@ mixin NopLifeCycle {
 abstract class NopListener {
   NopListener(this.data, this.group, Type t) : _t = t;
   final dynamic data;
+
   final Object? group;
   final Type _t;
 
@@ -134,9 +136,9 @@ abstract class NopListener {
     NopLifeCycle.autoInit(this);
   }
 
-  NopListener getListener(Type t, {Object? group, int? position = 0});
+  T get<T>({Object? group, int? position = 0});
 
-  NopListener? findType(Type t, {Object? group});
+  T? find<T>({Object? group});
 
   String get label {
     String? tag;
@@ -178,39 +180,39 @@ abstract class NopListener {
     assert(Log.w('$label ${_dependenceTree.length}.'));
 
     if (_dependenceTree.isEmpty) {
-      onRemove();
+      _onRemove();
     }
   }
 
   void uniqueDispose() {
-    assert(scope == NopShareScope.unique);
+    assert(scope == NopShareScope.unique && !_popped);
 
     _popped = true;
     onPop();
 
     assert(_dependenceTree.length == 1);
     _dependenceTree.clear();
-    onRemove();
+    _onRemove();
   }
 
-  void onRemove() {
+  bool _ignore = false;
+
+  void _onRemove() {
     assert(!mounted);
+    if (_ignore) return;
 
     NopLifeCycle.autoDispose(this);
   }
 
   void onPop() {
-    if (popped && mounted) {
-      NopLifeCycle.autoPop(this);
-    }
+    assert(mounted);
+    if (!popped || _ignore) return;
+    NopLifeCycle.autoPop(this);
   }
 
   Node? getDependence() => _dependenceTree.firstOrNull;
 }
 
-/// 指定共享范围
-/// 低级的共享域可以通过 [NopListener.list] 让高级的共享域访问
-/// 低级共享域可以任意使用高级共享域
 enum NopShareScope {
   /// 全局或路由链表共享
   shared,

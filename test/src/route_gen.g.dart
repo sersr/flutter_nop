@@ -28,7 +28,7 @@ class Routes {
       fullName: '/page02/page03',
       groupOwnerLate: () => _page02,
       groupKey: 'groupId',
-      builder: (context, arguments, group) => Nop(
+      builder: (context, arguments, group) => Nop.page(
         groupList: const [UniqueController],
         group: group,
         child: const Page03(),
@@ -41,7 +41,7 @@ class Routes {
       groupOwnerLate: () => _page02,
       groupKey: 'groupId',
       children: [_page03],
-      builder: (context, arguments, group) => Nop(
+      builder: (context, arguments, group) => Nop.page(
         groupList: const [UniqueController],
         group: group,
         child: const Page02(),

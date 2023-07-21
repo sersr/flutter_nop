@@ -1,7 +1,4 @@
-import 'package:flutter/material.dart';
-
-import '../dependence/nop_listener.dart';
-import 'router.dart';
+part of 'router.dart';
 
 extension Grass on BuildContext {
   /// [group] shared group
@@ -63,7 +60,7 @@ class Green<C> extends StatefulWidget {
 
     final nop = context.dependOnInheritedWidgetOfExactType<_GreenScope>();
     if (nop != null) {
-      return nop.state.getTypeListener(T, group, global, position: position);
+      return nop.state.getTypeListener(group, global, position: position);
     }
 
     return NRouter.of(context).grass<T>(
@@ -79,7 +76,7 @@ class Green<C> extends StatefulWidget {
     if (!useEntryGroup) {
       final nop = context.dependOnInheritedWidgetOfExactType<_GreenScope>();
       if (nop != null) {
-        return nop.state.findTypeListener(T, group);
+        return nop.state.findTypeListener<T>(group);
       }
     }
 
@@ -92,10 +89,10 @@ class Green<C> extends StatefulWidget {
 }
 
 class _GreenState<C> extends State<Green<C>> {
-  NopListener? getLocal(Type t, int? position) {
+  T? getLocal<T>(int? position) {
     if (_local == null && _init) return null;
     final router = NRouter.of(context);
-    final lt = router.getAlias(t);
+    final lt = router.getAlias(T);
     final rt = router.getAlias(C);
     if (lt == rt) {
       assert(() {
@@ -103,43 +100,42 @@ class _GreenState<C> extends State<Green<C>> {
         return true;
       }());
       _initOnce(position);
-      return _local;
+      return _local?.data;
     }
 
     return null;
   }
 
-  dynamic getTypeListener(Type t, Object? group, bool global, {int? position}) {
+  T getTypeListener<T>(Object? group, bool global, {int? position}) {
     assert(() {
       position = position == null ? null : position! + 1;
       return true;
     }());
     if (group == null) {
-      final listener = getLocal(t, position);
-      if (listener != null) {
-        return listener.data;
+      final data = getLocal(position);
+      if (data != null) {
+        return data;
       }
     }
 
     return NRouter.of(context).grass(
         context: context,
-        t: t,
         group: group,
         useEntryGroup: true,
         global: global,
         position: position);
   }
 
-  dynamic findTypeListener(Type t, Object? group) {
+  T? findTypeListener<T>(Object? group) {
     if (group == null && _local != null) {
-      final listener = getLocal(t, null);
-      if (listener != null) {
-        return listener.data;
+      final data = getLocal(null);
+      if (data != null) {
+        return data;
       }
     }
 
     return NRouter.of(context)
-        .find(context: context, t: t, group: group, useEntryGroup: true);
+        .find(context: context, group: group, useEntryGroup: true);
   }
 
   NopListener? _local;

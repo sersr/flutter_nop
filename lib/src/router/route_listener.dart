@@ -3,7 +3,7 @@ part of 'router.dart';
 mixin RouteDependenceMixin on Node {
   NRouter get _router;
 
-  NopListener getRouteListener(Type t, Object? group, int? position) {
+  T getRouteData<T>(Object? group, int? position) {
     assert(() {
       position = position == null ? null : position! + 1;
       return true;
@@ -11,17 +11,16 @@ mixin RouteDependenceMixin on Node {
 
     final router = _router;
     final global = router.globalDependence;
-    t = router.getAlias(t);
 
-    return Node.defaultGetNopListener(t, this, global, group, position);
+    return Node.defaultGetData(
+        router.getAlias(T), this, global, group, position);
   }
 
-  NopListener? findRouteListener(Type t, Object? group) {
+  T? findRouteData<T>(Object? group) {
     final router = _router;
     final global = router.globalDependence;
-    t = router.getAlias(t);
 
-    return Node.defaultFindNopListener(t, this, global, group);
+    return Node.defaultFindData(router.getAlias(T), this, global, group);
   }
 }
 
@@ -33,18 +32,18 @@ class RouteListener extends NopListener {
   RouteDependenceMixin? get entry => getDependence() as RouteDependenceMixin?;
 
   @override
-  NopListener? findType(Type t, {Object? group}) {
-    return entry!.findRouteListener(t, group);
+  T? find<T>({Object? group}) {
+    return entry!.findRouteData(group);
   }
 
   @override
-  NopListener getListener(Type t, {Object? group, int? position = 0}) {
+  T get<T>({Object? group, int? position = 0}) {
     assert(() {
       position = position == null ? null : position! + 1;
       return true;
     }());
 
-    return entry!.getRouteListener(t, group, position);
+    return entry!.getRouteData(group, position);
   }
 }
 
@@ -58,18 +57,17 @@ class RouteLocalListener extends NopListener {
   final bool isGlobal;
 
   @override
-  NopListener? findType(Type t, {Object? group}) {
-    return router._findListener(t: t, group: group, useEntryGroup: true);
+  T? find<T>({Object? group}) {
+    return router.find<T>(group: group, useEntryGroup: true);
   }
 
   @override
-  NopListener getListener(Type t, {Object? group, int? position = 0}) {
+  T get<T>({Object? group, int? position = 0}) {
     assert(() {
       position = position == null ? null : position! + 1;
       return true;
     }());
-    return router._getListener(
-        t: t, group: group, useEntryGroup: true, position: position);
+    return router.grass(group: group, useEntryGroup: true, position: position);
   }
 }
 

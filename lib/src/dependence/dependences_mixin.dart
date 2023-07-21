@@ -173,35 +173,37 @@ mixin Node {
     return listener;
   }
 
-  static NopListener defaultGetNopListener(Type t, Node? current,
-      Node globalDependence, Object? groupName, int? position) {
+  static T defaultGetData<T>(Type alias, Node? current, Node globalDependence,
+      Object? groupName, int? position) {
     assert(() {
       position = position == null ? null : position! + 1;
       return true;
     }());
     if (current == null || current == globalDependence) {
-      return globalDependence.getListener(t, groupName, position);
+      return globalDependence.getListener(alias, groupName, position).data;
     }
 
-    var listener = current.findCurrentTypeArg(t, groupName) ??
-        globalDependence.findTypeElement(t, groupName);
+    var listener = current.findCurrentTypeArg(alias, groupName) ??
+        globalDependence.findTypeElement(alias, groupName);
 
     if (listener == null) {
-      listener = current.findTypeOtherElement(t, groupName); // other
+      listener = current.findTypeOtherElement(alias, groupName); // other
 
       // other: should add listener
       if (listener != null) {
-        current.addListener(t, listener, groupName, position);
+        current.addListener(alias, listener, groupName, position);
       }
     }
 
-    return listener ??= current.createListenerArg(t, groupName, position);
+    listener ??= current.createListenerArg(alias, groupName, position);
+    return listener.data;
   }
 
-  static NopListener? defaultFindNopListener(
+  static T? defaultFindData<T>(
       Type t, Node? current, Node globalDependences, Object? groupName) {
-    return current?.findTypeElement(t, groupName) ??
+    final listener = current?.findTypeElement(t, groupName) ??
         globalDependences.findTypeElement(t, groupName);
+    return listener?.data;
   }
 }
 
