@@ -165,6 +165,15 @@ class _GreenState<C> extends State<Green<C>> {
     _local = listener;
   }
 
+
+  C? _value;
+
+  @override
+  void initState() {
+    super.initState();
+    _value  = widget.value;
+  }
+
   bool _init = false;
   void _initOnce(int? position) {
     assert(() {
@@ -175,8 +184,8 @@ class _GreenState<C> extends State<Green<C>> {
     _init = true;
 
     // init
-    if (widget.value != null) {
-      _initData(widget.value, position);
+    if (_value != null) {
+      _initData(_value, position);
     } else if (widget.create != null) {
       final data = widget.create!(context);
       assert(data != null);

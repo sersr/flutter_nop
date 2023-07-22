@@ -95,9 +95,9 @@ class RouteQueue with ChangeNotifier, _RouteQueueMixin {
     if (entry == null) return null;
 
     if (route is TransitionRoute) {
-      _entryCache.putIfAbsent(route, () {
+      _entryCache.putIfAbsent(route.settings, () {
         route.completed.whenComplete(() {
-          _entryCache.remove(route);
+          _entryCache.remove(route.settings);
           entry._removeListener();
         });
         return entry;
@@ -164,7 +164,7 @@ class RouteQueue with ChangeNotifier, _RouteQueueMixin {
     if (update) _updateRouteInfo();
   }
 
-  final _entryCache = <TransitionRoute, RouteQueueEntry>{};
+  final _entryCache = <Object, RouteQueueEntry>{};
 
   RouteQueueEntry? removeUntil(UntilFn test, bool ignore) {
     final current = _current;
@@ -650,7 +650,7 @@ class RouteQueueEntry
 
   @override
   dynamic build(Type t) {
-    return _queue?.delegate.router.getArg(t)();
+    return _router.getArg(t)();
   }
 
   RouteQueue? _removed;
@@ -671,7 +671,6 @@ class RouteQueueEntry
 
   @override
   NopListener nopListenerCreater(data, Object? groupName, Type t) {
-    assert(attached);
     return RouteListener(data, groupName, t);
   }
 }

@@ -66,10 +66,6 @@ class DependenceManager {
     final route = ModalRoute.of(context);
     if (route == null) return currentDependence;
 
-    return dependenceManager._push(route);
-  }
-
-  NopDependence _push(ModalRoute route) {
     final value = _caches[route];
     if (value != null) return value;
     final currentRouteDep = NopDependence(debugName: route.settings.name);

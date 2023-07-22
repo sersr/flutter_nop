@@ -213,6 +213,14 @@ class _NopState<C> extends State<Nop<C>> {
   static NopDependence? getRouteDependence(BuildContext? context) =>
       Nav.dependenceManager.getRouteDependence(context);
 
+  C? _value;
+
+  @override
+  void initState() {
+    super.initState();
+    _value = widget.value;
+  }
+
   void _initData(dynamic data, int? position) {
     assert(() {
       position = position == null ? null : position! + 1;
@@ -234,8 +242,8 @@ class _NopState<C> extends State<Nop<C>> {
       return true;
     }());
     // init
-    if (widget.value != null) {
-      _initData(widget.value, position);
+    if (_value != null) {
+      _initData(_value, position);
     } else if (widget.create != null) {
       final data = widget.create!(context);
       assert(data != null);
