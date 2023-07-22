@@ -117,31 +117,55 @@ mixin Node {
 
   dynamic build(Type t);
 
-  NopListener _createArg(Type t, Object? groupName) {
-    final data = build(t);
-
-    final listener = nopListenerCreater(data, groupName, t);
-    if (groupName != null) {
-      listener.scope = NopShareScope.group;
-    } else {
-      listener.scope = NopShareScope.shared;
-    }
-    return listener;
-  }
-
   @protected
   NopListener createListenerArg(Type t, Object? groupName, int? position) {
-    var listener = _createArg(t, groupName);
+    final data = build(t);
 
-    assert(!containsKey(groupName, t), t);
+    assert(data != null);
+
+    final listener = NopLifeCycle.checkIsNopLisenter(data);
+
+    if (identical(listener?.data, data)) {
+      final singletonEnabled = data is NopLifeCycle && data.singletonEnabled;
+      if (!singletonEnabled) {
+        throw StateError('${data.runtimeType} must be a new object.\n'
+            'group: <${listener!.group}> => <$groupName>.\n'
+            '<$groupName> will be ignored if NopLifeCycle.singletonEnabled is true.');
+      }
+    }
+
     assert(() {
       position = position == null ? null : position! + 1;
       return true;
     }());
-    listener.initWithFirstDependence(this, position: position);
-    addListener(t, listener, groupName, position);
 
-    return listener;
+    if (listener == null) {
+      final listener = nopListenerCreater(data, groupName, t);
+      assert(listener.group == groupName);
+
+      if (groupName != null) {
+        listener.scope = NopShareScope.group;
+      } else {
+        listener.scope = NopShareScope.shared;
+      }
+
+      assert(!containsKey(groupName, t), t);
+
+      listener.initWithFirstDependence(this, position: position);
+      addListener(t, listener, groupName, position);
+
+      return listener;
+    } else {
+      assert(Log.w('${listener.label} ignore group: $groupName.',
+          position: position ?? 0));
+
+      if (!popped) NopLifeCycle.autoReInitSingleton(listener);
+      if (!listener.contains(this)) {
+        addListener(t, listener, listener.group, position);
+      }
+
+      return listener;
+    }
   }
 
   NopListener? findListener(Type t, Object? groupName) {

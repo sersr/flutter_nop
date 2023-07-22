@@ -7,22 +7,28 @@ mixin NopLifeCycle {
   static final _caches = <Object, NopListener>{};
   Object? get groupId => _listener?.group;
 
-  bool get isSingleton => false;
+  bool get popped => _listener?.popped ?? true;
 
-  bool get poped => _listener?.popped ?? true;
+  bool get singletonEnabled => false;
 
   void nopInit() {}
 
   /// 当前对象的生命周期超出[_listener]时，再次初始化时调用。
   ///
-  /// 比如调用[Navigator.pushReplacementNamed]时，新的页面和当前一致，
-  /// 此时因为页面动画还未结束并未调用[nopDispose]，也没有从[_caches]移除对象。
+  /// 可能出现的情况是当前对象不是一个新的实例，并且可能调用[Navigator.pushReplacementNamed]
+  /// 等这些会触发当前页面路由重建的方法，考虑到页面动画的因素，当前对象会在这两个页面中同时存在；
+  /// 被替换的页面已经调用[onPop]方法，[nopDispose]还未调用，新的页面重新初始化[autoInit]。
   ///
-  /// 当初始化[autoInit]时发现[_caches]中还存在对象时调用[nopReInit]，[_listener]也会被替换。
-  void nopReInit() {}
-  void nopDispose() {}
+  /// 当已初始化[nopInit]，还未释放时[nopDispose]，会调用[reInitSingleton]，[_listener]也会被替换。
+  void reInitSingleton() {}
 
+  /// [Route.didPop]/[NavigatorObserver.didPop]/[NavigatorObserver.didRemove]
   void onPop() {}
+
+  /// 在页面不可用时调用。
+  ///
+  /// 如[ModalRoute.completed].whenComplete
+  void nopDispose() {}
 
   NopListener? _listener;
 
@@ -58,20 +64,22 @@ mixin NopLifeCycle {
     final data = listener.data;
 
     if (data is NopLifeCycle) {
-      if (data._listener == null) {
-        data._listener = listener;
-        data.nopInit();
-      } else {
-        // `data` may be a static/const object.
-        data._listener!._ignore = true;
-        data._listener = listener;
-        data.nopReInit();
-      }
-    } else {
-      _caches[data]?._ignore = true;
-      _caches[data] = listener;
+      assert(data._listener == null);
+      data._listener = listener;
+      data.nopInit();
+      return;
     }
+
+    assert(!_caches.containsKey(data));
+    _caches[data] = listener;
     // assert(Log.w(listener.label));
+  }
+
+  static void autoReInitSingleton(NopListener listener) {
+    final data = listener.data;
+    if (listener.popped && data is NopLifeCycle) {
+      data.reInitSingleton();
+    }
   }
 
   static void autoDispose(NopListener listener) {
@@ -134,6 +142,8 @@ abstract class NopListener {
     assert(Log.w('$label created.', position: position ?? 0));
 
     NopLifeCycle.autoInit(this);
+    // try
+    onPop();
   }
 
   T get<T>({Object? group, int? position = 0});
@@ -195,18 +205,15 @@ abstract class NopListener {
     _onRemove();
   }
 
-  bool _ignore = false;
-
   void _onRemove() {
     assert(!mounted);
-    if (_ignore) return;
 
     NopLifeCycle.autoDispose(this);
   }
 
   void onPop() {
     assert(mounted);
-    if (!popped || _ignore) return;
+    if (!popped) return;
     NopLifeCycle.autoPop(this);
   }
 
