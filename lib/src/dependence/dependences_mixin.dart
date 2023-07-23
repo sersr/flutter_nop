@@ -188,6 +188,8 @@ mixin Node {
 
   static T defaultGetData<T>(Type alias, Node? current, Node globalDependence,
       Object? groupName, int? position) {
+    assert(T != dynamic);
+
     assert(() {
       position = position == null ? null : position! + 1;
       return true;
@@ -214,6 +216,7 @@ mixin Node {
 
   static T? defaultFindData<T>(
       Type t, Node? current, Node globalDependences, Object? groupName) {
+    assert(T != dynamic);
     final listener = current?.findTypeElement(t, groupName) ??
         globalDependences.findTypeElement(t, groupName);
     return listener?.data;

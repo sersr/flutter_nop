@@ -399,17 +399,19 @@ class RouteQueueEntry with _RouteQueueEntryMixin implements LogPretty {
 
   static RouteQueueEntry error({
     required String path,
+    NPage? nPage,
     Map params = const {},
     Object? groupId,
     Map queryParams = const {},
+    ValueKey<String> pageKey = const ValueKey('errorPage'),
   }) {
     return RouteQueueEntry._internal(
       path: path,
-      nPage: NPage.errorNPage,
+      nPage: nPage ?? NPage.errorNPage,
       params: params,
       queryParams: queryParams,
       groupId: groupId,
-      pageKey: const ValueKey('errorPage'),
+      pageKey: pageKey,
       id: -1,
     );
   }
@@ -448,8 +450,8 @@ class RouteQueueEntry with _RouteQueueEntryMixin implements LogPretty {
 
   bool get isTopPage => _queue?._current == this;
 
-  Object? getGroup<T>([Type? t]) {
-    if (nPage.groupList.contains(t ?? T)) {
+  Object? getGroup(Type t) {
+    if (nPage.groupList.contains(t)) {
       return groupId;
     }
     return null;
@@ -481,9 +483,7 @@ class RouteQueueEntry with _RouteQueueEntryMixin implements LogPretty {
   Object? _cacheGroupId;
 
   Object? get groupId {
-    if (_cacheGroupId != null) return _cacheGroupId!;
-
-    return _cacheGroupId = _groupId ?? nPage.getGroupId(_id);
+    return _cacheGroupId ??= _groupId ?? nPage.getGroupId(_id);
   }
 
   static RouteQueueEntry? of(BuildContext context) {

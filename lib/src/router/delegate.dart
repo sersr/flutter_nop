@@ -105,7 +105,7 @@ class RouteRestorableState extends State<RouteRestorable>
           return SynchronousFuture(false);
         }
 
-        final pageKey = delegate._newPageKey(prefix: 'p+');
+        final pageKey = delegate.newPageKey(prefix: 'p+');
         entry = RouteQueueEntry(
           params: realParams,
           nPage: route,
@@ -246,7 +246,7 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
       params: realParams,
       queryParams: query,
       groupId: groupId,
-      pageKey: _newPageKey(),
+      pageKey: newPageKey(),
     );
   }
 
@@ -286,13 +286,13 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
       nPage: page,
       queryParams: extra ?? const {},
       groupId: groupId,
-      pageKey: _newPageKey(),
+      pageKey: newPageKey(),
     );
   }
 
   final random = Random();
 
-  ValueKey<String> _newPageKey({String prefix = 'n+'}) {
+  ValueKey<String> newPageKey({String prefix = 'n+'}) {
     final key =
         String.fromCharCodes(List.generate(24, (_) => random.nextInt(97) + 33));
 
