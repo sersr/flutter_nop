@@ -25,7 +25,16 @@ abstract mixin class DependenceManager<T extends RouteNode> {
 
   void _pop(Route route) {
     final dependence = _caches[route];
-    if (dependence == null) return;
+    if (dependence == null) {
+      if (route is TransitionRoute) {
+        _caches[route] = createNode(route)..onPop();
+        route.completed.whenComplete(() {
+          final dependence = _caches.remove(route);
+          dependence?.completed();
+        });
+      }
+      return;
+    }
 
     if (currentDependence == dependence) {
       _currentDependence = (dependence.child ?? dependence.parent) as T?;
