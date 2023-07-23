@@ -232,3 +232,52 @@ mixin Node {
 }
 
 typedef ListenerVisitor = void Function(Object? group, NopListener listener);
+
+abstract class RouteNode with Node {
+  RouteNode? _parent;
+  RouteNode? _child;
+  @override
+  RouteNode? get parent => _parent;
+  @override
+  RouteNode? get child => _child;
+
+  bool _popped = false;
+
+  @override
+  bool get popped => _popped;
+
+  void onPop() {
+    if (_popped) return;
+    _popped = true;
+    removeCurrent();
+
+    visitListener((_, listener) {
+      listener.onPop();
+    });
+  }
+
+  void removeCurrent() {
+    parent?._child = _child;
+    child?._parent = _parent;
+    _parent = null;
+    _child = null;
+  }
+
+  void insertChild(RouteNode newChild) {
+    assert(!_popped);
+    newChild._child = _child;
+    child?._parent = newChild;
+    newChild._parent = this;
+    _child = newChild;
+  }
+
+  void completed() {
+    onPop();
+
+    visitListener((_, item) {
+      item.onRemoveDependence(this);
+    });
+
+    dispose();
+  }
+}

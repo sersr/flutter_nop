@@ -1,49 +1,32 @@
 part of 'router.dart';
 
-mixin RouteDependenceMixin on Node {
-  NRouter get _router;
-
-  T getRouteData<T>(Object? group, int? position) {
-    assert(() {
-      position = position == null ? null : position! + 1;
-      return true;
-    }());
-
-    final router = _router;
-    final global = router.globalDependence;
-
-    return Node.defaultGetData(
-        router.getAlias(T), this, global, group, position);
-  }
-
-  T? findRouteData<T>(Object? group) {
-    final router = _router;
-    final global = router.globalDependence;
-
-    return Node.defaultFindData(router.getAlias(T), this, global, group);
-  }
-}
-
 class RouteListener extends NopListener {
-  RouteListener(super.data, super.group, super.t);
+  RouteListener(this.router, super.data, super.group, super.t);
   @override
   bool get isGlobal => false;
 
-  RouteDependenceMixin? get entry => getDependence() as RouteDependenceMixin?;
+  final NRouter router;
+
+  Node? get entry => getDependence();
 
   @override
-  T? find<T>({Object? group}) {
-    return entry!.findRouteData(group);
-  }
-
-  @override
-  T get<T>({Object? group, int? position = 0}) {
+  T get<T>({Object? group, int? position}) {
     assert(() {
       position = position == null ? null : position! + 1;
       return true;
     }());
 
-    return entry!.getRouteData(group, position);
+    final global = router.globalDependence;
+
+    return Node.defaultGetData(
+        router.getAlias(T), entry, global, group, position);
+  }
+
+  @override
+  T? find<T>({Object? group}) {
+    final global = router.globalDependence;
+
+    return Node.defaultFindData(router.getAlias(T), entry, global, group);
   }
 }
 
@@ -52,6 +35,7 @@ class RouteLocalListener extends NopListener {
       : isGlobal = false;
   RouteLocalListener.global(super.data, super.group, super.t, this.router)
       : isGlobal = true;
+
   final NRouter router;
   @override
   final bool isGlobal;
@@ -71,13 +55,26 @@ class RouteLocalListener extends NopListener {
   }
 }
 
-class NRouterGlobalDependence with Node, RouteDependenceMixin {
-  NRouterGlobalDependence(this.router);
+class NRouterDependence extends RouteNode {
+  NRouterDependence(this.router);
 
   final NRouter router;
 
   @override
-  NRouter get _router => router;
+  dynamic build(Type t) {
+    return router.getArg(t)();
+  }
+
+  @override
+  NopListener nopListenerCreater(data, Object? groupName, Type t) {
+    return RouteListener(router, data, groupName, t);
+  }
+}
+
+class NRouterGlobalDependence with Node {
+  NRouterGlobalDependence(this.router);
+
+  final NRouter router;
 
   @override
   dynamic build(Type t) {
@@ -94,17 +91,17 @@ class NRouterGlobalDependence with Node, RouteDependenceMixin {
     return RouteLocalListener.global(data, null, t, router);
   }
 
-  bool _poped = false;
+  bool _popped = false;
   @override
-  bool get popped => _poped;
+  bool get popped => _popped;
 
   void clear() {
-    _poped = true;
+    _popped = true;
     visitListener((_, item) {
       item.onPop();
       item.onRemoveDependence(this);
     });
 
-    _poped = false;
+    _popped = false;
   }
 }

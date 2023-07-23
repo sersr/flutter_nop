@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:nop/nop.dart';
 
 import '../../flutter_nop.dart';
-import '../nop/dependence_observer.dart';
 import '../nop/route.dart';
 
 typedef BuildFactory<T> = T Function();
@@ -20,7 +19,7 @@ class NavGlobal extends NavInterface {
 
   final NavObserver observer = NavObserver();
 
-  DependenceManager get dependenceManager => observer.dependenceManager;
+  NopDependenceManager get dependenceManager => observer.dependenceManager;
 
   bool enabledPrint = false;
 
@@ -80,7 +79,7 @@ class NavObserver extends NavigatorObserver {
   Route? _currentRoute;
   Route? get currentRoute => _currentRoute;
 
-  final dependenceManager = DependenceManager();
+  final dependenceManager = NopDependenceManager();
 
   NopPageRouteMixin? get nopRoute {
     if (_currentRoute is NopPageRouteMixin) {
@@ -115,7 +114,6 @@ class NavObserver extends NavigatorObserver {
   @override
   void didPush(Route route, Route? previousRoute) {
     _currentRoute = route;
-    dependenceManager.didPush(route);
     assert(!Nav.enabledPrint || Log.i(route.settings.name));
   }
 

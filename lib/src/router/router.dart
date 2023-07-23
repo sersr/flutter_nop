@@ -8,6 +8,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:nop/nop.dart';
 
+import '../dependence/dependence_observer.dart';
 import '../dependence/dependences_mixin.dart';
 import '../dependence/nop_listener.dart';
 import 'web/history_state.dart';
@@ -39,7 +40,9 @@ part 'state.dart';
 /// );
 /// ```
 
-class NRouter implements RouterConfig<RouteQueue> {
+class NRouter
+    with DependenceManager<NRouterDependence>
+    implements RouterConfig<RouteQueue> {
   NRouter({
     required this.rootPage,
     String? restorationId,
@@ -149,16 +152,18 @@ class NRouter implements RouterConfig<RouteQueue> {
     routerDelegate.maybePop();
   }
 
+  /// depencence ------------------------------------
   late final _global = NRouterGlobalDependence(this);
 
+  @override
   void clear() {
+    super.clear();
     _global.clear();
   }
 
   NRouterGlobalDependence get globalDependence => _global;
 
   /// factroy
-
   final _factorys = <Type, BuildFactory>{};
   void put<T>(BuildFactory<T> factory) {
     assert(!_alias.containsKey(T) || Log.e('${_alias[T]} already exists.'));
@@ -213,21 +218,22 @@ class NRouter implements RouterConfig<RouteQueue> {
       position = position == null ? null : position! + 1;
       return true;
     }());
-
-    RouteQueueEntry? dependence;
+    Node? dependence;
 
     if (context != null) {
-      dependence = RouteQueueEntry.of(context);
+      dependence = getRouteDependence(context);
+
       if (dependence != null) {
-        if (useEntryGroup) {
-          group ??= dependence.getGroup(T);
+        if (!useEntryGroup) {
+          final entry = RouteQueueEntry.of(context);
+          group ??= entry?.getGroup(T);
         }
       }
     }
 
     // if global is true, can not use _current [RouteQueueEntry]
     if (dependence == null && !global) {
-      dependence = routerDelegate.routeQueue._current;
+      dependence = currentDependence;
     }
 
     return Node.defaultGetData(
@@ -236,22 +242,28 @@ class NRouter implements RouterConfig<RouteQueue> {
 
   T? find<T>(
       {BuildContext? context, Object? group, bool useEntryGroup = true}) {
-    RouteQueueEntry? dependence;
+    Node? dependence;
 
     if (context != null) {
-      dependence = RouteQueueEntry.of(context);
+      dependence = getRouteDependence(context);
 
       if (dependence != null) {
         if (!useEntryGroup) {
-          group ??= dependence.getGroup(T);
+          final entry = RouteQueueEntry.of(context);
+          group ??= entry?.getGroup(T);
         }
       }
     }
 
-    dependence ??= routerDelegate.routeQueue._current;
+    dependence ??= currentDependence;
 
     return Node.defaultFindData(
         getAlias(T), dependence, globalDependence, group);
+  }
+
+  @override
+  NRouterDependence createNode(Route route) {
+    return NRouterDependence(this);
   }
 }
 

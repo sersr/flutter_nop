@@ -14,8 +14,8 @@ R _printZoned<R>(R Function() body) {
 
 void main() {
   test('router test', () {
-    Page builder(RouteQueueEntry entry) {
-      return const MaterialPage(child: SizedBox());
+    RouteQueueEntryPage builder(RouteQueueEntry entry) {
+      return MaterialIgnorePage(child: const SizedBox(), entry: entry);
     }
 
     _printZoned(() {

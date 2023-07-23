@@ -5,7 +5,7 @@ import '../dependence/nop_listener.dart';
 class NopListenerDefault extends NopListener {
   NopListenerDefault(super.data, super.group, super.t);
   @override
-  bool get isGlobal => contains(GetTypePointers.globalDependences);
+  bool get isGlobal => contains(NopDependence.globalDependences);
 
   @override
   T get<T>({Object? group, int? position = 0}) {
@@ -18,9 +18,9 @@ class NopListenerDefault extends NopListener {
       position = position == null ? null : position! + 1;
       return true;
     }());
-    final dependence = getDependence() as GetTypePointers?;
-    final data = Node.defaultGetData(GetTypePointers.getAlias(T), dependence,
-        GetTypePointers.globalDependences, group, position);
+    final dependence = getDependence() as NopDependence?;
+    final data = Node.defaultGetData(NopDependence.getAlias(T), dependence,
+        NopDependence.globalDependences, group, position);
     assert(NopLifeCycle.checkIsNopLisenter(data) != null);
 
     return data;
@@ -28,10 +28,10 @@ class NopListenerDefault extends NopListener {
 
   @override
   T? find<T>({Object? group}) {
-    final dependence = getDependence() as GetTypePointers?;
+    final dependence = getDependence() as NopDependence?;
 
-    final data = Node.defaultFindData(GetTypePointers.getAlias(T), dependence,
-        GetTypePointers.globalDependences, group);
+    final data = Node.defaultFindData(NopDependence.getAlias(T), dependence,
+        NopDependence.globalDependences, group);
     assert(NopLifeCycle.checkIsNopLisenter(data) != null);
 
     return data;

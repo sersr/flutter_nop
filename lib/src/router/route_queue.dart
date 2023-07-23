@@ -2,11 +2,22 @@ part of 'router.dart';
 
 /// [RouteQueue]的移除操作并不会触发[Navigator.onPopPage]回调
 class _RouteQueueObverser extends NavigatorObserver {
-  _RouteQueueObverser(this.queue);
-  final RouteQueue queue;
+  _RouteQueueObverser(this.router);
+  final NRouter router;
+
+  // @override
+  // void didPush(Route route, Route? previousRoute) {
+  //   router.routerDelegate.routeQueue._moveToCache(route);
+  // }
+
   @override
-  void didPush(Route route, Route? previousRoute) {
-    queue._moveToCache(route);
+  void didPop(Route route, Route? previousRoute) {
+    router.didPop(route);
+  }
+
+  @override
+  void didRemove(Route route, Route? previousRoute) {
+    router.didRemove(route);
   }
 }
 
@@ -61,19 +72,11 @@ class RouteQueue with ChangeNotifier, _RouteQueueMixin {
   List<Page>? _pages;
   List<Page> get pages => _pages ??= _newPages();
 
-  final _map = <Page, RouteQueueEntry>{};
-
-  @visibleForTesting
-  void log() {
-    Log.w(_map.logPretty());
-  }
-
   List<Page> _newPages() {
     final list = <Page>[];
     RouteQueueEntry? r = _root;
     while (r != null) {
       final page = r._build();
-      _map.putIfAbsent(page, () => r!);
       list.add(page);
 
       r = r._next;
@@ -89,37 +92,17 @@ class RouteQueue with ChangeNotifier, _RouteQueueMixin {
     }
   }
 
-  RouteQueueEntry? _moveToCache(Route route) {
-    final entry = _getEntry(route);
-
-    if (entry == null) return null;
-
-    if (route is TransitionRoute) {
-      _entryCache.putIfAbsent(route.settings, () {
-        route.completed.whenComplete(() {
-          _entryCache.remove(route.settings);
-          entry._removeListener();
-        });
-        return entry;
-      });
-    }
-
-    return entry;
-  }
-
   RouteQueueEntry? _getEntry(Route route) {
     return switch (route.settings) {
-      MaterialIgnorePage page => page.entry,
-      _ => _map[route.settings],
+      RouteQueueEntryPage page => page.entry,
+      _ => null,
     };
   }
 
-  RouteQueueEntry? getEntry(Route route) =>
-      _moveToCache(route) ?? _entryCache[route];
+  RouteQueueEntry? getEntry(Route route) => _getEntry(route);
 
   void _copyFrom(RouteQueue other) {
     if (other == this) return;
-    _map.clear();
 
     other.forEach((entry) {
       assert(!entry._disposed);
@@ -157,14 +140,8 @@ class RouteQueue with ChangeNotifier, _RouteQueueMixin {
   @override
   void _remove(RouteQueueEntry entry, bool notify, bool update) {
     super._remove(entry, notify, update);
-    assert(
-        entry.page == null || _map.containsKey(entry.page), _map.logPretty());
-    _map.remove(entry.page);
-    entry._pop();
     if (update) _updateRouteInfo();
   }
-
-  final _entryCache = <Object, RouteQueueEntry>{};
 
   RouteQueueEntry? removeUntil(UntilFn test, bool ignore) {
     final current = _current;
@@ -298,7 +275,6 @@ class RouteQueue with ChangeNotifier, _RouteQueueMixin {
       _root = root;
       _current = current;
       _length = value.length;
-      _map.clear();
       refresh();
     }
   }
@@ -412,9 +388,7 @@ mixin _RouteQueueMixin {
   void refresh();
 }
 
-class RouteQueueEntry
-    with _RouteQueueEntryMixin, Node, RouteDependenceMixin
-    implements LogPretty {
+class RouteQueueEntry with _RouteQueueEntryMixin implements LogPretty {
   RouteQueueEntry({
     String? path,
     required this.params,
@@ -525,10 +499,10 @@ class RouteQueueEntry
     return queue?.getEntry(route);
   }
 
-  Page? _page;
+  RouteQueueEntryPage? _page;
 
-  Page? get page => _page;
-  Page _build() {
+  RouteQueueEntryPage? get page => _page;
+  RouteQueueEntryPage _build() {
     return _page ??= nPage.pageBuilder(this);
   }
 
@@ -625,53 +599,8 @@ class RouteQueueEntry
   }
 
   @override
-  Node? get child => _pre;
-
-  @override
-  Node? get parent => _next;
-
-  bool _popped = false;
-  @override
-  bool get popped => _popped;
-
-  void _pop() {
-    _popped = true;
-    visitListener((_, listener) {
-      listener.onPop();
-    });
-  }
-
-  void _removeListener() {
-    visitListener((_, listener) {
-      listener.onRemoveDependence(this);
-    });
-    dispose();
-  }
-
-  @override
-  dynamic build(Type t) {
-    return _router.getArg(t)();
-  }
-
-  RouteQueue? _removed;
-  @override
   void _onRemove(RouteQueue root, bool refresh, bool update) {
-    _removed = root;
     root._remove(this, refresh, update);
-  }
-
-  NopListener? findType(Type t, {Object? group}) {
-    final router = (_queue ?? _removed!).delegate.router;
-
-    return findListener(router.getAlias(t), group);
-  }
-
-  @override
-  NRouter get _router => (_queue ?? _removed!).delegate.router;
-
-  @override
-  NopListener nopListenerCreater(data, Object? groupName, Type t) {
-    return RouteListener(data, groupName, t);
   }
 }
 

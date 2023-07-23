@@ -80,10 +80,10 @@ class Nop<C> extends StatefulWidget {
   }
 
   static T? find<T>({Object? group}) {
-    return Node.defaultFindData(
-        GetTypePointers.getAlias(T),
+    return Node.defaultFindData<T>(
+        NopDependence.getAlias(T),
         _NopState.getRouteDependence(null),
-        GetTypePointers.globalDependences,
+        NopDependence.globalDependences,
         group);
   }
 
@@ -95,7 +95,7 @@ class Nop<C> extends StatefulWidget {
     }());
     final nop = context.dependOnInheritedWidgetOfExactType<_NopScope>();
     if (nop != null) return nop.state.getType<T>(group, global, position);
-    return _getFromRouteOrCurrent(context, group: group, position: position);
+    return _getFromRouteOrCurrent<T>(context, group: group, position: position);
   }
 
   static T _getFromRouteOrCurrent<T>(BuildContext? context,
@@ -104,30 +104,30 @@ class Nop<C> extends StatefulWidget {
       position = position == null ? null : position! + 1;
       return true;
     }());
-    t = GetTypePointers.getAlias(t ?? T);
+    t = NopDependence.getAlias(t ?? T);
 
     NopDependence? dependence;
     if (context != null) {
       dependence = _NopState.getRouteDependence(context);
     }
 
-    return Node.defaultGetData(
-        t, dependence, GetTypePointers.globalDependences, group, position);
+    return Node.defaultGetData<T>(
+        t, dependence, NopDependence.globalDependences, group, position);
   }
 
   static T? _findFromRouteOrCurrent<T>(BuildContext context,
       {Type? t, Object? group}) {
     final dependence = _NopState.getRouteDependence(context);
-    t = GetTypePointers.getAlias(t ?? T);
+    t = NopDependence.getAlias(t ?? T);
 
-    return Node.defaultFindData(
-        t, dependence, GetTypePointers.globalDependences, group);
+    return Node.defaultFindData<T>(
+        t, dependence, NopDependence.globalDependences, group);
   }
 
   /// 链表会自动管理生命周期
   static void clear() {
     Nav.dependenceManager.clear();
-    GetTypePointers.clear();
+    NopDependence.clear();
   }
 
   @override
@@ -140,7 +140,7 @@ class _NopState<C> extends State<Nop<C>> {
       position = position == null ? null : position! + 1;
       return true;
     }());
-    if (GetTypePointers.getAlias(T) == GetTypePointers.getAlias(C)) {
+    if (NopDependence.getAlias(T) == NopDependence.getAlias(C)) {
       _initOnce(position);
       return _local?.data;
     }
@@ -155,7 +155,7 @@ class _NopState<C> extends State<Nop<C>> {
     }());
 
     if (group == null) {
-      final data = getLocal(position);
+      final data = getLocal<T>(position);
       if (data != null) {
         return data;
       }
@@ -170,7 +170,7 @@ class _NopState<C> extends State<Nop<C>> {
 
   T? findTypeArg<T>(Object? group, bool global) {
     if (group == null && _local != null) {
-      final data = getLocal(null);
+      final data = getLocal<T>(null);
       if (data != null) {
         return data;
       }
@@ -180,7 +180,7 @@ class _NopState<C> extends State<Nop<C>> {
       group ??= getGroup(T);
     }
 
-    return Nop._findFromRouteOrCurrent(context, group: group);
+    return Nop._findFromRouteOrCurrent<T>(context, group: group);
   }
 
   bool get isPage => widget.group != null && widget.groupList.isNotEmpty;
@@ -200,7 +200,7 @@ class _NopState<C> extends State<Nop<C>> {
   }
 
   static Object? _getGroup(Type t, Object? group, List<Type> groupList) {
-    if (groupList.contains(GetTypePointers.getAlias(t))) {
+    if (groupList.contains(NopDependence.getAlias(t))) {
       return group;
     }
 
@@ -228,7 +228,7 @@ class _NopState<C> extends State<Nop<C>> {
     }());
     final dependence = getRouteDependence(context);
     final (listener, shouldClean) =
-        GetTypePointers.createUniqueListener(data, C, dependence, position);
+        NopDependence.createUniqueListener(data, C, dependence, position);
     _local = listener;
     _shouldClean = shouldClean;
   }

@@ -60,7 +60,7 @@ class Green<C> extends StatefulWidget {
 
     final nop = context.dependOnInheritedWidgetOfExactType<_GreenScope>();
     if (nop != null) {
-      return nop.state.getTypeListener(group, global, position: position);
+      return nop.state.getTypeListener<T>(group, global, position: position);
     }
 
     return NRouter.of(context).grass<T>(
@@ -112,13 +112,13 @@ class _GreenState<C> extends State<Green<C>> {
       return true;
     }());
     if (group == null) {
-      final data = getLocal(position);
+      final data = getLocal<T>(position);
       if (data != null) {
         return data;
       }
     }
 
-    return NRouter.of(context).grass(
+    return NRouter.of(context).grass<T>(
         context: context,
         group: group,
         useEntryGroup: true,
@@ -128,14 +128,14 @@ class _GreenState<C> extends State<Green<C>> {
 
   T? findTypeListener<T>(Object? group) {
     if (group == null && _local != null) {
-      final data = getLocal(null);
+      final data = getLocal<T>(null);
       if (data != null) {
         return data;
       }
     }
 
     return NRouter.of(context)
-        .find(context: context, group: group, useEntryGroup: true);
+        .find<T>(context: context, group: group, useEntryGroup: true);
   }
 
   NopListener? _local;
@@ -153,25 +153,24 @@ class _GreenState<C> extends State<Green<C>> {
 
     _shouldClean = listener == null;
     if (listener == null) {
-      final dependence = RouteQueueEntry.of(context);
+      final router = NRouter.of(context);
+      final dependence = router.currentDependence;
       listener = dependence?.nopListenerCreater(data, null, C) ??
-          RouteLocalListener(data, null, C, NRouter.of(context));
+          RouteLocalListener(data, null, C, router);
       listener.scope = NopShareScope.unique;
-      listener.initWithFirstDependence(
-          dependence ?? NRouter.of(context).globalDependence,
+      listener.initWithFirstDependence(dependence ?? router.globalDependence,
           position: position);
     }
 
     _local = listener;
   }
 
-
   C? _value;
 
   @override
   void initState() {
     super.initState();
-    _value  = widget.value;
+    _value = widget.value;
   }
 
   bool _init = false;

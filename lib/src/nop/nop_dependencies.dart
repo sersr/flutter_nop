@@ -1,37 +1,38 @@
-import 'dart:collection';
+import 'package:flutter/material.dart';
 
 import '../dependence/dependences_mixin.dart';
 import '../dependence/nop_listener.dart';
 import '../navigation/navigator_observer.dart';
+import '../dependence/dependence_observer.dart';
 import 'nop_listener.dart';
 
-/// [GetTypePointers]
-mixin GetTypePointers on Node {
-  // NopListener? findTypeArg(Type t, Object? groupName) {
-  //   return findTypeElement(getAlias(t), groupName);
-  // }
+typedef GetFactory<T> = BuildFactory<T> Function(Type t);
 
-  // NopListener? findTypeArgOther(Type t, Object? groupName) {
-  //   return findTypeOtherElement(getAlias(t), groupName);
-  // }
+class NopDependenceManager extends DependenceManager<NopDependence> {
+  NopDependenceManager();
 
-  // NopListener? findType<T>(Object? groupName) {
-  //   return findTypeElement(getAlias(T), groupName);
-  // }
+  @override
+  NopDependence createNode(Route route) {
+    return NopDependence(debugName: route.settings.name);
+  }
+}
 
-  // NopListener? findCurrent(Type t, Object? groupName) {
-  //   return findCurrentTypeArg(getAlias(t), groupName);
-  // }
+class NopDependence extends RouteNode {
+  NopDependence({this.debugName});
+  final String? debugName;
+
+  @override
+  String toString() {
+    return 'NopDependences#${debugName ?? hashCode}';
+  }
 
   @override
   NopListener nopListenerCreater(dynamic data, Object? groupName, Type t) {
     return NopListenerDefault(data, groupName, t);
   }
 
-  static HashMap<T, V> createHashMap<T, V>() => HashMap<T, V>();
-
   static (NopListener, bool) createUniqueListener(
-      dynamic data, Type t, GetTypePointers? dependence, int? position) {
+      dynamic data, Type t, NopDependence? dependence, int? position) {
     var listener = NopLifeCycle.checkIsNopLisenter(data);
     if (listener != null) {
       return (listener, false);
@@ -47,11 +48,11 @@ mixin GetTypePointers on Node {
     return (listener, true);
   }
 
-  static final _globalDependences = NopDependence(isGlobal: true);
+  static final _globalDependences = NopGlobalDependence();
 
-  static GetTypePointers get globalDependences => _globalDependences;
+  static NopGlobalDependence get globalDependences => _globalDependences;
 
-  static clear() {
+  static void clear() {
     _globalDependences.clear();
   }
 
@@ -61,114 +62,43 @@ mixin GetTypePointers on Node {
 
   static GetFactory? _factory;
 
+  static dynamic _build(Type t) {
+    return (_factory ??= getFactory)(t)();
+  }
+
   @override
   dynamic build(Type t) {
-    return (_factory ??= getFactory)(t)();
+    return _build(t);
   }
 }
 
-typedef GetFactory<T> = BuildFactory<T> Function(Type t);
-
-class NopDependence with Node, GetTypePointers {
-  NopDependence({this.debugName, this.isGlobal = false});
-  final String? debugName;
+class NopGlobalDependence with Node {
   @override
-  NopDependence? parent;
+  build(Type t) {
+    return NopDependence._build(t);
+  }
+
   @override
-  NopDependence? child;
-
-  final bool isGlobal;
-
-  bool get isAlone => parent == null && child == null;
-
-  NopDependence? get lastChild {
-    NopDependence? last = child;
-    while (last != null) {
-      final child = last.child;
-      if (child == null) break;
-      last = child;
-    }
-
-    return last;
-  }
-
-  bool get isFirst => parent == null;
-  bool get isLast => child == null;
-
-  NopDependence? get firstParent {
-    NopDependence? first = parent;
-    while (first != null) {
-      final parent = first.parent;
-      if (parent == null) break;
-      first = parent;
-    }
-    return first;
-  }
-
-  NopDependence get lastChildOrSelf {
-    return lastChild ?? this;
-  }
-
-  NopDependence get firstParentOrSelf {
-    return firstParent ?? this;
-  }
-
-  void updateChild(NopDependence newChild) {
-    assert(child == null || child!.parent == this);
-    newChild.child = child?.child;
-    newChild.child?.parent = newChild;
-    child?._remove();
-    newChild.parent = this;
-    child = newChild;
-  }
-
-  void insertChild(NopDependence newChild) {
-    newChild.child = child;
-    child?.parent = newChild;
-    newChild.parent = this;
-    child = newChild;
-  }
-
-  bool _poped = false;
+  Node? get child => null;
   @override
-  bool get popped => _poped;
+  Node? get parent => null;
 
-  void onPop() {
-    if (_poped) return;
-    _poped = true;
-
-    _remove();
-
-    visitListener((_, listener) {
-      listener.onPop();
-    });
+  @override
+  NopListener nopListenerCreater(data, Object? groupName, Type t) {
+    return NopListenerDefault(data, groupName, t);
   }
 
-  void _remove() {
-    parent?.child = child;
-    child?.parent = parent;
-    parent = null;
-    child = null;
-  }
+  bool _popped = false;
+  @override
+  bool get popped => _popped;
 
-  void completed() {
-    onPop();
-
+  void clear() {
+    _popped = true;
     visitListener((_, item) {
+      item.onPop();
       item.onRemoveDependence(this);
     });
 
-    dispose();
-  }
-
-  void clear() {
-    assert(isGlobal);
-    completed();
-    _poped = false;
-  }
-
-  @override
-  String toString() {
-    return 'NopDependences#${debugName ?? hashCode}';
+    _popped = false;
   }
 }

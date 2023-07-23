@@ -183,7 +183,7 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
     return false;
   }
 
-  late final _obverser = _RouteQueueObverser(_routeQueue);
+  late final _obverser = _RouteQueueObverser(router);
 
   @override
   Widget build(BuildContext context) {
@@ -324,35 +324,35 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
     return _run(entry);
   }
 
-  RouteQueueEntry goReplacement(String location,
-      {Map<String, dynamic> params = const {},
-      Map<String, dynamic>? extra,
-      Object? groupId,
-      Object? result,
-      bool immediated = false}) {
+  RouteQueueEntry goReplacement(
+    String location, {
+    Map<String, dynamic> params = const {},
+    Map<String, dynamic>? extra,
+    Object? groupId,
+    Object? result,
+  }) {
     final entry =
         _parse(location, params: params, extra: extra, groupId: groupId);
-    return _goReplacement(entry, immediated, result);
+    return _goReplacement(entry, result);
   }
 
-  RouteQueueEntry goPageRepalcement(NPage page, UntilFn test,
-      {Map<String, dynamic> params = const {},
-      Map<String, dynamic>? extra,
-      Object? groupId,
-      Object? result,
-      bool immediated = false}) {
+  RouteQueueEntry goPageRepalcement(
+    NPage page,
+    UntilFn test, {
+    Map<String, dynamic> params = const {},
+    Map<String, dynamic>? extra,
+    Object? groupId,
+    Object? result,
+  }) {
     final entry =
         createEntry(page, params: params, extra: extra, groupId: groupId);
-    return _goReplacement(entry, immediated, result);
+    return _goReplacement(entry, result);
   }
 
-  RouteQueueEntry _goReplacement(
-      RouteQueueEntry entry, bool immediated, Object? result) {
+  RouteQueueEntry _goReplacement(RouteQueueEntry entry, Object? result) {
     final queue = _routeQueue;
     final current = queue.current;
-    if (immediated && current != null) {
-      entry.replace(current.pageKey);
-    }
+
     current?._removeCurrent(result: result, update: false);
     final newEntry = _redirect(entry);
     queue.insert(newEntry, replace: true);
@@ -425,7 +425,7 @@ class RouterAction {
     return go();
   }
 
-  RouteQueueEntry goReplacement({Object? result, bool immediated = false}) {
-    return router.routerDelegate._goReplacement(entry, immediated, result);
+  RouteQueueEntry goReplacement({Object? result}) {
+    return router.routerDelegate._goReplacement(entry, result);
   }
 }

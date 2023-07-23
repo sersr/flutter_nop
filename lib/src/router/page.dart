@@ -1,6 +1,6 @@
 part of 'router.dart';
 
-typedef PageBuilder<S> = Page<S> Function(RouteQueueEntry entry);
+typedef PageBuilder<S> = RouteQueueEntryPage<S> Function(RouteQueueEntry entry);
 typedef RedirectBuilder = RouteQueueEntry Function(RouteQueueEntry entry);
 typedef ErrorPageBuilder = RouteQueueEntry Function(
     String location, Map params, Map extra, Object? groupId);
