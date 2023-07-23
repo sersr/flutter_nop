@@ -63,20 +63,18 @@ class Nop<C> extends StatefulWidget {
       position = position == null ? null : position! + 1;
       return true;
     }());
-    final nop = context?.dependOnInheritedWidgetOfExactType<_NopScope>();
-    if (nop != null) {
-      return nop.state.getType<T>(group, global, position);
-    } else {
-      return _getFromRouteOrCurrent<T>(context,
-          group: group, position: position)!;
-    }
+    final nop = context?.dependOnInheritedWidgetOfExactType<_NopScope<T>>();
+
+    return nop?.state.getLocal(group, position: position) ??
+        _getFromRouteOrCurrent<T>(context,
+            group: group, global: global, position: position)!;
   }
 
   static T? findwithContext<T>(BuildContext context,
       {Object? group, bool global = false}) {
-    final nop = context.dependOnInheritedWidgetOfExactType<_NopScope>();
-    if (nop != null) return nop.state.findTypeArg<T>(group, global);
-    return _findFromRouteOrCurrent<T>(context, group: group);
+    final nop = context.dependOnInheritedWidgetOfExactType<_NopScope<T>>();
+    if (nop != null) return nop.state.getLocal(group);
+    return _findFromRouteOrCurrent<T>(context, group: group, global: global);
   }
 
   static T? find<T>({Object? group}) {
@@ -93,33 +91,49 @@ class Nop<C> extends StatefulWidget {
       position = position == null ? null : position! + 1;
       return true;
     }());
-    final nop = context.dependOnInheritedWidgetOfExactType<_NopScope>();
-    if (nop != null) return nop.state.getType<T>(group, global, position);
-    return _getFromRouteOrCurrent<T>(context, group: group, position: position);
+    final nop = context.dependOnInheritedWidgetOfExactType<_NopScope<T>>();
+    return nop?.state.getLocal(group, position: position) ??
+        _getFromRouteOrCurrent<T>(context,
+            group: group, global: global, position: position);
+  }
+
+  static Object? _getGroup(Type t, BuildContext context) {
+    final scope = context.dependOnInheritedWidgetOfExactType<_NopPageScope>();
+    switch (scope) {
+      case _NopPageScope(:final group, :final groupList):
+        if (groupList.contains(t)) {
+          return group;
+        }
+    }
+
+    return null;
   }
 
   static T _getFromRouteOrCurrent<T>(BuildContext? context,
-      {Type? t, Object? group, int? position = 0}) {
+      {Type? t, Object? group, bool global = false, int? position = 0}) {
     assert(() {
       position = position == null ? null : position! + 1;
       return true;
     }());
-    t = NopDependence.getAlias(t ?? T);
 
-    NopDependence? dependence;
-    if (context != null) {
-      dependence = _NopState.getRouteDependence(context);
+    t = NopDependence.getAlias(t ?? T);
+    if (context != null && !global && group == null) {
+      group = _getGroup(t, context);
     }
+    final dependence = _NopState.getRouteDependence(context);
 
     return Node.defaultGetData<T>(
         t, dependence, NopDependence.globalDependences, group, position);
   }
 
   static T? _findFromRouteOrCurrent<T>(BuildContext context,
-      {Type? t, Object? group}) {
+      {Type? t, Object? group, bool global = false}) {
     final dependence = _NopState.getRouteDependence(context);
     t = NopDependence.getAlias(t ?? T);
 
+    if (!global && group == null) {
+      group = _getGroup(t, context);
+    }
     return Node.defaultFindData<T>(
         t, dependence, NopDependence.globalDependences, group);
   }
@@ -135,77 +149,19 @@ class Nop<C> extends StatefulWidget {
 }
 
 class _NopState<C> extends State<Nop<C>> {
-  T? getLocal<T>(int? position) {
-    assert(() {
-      position = position == null ? null : position! + 1;
-      return true;
-    }());
-    if (NopDependence.getAlias(T) == NopDependence.getAlias(C)) {
-      _initOnce(position);
-      return _local?.data;
-    }
-    return null;
-  }
+  dynamic getLocal(Object? group, {int? position}) {
+    if (group != null) return null;
 
-  /// export
-  T getType<T>(Object? group, bool global, int? position) {
     assert(() {
       position = position == null ? null : position! + 1;
       return true;
     }());
 
-    if (group == null) {
-      final data = getLocal<T>(position);
-      if (data != null) {
-        return data;
-      }
-    }
-
-    if (!global) {
-      group ??= getGroup(T);
-    }
-    return Nop._getFromRouteOrCurrent<T>(context,
-        group: group, position: position);
-  }
-
-  T? findTypeArg<T>(Object? group, bool global) {
-    if (group == null && _local != null) {
-      final data = getLocal<T>(null);
-      if (data != null) {
-        return data;
-      }
-    }
-
-    if (!global) {
-      group ??= getGroup(T);
-    }
-
-    return Nop._findFromRouteOrCurrent<T>(context, group: group);
+    _initOnce(position);
+    return _local?.data;
   }
 
   bool get isPage => widget.group != null && widget.groupList.isNotEmpty;
-
-  Object? getGroup(Type t) {
-    if (isPage) {
-      return _getGroup(t, widget.group, widget.groupList);
-    }
-
-    final page = context.dependOnInheritedWidgetOfExactType<_NopPageScope>();
-
-    return switch (page) {
-      _NopPageScope(:final group, :final groupList) =>
-        _getGroup(t, group, groupList),
-      _ => null,
-    };
-  }
-
-  static Object? _getGroup(Type t, Object? group, List<Type> groupList) {
-    if (groupList.contains(NopDependence.getAlias(t))) {
-      return group;
-    }
-
-    return null;
-  }
 
   NopListener? _local;
   bool _shouldClean = false;
@@ -279,7 +235,7 @@ class _NopState<C> extends State<Nop<C>> {
       );
     }
 
-    return _NopScope(state: this, child: child);
+    return _NopScope<C>(state: this, child: child);
   }
 }
 
@@ -299,12 +255,12 @@ class _NopPageScope extends InheritedWidget {
   }
 }
 
-class _NopScope extends InheritedWidget {
+class _NopScope<T> extends InheritedWidget {
   const _NopScope({
     required super.child,
     required this.state,
   });
-  final _NopState state;
+  final _NopState<T> state;
 
   @override
   bool updateShouldNotify(covariant _NopScope oldWidget) {

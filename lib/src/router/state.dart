@@ -53,9 +53,9 @@ class Green<C> extends StatefulWidget {
       return true;
     }());
 
-    final nop = context.dependOnInheritedWidgetOfExactType<_GreenScope>();
+    final nop = context.dependOnInheritedWidgetOfExactType<_GreenScope<T>>();
     final router = NRouter.of(context);
-    return nop?.state.getLocal<T>(group, router, position: position) ??
+    return nop?.state.getLocal(group, router, position: position) ??
         router.grass<T>(
             context: context,
             group: group,
@@ -65,10 +65,10 @@ class Green<C> extends StatefulWidget {
 
   static T? find<T>(BuildContext context,
       {Object? group, bool useEntryGroup = true}) {
-    final nop = context.dependOnInheritedWidgetOfExactType<_GreenScope>();
+    final nop = context.dependOnInheritedWidgetOfExactType<_GreenScope<T>>();
     final router = NRouter.of(context);
 
-    return nop?.state.getLocal<T>(group, router) ??
+    return nop?.state.getLocal(group, router) ??
         router.find<T>(
             context: context, group: group, useEntryGroup: useEntryGroup);
   }
@@ -78,20 +78,15 @@ class Green<C> extends StatefulWidget {
 }
 
 class _GreenState<C> extends State<Green<C>> {
-  T? getLocal<T>(Object? group, NRouter router, {int? position}) {
+  dynamic getLocal(Object? group, NRouter router, {int? position}) {
     if (group != null) return null;
-    if (_local == null && _init) return null;
 
-    if (router.getAlias(T) == router.getAlias(C)) {
-      assert(() {
-        position = position == null ? null : position! + 1;
-        return true;
-      }());
-      _initOnce(position);
-      return _local?.data;
-    }
-
-    return null;
+    assert(() {
+      position = position == null ? null : position! + 1;
+      return true;
+    }());
+    _initOnce(position);
+    return _local?.data;
   }
 
   NopListener? _local;
@@ -159,17 +154,17 @@ class _GreenState<C> extends State<Green<C>> {
 
   @override
   Widget build(BuildContext context) {
-    return _GreenScope(state: this, child: widget.child);
+    return _GreenScope<C>(state: this, child: widget.child);
   }
 }
 
-class _GreenScope extends InheritedWidget {
+class _GreenScope<T> extends InheritedWidget {
   const _GreenScope({
     Key? key,
     required Widget child,
     required this.state,
   }) : super(key: key, child: child);
-  final _GreenState state;
+  final _GreenState<T> state;
 
   @override
   bool updateShouldNotify(covariant _GreenScope oldWidget) {

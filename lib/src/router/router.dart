@@ -211,18 +211,12 @@ class NRouter
       position = position == null ? null : position! + 1;
       return true;
     }());
-    Node? dependence;
+    final dependence = getRouteDependence(context);
 
-    if (context != null) {
-      dependence = getRouteDependence(context);
-
-      if (useEntryGroup) {
-        final entry = RouteQueueEntry.of(context);
-        group ??= entry?.getGroup(T);
-      }
+    if (context != null && useEntryGroup) {
+      final entry = RouteQueueEntry.of(context);
+      group ??= entry?.getGroup(T);
     }
-
-    dependence ??= currentDependence;
 
     return Node.defaultGetData(
         getAlias(T), dependence, globalDependence, group, position);
@@ -230,18 +224,12 @@ class NRouter
 
   T? find<T>(
       {BuildContext? context, Object? group, bool useEntryGroup = true}) {
-    Node? dependence;
+    final dependence = getRouteDependence(context);
 
-    if (context != null) {
-      dependence = getRouteDependence(context);
-
-      if (useEntryGroup) {
-        final entry = RouteQueueEntry.of(context);
-        group ??= entry?.getGroup(T);
-      }
+    if (context != null && useEntryGroup) {
+      final entry = RouteQueueEntry.of(context);
+      group ??= entry?.getGroup(T);
     }
-
-    dependence ??= currentDependence;
 
     return Node.defaultFindData(
         getAlias(T), dependence, globalDependence, group);
