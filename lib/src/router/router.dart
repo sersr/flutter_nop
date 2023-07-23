@@ -105,16 +105,13 @@ class NRouter
   @override
   late final NRouterDelegate routerDelegate;
 
-  @pragma('vm:prefer-inline')
   bool canPop() => routerDelegate.canPop();
 
   /// 在 [MaterialApp].builder 中使用
-  @pragma('vm:prefer-inline')
   Widget build(BuildContext context) {
     return routerDelegate.build(context);
   }
 
-  @pragma('vm:prefer-inline')
   RouteQueueEntry go(String location,
       {Map<String, dynamic> params = const {},
       Map<String, dynamic>? extra,
@@ -123,7 +120,6 @@ class NRouter
         params: params, extra: extra, groupId: groupId);
   }
 
-  @pragma('vm:prefer-inline')
   RouteQueueEntry goPage(NPage page,
       {Map<String, dynamic> params = const {},
       Map<String, dynamic>? extra,
@@ -132,27 +128,23 @@ class NRouter
         params: params, extra: extra, groupId: groupId);
   }
 
-  @pragma('vm:prefer-inline')
   RouteQueueEntry goUntil(String location, UntilFn until) {
     return routerDelegate.goUntil(location, until);
   }
 
-  @pragma('vm:prefer-inline')
   void popUntil(UntilFn test, {bool ignore = false}) {
     routerDelegate.popUntil(test, ignore);
   }
 
-  @pragma('vm:prefer-inline')
   void pop([Object? result]) {
     routerDelegate.pop(result);
   }
 
-  @pragma('vm:prefer-inline')
   void maybePop([Object? result]) {
     routerDelegate.maybePop();
   }
 
-  /// depencence ------------------------------------
+  /// dependence ------------------------------------
   late final _global = NRouterGlobalDependence(this);
 
   @override
@@ -171,12 +163,14 @@ class NRouter
   }
 
   BuildFactory<T> get<T>() {
-    assert(_factorys.containsKey(T), 'You need to call Nav.put<$T>()');
+    assert(
+        _factorys.containsKey(T), 'You need to call Routes.router.put<$T>().');
     return _factorys[T] as BuildFactory<T>;
   }
 
   BuildFactory getArg(Type t) {
-    assert(_factorys.containsKey(t), 'You need to call Nav.put<$t>()');
+    assert(
+        _factorys.containsKey(t), 'You need to call Routes.router.put<$t>().');
     return _factorys[t] as BuildFactory;
   }
 
@@ -211,7 +205,6 @@ class NRouter
     BuildContext? context,
     Object? group,
     bool useEntryGroup = true,
-    bool global = false,
     int? position = 0,
   }) {
     assert(() {
@@ -223,18 +216,13 @@ class NRouter
     if (context != null) {
       dependence = getRouteDependence(context);
 
-      if (dependence != null) {
-        if (!useEntryGroup) {
-          final entry = RouteQueueEntry.of(context);
-          group ??= entry?.getGroup(T);
-        }
+      if (useEntryGroup) {
+        final entry = RouteQueueEntry.of(context);
+        group ??= entry?.getGroup(T);
       }
     }
 
-    // if global is true, can not use _current [RouteQueueEntry]
-    if (dependence == null && !global) {
-      dependence = currentDependence;
-    }
+    dependence ??= currentDependence;
 
     return Node.defaultGetData(
         getAlias(T), dependence, globalDependence, group, position);
@@ -247,11 +235,9 @@ class NRouter
     if (context != null) {
       dependence = getRouteDependence(context);
 
-      if (dependence != null) {
-        if (!useEntryGroup) {
-          final entry = RouteQueueEntry.of(context);
-          group ??= entry?.getGroup(T);
-        }
+      if (useEntryGroup) {
+        final entry = RouteQueueEntry.of(context);
+        group ??= entry?.getGroup(T);
       }
     }
 

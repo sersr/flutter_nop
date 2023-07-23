@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 
 import 'dependences_mixin.dart';
 
-typedef OnRouteDisposeFn = void Function(void Function());
-
 abstract mixin class DependenceManager<T extends RouteNode> {
   void didPop(Route route) {
     _pop(route);
@@ -36,7 +34,7 @@ abstract mixin class DependenceManager<T extends RouteNode> {
       return;
     }
 
-    if (currentDependence == dependence) {
+    if (identical(_currentDependence, dependence)) {
       _currentDependence = (dependence.child ?? dependence.parent) as T?;
     }
     dependence.onPop();

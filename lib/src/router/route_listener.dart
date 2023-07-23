@@ -1,9 +1,13 @@
 part of 'router.dart';
 
 class RouteListener extends NopListener {
-  RouteListener(this.router, super.data, super.group, super.t);
+  RouteListener(this.router, super.data, super.group, super.t)
+      : isGlobal = false;
+  RouteListener.global(this.router, super.data, super.group, super.t)
+      : isGlobal = true;
+
   @override
-  bool get isGlobal => false;
+  final bool isGlobal;
 
   final NRouter router;
 
@@ -27,31 +31,6 @@ class RouteListener extends NopListener {
     final global = router.globalDependence;
 
     return Node.defaultFindData(router.getAlias(T), entry, global, group);
-  }
-}
-
-class RouteLocalListener extends NopListener {
-  RouteLocalListener(super.data, super.group, super.t, this.router)
-      : isGlobal = false;
-  RouteLocalListener.global(super.data, super.group, super.t, this.router)
-      : isGlobal = true;
-
-  final NRouter router;
-  @override
-  final bool isGlobal;
-
-  @override
-  T? find<T>({Object? group}) {
-    return router.find<T>(group: group, useEntryGroup: true);
-  }
-
-  @override
-  T get<T>({Object? group, int? position = 0}) {
-    assert(() {
-      position = position == null ? null : position! + 1;
-      return true;
-    }());
-    return router.grass(group: group, useEntryGroup: true, position: position);
   }
 }
 
@@ -88,7 +67,7 @@ class NRouterGlobalDependence with Node {
 
   @override
   NopListener nopListenerCreater(data, Object? groupName, Type t) {
-    return RouteLocalListener.global(data, null, t, router);
+    return RouteListener.global(router, data, groupName, t);
   }
 
   bool _popped = false;

@@ -17,7 +17,7 @@ mixin NopLifeCycle {
   ///
   /// 可能出现的情况是当前对象不是一个新的实例，并且可能调用[Navigator.pushReplacementNamed]
   /// 等这些会触发当前页面路由重建的方法，考虑到页面动画的因素，当前对象会在这两个页面中同时存在；
-  /// 被替换的页面已经调用[onPop]方法，[nopDispose]还未调用，新的页面重新初始化[autoInit]。
+  /// 被替换的页面已经调用[onPop]方法，[nopDispose]还未调用，新的页面重新初始化[_autoInit]。
   ///
   /// 当已初始化[nopInit]，还未释放时[nopDispose]，会调用[reInitSingleton]，[_listener]也会被替换。
   void reInitSingleton() {}
@@ -60,7 +60,7 @@ mixin NopLifeCycle {
 
   String get label => _listener?.label ?? '';
 
-  static void autoInit(NopListener listener) {
+  static void _autoInit(NopListener listener) {
     final data = listener.data;
 
     if (data is NopLifeCycle) {
@@ -75,14 +75,7 @@ mixin NopLifeCycle {
     // assert(Log.w(listener.label));
   }
 
-  static void autoReInitSingleton(NopListener listener) {
-    final data = listener.data;
-    if (listener.popped && data is NopLifeCycle) {
-      data.reInitSingleton();
-    }
-  }
-
-  static void autoDispose(NopListener listener) {
+  static void _autoDispose(NopListener listener) {
     final data = listener.data;
     // assert(Log.w(listener.label));
 
@@ -94,7 +87,7 @@ mixin NopLifeCycle {
     }
   }
 
-  static void autoPop(NopListener listener) {
+  static void _autoPop(NopListener listener) {
     // assert(Log.w(listener.label));
     switch (listener.data) {
       case NopLifeCycle nop:
@@ -141,7 +134,7 @@ abstract class NopListener {
     }());
     assert(Log.w('$label created.', position: position ?? 0));
 
-    NopLifeCycle.autoInit(this);
+    NopLifeCycle._autoInit(this);
     // try
     onPop();
   }
@@ -208,13 +201,13 @@ abstract class NopListener {
   void _onRemove() {
     assert(!mounted);
 
-    NopLifeCycle.autoDispose(this);
+    NopLifeCycle._autoDispose(this);
   }
 
   void onPop() {
     assert(mounted);
     if (!popped) return;
-    NopLifeCycle.autoPop(this);
+    NopLifeCycle._autoPop(this);
   }
 
   Node? getDependence() => _dependenceTree.firstOrNull;

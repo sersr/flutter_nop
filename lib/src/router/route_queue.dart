@@ -5,11 +5,6 @@ class _RouteQueueObverser extends NavigatorObserver {
   _RouteQueueObverser(this.router);
   final NRouter router;
 
-  // @override
-  // void didPush(Route route, Route? previousRoute) {
-  //   router.routerDelegate.routeQueue._moveToCache(route);
-  // }
-
   @override
   void didPop(Route route, Route? previousRoute) {
     router.didPop(route);
@@ -620,7 +615,9 @@ mixin _RouteQueueEntryMixin {
 
   Completer<dynamic>? _completer;
 
-  Future<dynamic> get future => (_completer ??= Completer<dynamic>()).future;
+  @Deprecated('use popped.')
+  Future<dynamic> get future => popped;
+  Future<dynamic> get popped => (_completer ??= Completer<dynamic>()).future;
 
   bool get _isCompleted => _completer != null && _completer!.isCompleted;
 
@@ -689,7 +686,7 @@ mixin RouteQueueEntryStateMixin<T extends StatefulWidget>
   void _completed() {
     final cache = entry;
     if (cache == null) return;
-    cache.future.whenComplete(() {
+    cache.popped.whenComplete(() {
       if (cache != entry) return;
       entry = null;
       whenComplete(cache);

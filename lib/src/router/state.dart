@@ -4,7 +4,6 @@ extension Grass on BuildContext {
   /// [group] shared group
   T grass<T>({
     Object? group,
-    bool global = false,
     bool useEntryGroup = true,
     int? position = 1,
   }) {
@@ -12,7 +11,6 @@ extension Grass on BuildContext {
       this,
       group: group,
       useEntryGroup: useEntryGroup,
-      global: global,
       position: position,
     );
   }
@@ -29,18 +27,16 @@ extension Grass on BuildContext {
 /// state manager
 class Green<C> extends StatefulWidget {
   const Green({
-    Key? key,
-    required this.child,
+    super.key,
     this.create,
-  })  : value = null,
-        super(key: key);
+    required this.child,
+  }) : value = null;
 
   const Green.value({
-    Key? key,
+    super.key,
     this.value,
     required this.child,
-  })  : create = null,
-        super(key: key);
+  }) : create = null;
 
   final Widget child;
   final C Function(BuildContext context)? create;
@@ -50,7 +46,6 @@ class Green<C> extends StatefulWidget {
     BuildContext context, {
     Object? group,
     bool useEntryGroup = true,
-    bool global = false,
     int? position = 0,
   }) {
     assert(() {
@@ -59,29 +54,23 @@ class Green<C> extends StatefulWidget {
     }());
 
     final nop = context.dependOnInheritedWidgetOfExactType<_GreenScope>();
-    if (nop != null) {
-      return nop.state.getTypeListener<T>(group, global, position: position);
-    }
-
-    return NRouter.of(context).grass<T>(
-        context: context,
-        group: group,
-        useEntryGroup: useEntryGroup,
-        global: global,
-        position: position);
+    final router = NRouter.of(context);
+    return nop?.state.getLocal<T>(group, router, position: position) ??
+        router.grass<T>(
+            context: context,
+            group: group,
+            useEntryGroup: useEntryGroup,
+            position: position);
   }
 
   static T? find<T>(BuildContext context,
       {Object? group, bool useEntryGroup = true}) {
-    if (!useEntryGroup) {
-      final nop = context.dependOnInheritedWidgetOfExactType<_GreenScope>();
-      if (nop != null) {
-        return nop.state.findTypeListener<T>(group);
-      }
-    }
+    final nop = context.dependOnInheritedWidgetOfExactType<_GreenScope>();
+    final router = NRouter.of(context);
 
-    return NRouter.of(context)
-        .find<T>(context: context, group: group, useEntryGroup: useEntryGroup);
+    return nop?.state.getLocal<T>(group, router) ??
+        router.find<T>(
+            context: context, group: group, useEntryGroup: useEntryGroup);
   }
 
   @override
@@ -89,12 +78,11 @@ class Green<C> extends StatefulWidget {
 }
 
 class _GreenState<C> extends State<Green<C>> {
-  T? getLocal<T>(int? position) {
+  T? getLocal<T>(Object? group, NRouter router, {int? position}) {
+    if (group != null) return null;
     if (_local == null && _init) return null;
-    final router = NRouter.of(context);
-    final lt = router.getAlias(T);
-    final rt = router.getAlias(C);
-    if (lt == rt) {
+
+    if (router.getAlias(T) == router.getAlias(C)) {
       assert(() {
         position = position == null ? null : position! + 1;
         return true;
@@ -106,38 +94,6 @@ class _GreenState<C> extends State<Green<C>> {
     return null;
   }
 
-  T getTypeListener<T>(Object? group, bool global, {int? position}) {
-    assert(() {
-      position = position == null ? null : position! + 1;
-      return true;
-    }());
-    if (group == null) {
-      final data = getLocal<T>(position);
-      if (data != null) {
-        return data;
-      }
-    }
-
-    return NRouter.of(context).grass<T>(
-        context: context,
-        group: group,
-        useEntryGroup: true,
-        global: global,
-        position: position);
-  }
-
-  T? findTypeListener<T>(Object? group) {
-    if (group == null && _local != null) {
-      final data = getLocal<T>(null);
-      if (data != null) {
-        return data;
-      }
-    }
-
-    return NRouter.of(context)
-        .find<T>(context: context, group: group, useEntryGroup: true);
-  }
-
   NopListener? _local;
 
   bool _shouldClean = false;
@@ -147,16 +103,14 @@ class _GreenState<C> extends State<Green<C>> {
       return true;
     }());
     var listener = NopLifeCycle.checkIsNopLisenter(data);
-    assert(listener == null ||
-        listener is RouteListener ||
-        listener is RouteLocalListener);
+    assert(listener == null || listener is RouteListener);
 
     _shouldClean = listener == null;
     if (listener == null) {
       final router = NRouter.of(context);
       final dependence = router.currentDependence;
       listener = dependence?.nopListenerCreater(data, null, C) ??
-          RouteLocalListener(data, null, C, router);
+          RouteListener(router, data, null, C);
       listener.scope = NopShareScope.unique;
       listener.initWithFirstDependence(dependence ?? router.globalDependence,
           position: position);

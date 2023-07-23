@@ -53,17 +53,6 @@ mixin Node {
 
   bool get isEmpty => _groupPointers.isEmpty;
 
-  // NopListener _createListenerArg(Type t, Object? groupName, int? position) {
-  //   var listener = createArg(t, groupName);
-
-  //   assert(!containsKey(groupName, t), t);
-
-  //   listener.initWithFirstDependence(this, position: position);
-  //   addListener(t, listener, groupName);
-
-  //   return listener;
-  // }
-
   void visitElement(bool Function(Node current) visitor) {
     if (visitor(this)) return;
     visitOtherElement(visitor);
@@ -117,8 +106,7 @@ mixin Node {
 
   dynamic build(Type t);
 
-  @protected
-  NopListener createListenerArg(Type t, Object? groupName, int? position) {
+  NopListener _createListenerArg(Type t, Object? groupName, int? position) {
     final data = build(t);
 
     assert(data != null);
@@ -149,8 +137,6 @@ mixin Node {
         listener.scope = NopShareScope.shared;
       }
 
-      assert(!containsKey(groupName, t), t);
-
       listener.initWithFirstDependence(this, position: position);
       addListener(t, listener, groupName, position);
 
@@ -159,7 +145,10 @@ mixin Node {
       assert(Log.w('${listener.label} ignore group: $groupName.',
           position: position ?? 0));
 
-      if (!popped) NopLifeCycle.autoReInitSingleton(listener);
+      if (!popped && listener.popped && data is NopLifeCycle) {
+        data.reInitSingleton();
+      }
+
       if (!listener.contains(this)) {
         addListener(t, listener, listener.group, position);
       }
@@ -178,7 +167,7 @@ mixin Node {
       return true;
     }());
     return findTypeArgAndAdd(t, groupName, position) ??
-        createListenerArg(t, groupName, position);
+        _createListenerArg(t, groupName, position);
   }
 
   NopListener? findTypeArgAndAdd(Type t, Object? groupName, position) {
@@ -219,7 +208,7 @@ mixin Node {
       }
     }
 
-    listener ??= current.createListenerArg(alias, groupName, position);
+    listener ??= current._createListenerArg(alias, groupName, position);
     return listener.data;
   }
 
@@ -249,14 +238,14 @@ abstract class RouteNode with Node {
   void onPop() {
     if (_popped) return;
     _popped = true;
-    removeCurrent();
+    _removeCurrent();
 
     visitListener((_, listener) {
       listener.onPop();
     });
   }
 
-  void removeCurrent() {
+  void _removeCurrent() {
     parent?._child = _child;
     child?._parent = _parent;
     _parent = null;
@@ -265,6 +254,7 @@ abstract class RouteNode with Node {
 
   void insertChild(RouteNode newChild) {
     assert(!_popped);
+    assert(newChild.child == null && newChild.parent == null);
     newChild._child = _child;
     child?._parent = newChild;
     newChild._parent = this;
