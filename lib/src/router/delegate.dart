@@ -350,12 +350,9 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
   }
 
   RouteQueueEntry _goReplacement(RouteQueueEntry entry, Object? result) {
-    final queue = _routeQueue;
-    final current = queue.current;
-
-    current?._removeCurrent(result: result, update: false);
+    pop(result);
     final newEntry = _redirect(entry);
-    queue.insert(newEntry, replace: true);
+    _routeQueue.insert(newEntry, replace: true);
     return newEntry;
   }
 
@@ -385,14 +382,7 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
   }
 
   void pop([Object? result]) {
-    _pop(result);
-  }
-
-  void _pop([Object? result]) {
-    final last = _routeQueue.current;
-    if (last != null && last != _routeQueue.root) {
-      last._removeCurrent(result: result);
-    }
+    navigatorKey.currentState?.pop(result);
   }
 
   @override
