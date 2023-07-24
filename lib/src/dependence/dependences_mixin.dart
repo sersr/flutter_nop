@@ -129,7 +129,8 @@ mixin Node {
 
     if (listener == null) {
       final listener = nopListenerCreater(data, groupName, t);
-      assert(listener.group == groupName);
+      assert(identical(listener.group, groupName) &&
+          identical(listener.data, data));
 
       if (groupName != null) {
         listener.scope = NopShareScope.group;
@@ -188,7 +189,7 @@ mixin Node {
 
   static T defaultGetData<T>(Type alias, Node? current, Node globalDependence,
       Object? groupName, int? position) {
-    assert(T != dynamic);
+    assert(T != dynamic, Log.w('error.', position: position ?? 0));
 
     assert(() {
       position = position == null ? null : position! + 1;

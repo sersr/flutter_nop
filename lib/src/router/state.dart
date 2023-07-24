@@ -53,9 +53,8 @@ class Green<C> extends StatefulWidget {
       return true;
     }());
 
-    final nop = context.dependOnInheritedWidgetOfExactType<_GreenScope<T>>();
     final router = NRouter.of(context);
-    return nop?.state.getLocal(group, router, position: position) ??
+    return _GreenState.getLocal<T>(context, group, router, position) ??
         router.grass<T>(
             context: context,
             group: group,
@@ -65,10 +64,9 @@ class Green<C> extends StatefulWidget {
 
   static T? find<T>(BuildContext context,
       {Object? group, bool useEntryGroup = true}) {
-    final nop = context.dependOnInheritedWidgetOfExactType<_GreenScope<T>>();
     final router = NRouter.of(context);
 
-    return nop?.state.getLocal(group, router) ??
+    return _GreenState.getLocal<T>(context, group, router) ??
         router.find<T>(
             context: context, group: group, useEntryGroup: useEntryGroup);
   }
@@ -78,14 +76,53 @@ class Green<C> extends StatefulWidget {
 }
 
 class _GreenState<C> extends State<Green<C>> {
-  dynamic getLocal(Object? group, NRouter router, {int? position}) {
+  static T? getLocal<T>(BuildContext context, Object? group, NRouter router,
+      [int? position]) {
     if (group != null) return null;
+
+    var state =
+        context.dependOnInheritedWidgetOfExactType<_GreenScope>()?.state;
+
+    while (state != null) {
+      if (state.isSameType(T, router)) {
+        return state._getLocal(position);
+      }
+      final context = state.context;
+      state = context.dependOnInheritedWidgetOfExactType<_GreenScope>()?.state;
+    }
+    return null;
+  }
+
+  bool isSameType(Type t, NRouter router) {
+    return router.getAlias(C) == router.getAlias(t);
+  }
+
+  C? _value;
+
+  @override
+  void initState() {
+    super.initState();
+    _value = widget.value;
+  }
+
+  bool _init = false;
+
+  dynamic _getLocal(int? position) {
+    if (_init) return _local?.data;
+    _init = true;
 
     assert(() {
       position = position == null ? null : position! + 1;
       return true;
     }());
-    _initOnce(position);
+    // init
+    if (_value != null) {
+      _initData(_value, position);
+    } else if (widget.create != null) {
+      final data = widget.create!(context);
+      assert(data != null);
+      _initData(data, position);
+    }
     return _local?.data;
   }
 
@@ -104,42 +141,13 @@ class _GreenState<C> extends State<Green<C>> {
     if (listener == null) {
       final router = NRouter.of(context);
       final dependence = router.currentDependence;
-      listener = dependence?.nopListenerCreater(data, null, C) ??
-          RouteListener(router, data, null, C);
+      listener = RouteListener(router, data, null, C);
       listener.scope = NopShareScope.unique;
       listener.initWithFirstDependence(dependence ?? router.globalDependence,
           position: position);
     }
 
     _local = listener;
-  }
-
-  C? _value;
-
-  @override
-  void initState() {
-    super.initState();
-    _value = widget.value;
-  }
-
-  bool _init = false;
-  void _initOnce(int? position) {
-    assert(() {
-      position = position == null ? null : position! + 1;
-      return true;
-    }());
-    if (_init) return;
-    _init = true;
-
-    // init
-    if (_value != null) {
-      _initData(_value, position);
-    } else if (widget.create != null) {
-      final data = widget.create!(context);
-      assert(data != null);
-
-      _initData(data, position);
-    }
   }
 
   @override
@@ -154,17 +162,17 @@ class _GreenState<C> extends State<Green<C>> {
 
   @override
   Widget build(BuildContext context) {
-    return _GreenScope<C>(state: this, child: widget.child);
+    return _GreenScope(state: this, child: widget.child);
   }
 }
 
-class _GreenScope<T> extends InheritedWidget {
+class _GreenScope extends InheritedWidget {
   const _GreenScope({
     Key? key,
     required Widget child,
     required this.state,
   }) : super(key: key, child: child);
-  final _GreenState<T> state;
+  final _GreenState state;
 
   @override
   bool updateShouldNotify(covariant _GreenScope oldWidget) {

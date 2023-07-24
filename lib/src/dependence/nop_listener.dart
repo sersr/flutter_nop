@@ -49,13 +49,13 @@ mixin NopLifeCycle {
       position = position == null ? null : position! + 1;
       return true;
     }());
-    return _listener!.get(group: group, position: position);
+    return _listener!.get<T>(group: group, position: position);
   }
 
   /// 查找已存在的共享对象，不会创建对象
   T? getTypeOrNull<T>({Object? group}) {
     assert(mounted);
-    return _listener!.find(group: group);
+    return _listener!.find<T>(group: group);
   }
 
   String get label => _listener?.label ?? '';
@@ -110,13 +110,18 @@ abstract class NopListener {
   final Object? group;
   final Type _t;
 
-  NopShareScope scope = NopShareScope.shared;
+  NopShareScope? _scope;
+  NopShareScope get scope => _scope ?? NopShareScope.shared;
+
+  set scope(NopShareScope value) {
+    assert(_scope == null);
+    _scope = value;
+  }
 
   bool contains(Node? node) => _dependenceTree.contains(node);
 
   bool get mounted => _dependenceTree.isNotEmpty;
 
-  bool get canRemoved => _dependenceTree.isEmpty;
   int get length => _dependenceTree.length;
 
   bool get isGlobal;
@@ -179,7 +184,7 @@ abstract class NopListener {
   }
 
   void onRemoveDependence(Node value) {
-    _dependenceTree.remove(value);
+    if (!_dependenceTree.remove(value)) return;
     assert(Log.w('$label ${_dependenceTree.length}.'));
 
     if (_dependenceTree.isEmpty) {

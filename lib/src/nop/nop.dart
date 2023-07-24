@@ -8,16 +8,20 @@ import 'nop_pre_init.dart';
 
 extension GetType on BuildContext {
   /// [group] shared group
-  T getType<T>({Object? group, bool global = false, int? position = 1}) {
-    return Nop.of(this, group: group, global: global, position: position);
+  ///
+  /// [useNopGroup] :use [Nop.group] if [group] == null and [Nop.groupList].contains(T).
+  T getType<T>({Object? group, bool useNopGroup = true, int? position = 1}) {
+    return Nop.of(this,
+        group: group, useNopGroup: useNopGroup, position: position);
   }
 
-  T? findType<T>({Object? group, bool global = false}) {
-    return Nop.findwithContext(this, group: group, global: global);
+  T? findType<T>({Object? group, bool useNopGroup = true}) {
+    return Nop.findwithContext(this, group: group, useNopGroup: useNopGroup);
   }
 
-  T? getTypeOr<T>({Object? group, bool global = false, int? position = 1}) {
-    return Nop.maybeOf(this, group: group, global: global, position: position);
+  T? getTypeOr<T>({Object? group, bool useNopGroup = true, int? position = 1}) {
+    return Nop.maybeOf(this,
+        group: group, useNopGroup: useNopGroup, position: position);
   }
 }
 
@@ -53,28 +57,34 @@ class Nop<C> extends StatefulWidget {
   final Widget child;
   final List<NopWidgetBuilder>? builders;
   final C Function(BuildContext context)? create;
-  final List<Type> groupList;
   final C? value;
+
+  /// see: [_getGroup]
+  final List<Type> groupList;
   final Object? group;
 
   static T of<T>(BuildContext? context,
-      {Object? group, bool global = false, int? position = 0}) {
+      {Object? group, bool useNopGroup = true, int? position = 0}) {
     assert(() {
       position = position == null ? null : position! + 1;
       return true;
     }());
-    final nop = context?.dependOnInheritedWidgetOfExactType<_NopScope<T>>();
 
-    return nop?.state.getLocal(group, position: position) ??
+    if (context == null) {
+      return _getFromRouteOrCurrent(context,
+          group: group, useNopGroup: useNopGroup, position: position);
+    }
+
+    return _NopState.getLocal(context, group, position) ??
         _getFromRouteOrCurrent<T>(context,
-            group: group, global: global, position: position)!;
+            group: group, useNopGroup: useNopGroup, position: position)!;
   }
 
   static T? findwithContext<T>(BuildContext context,
-      {Object? group, bool global = false}) {
-    final nop = context.dependOnInheritedWidgetOfExactType<_NopScope<T>>();
-    if (nop != null) return nop.state.getLocal(group);
-    return _findFromRouteOrCurrent<T>(context, group: group, global: global);
+      {Object? group, bool useNopGroup = true}) {
+    return _NopState.getLocal(context, group) ??
+        _findFromRouteOrCurrent<T>(context,
+            group: group, useNopGroup: useNopGroup);
   }
 
   static T? find<T>({Object? group}) {
@@ -86,22 +96,21 @@ class Nop<C> extends StatefulWidget {
   }
 
   static T? maybeOf<T>(BuildContext context,
-      {Object? group, bool global = false, int? position = 0}) {
+      {Object? group, bool useNopGroup = true, int? position = 0}) {
     assert(() {
       position = position == null ? null : position! + 1;
       return true;
     }());
-    final nop = context.dependOnInheritedWidgetOfExactType<_NopScope<T>>();
-    return nop?.state.getLocal(group, position: position) ??
+    return _NopState.getLocal(context, group, position) ??
         _getFromRouteOrCurrent<T>(context,
-            group: group, global: global, position: position);
+            group: group, useNopGroup: useNopGroup, position: position);
   }
 
-  static Object? _getGroup(Type t, BuildContext context) {
+  static Object? _getGroup(Type alias, BuildContext context) {
     final scope = context.dependOnInheritedWidgetOfExactType<_NopPageScope>();
     switch (scope) {
       case _NopPageScope(:final group, :final groupList):
-        if (groupList.contains(t)) {
+        if (groupList.contains(alias)) {
           return group;
         }
     }
@@ -110,14 +119,14 @@ class Nop<C> extends StatefulWidget {
   }
 
   static T _getFromRouteOrCurrent<T>(BuildContext? context,
-      {Type? t, Object? group, bool global = false, int? position = 0}) {
+      {Type? t, Object? group, bool useNopGroup = true, int? position = 0}) {
     assert(() {
       position = position == null ? null : position! + 1;
       return true;
     }());
 
     t = NopDependence.getAlias(t ?? T);
-    if (context != null && !global && group == null) {
+    if (context != null && useNopGroup && group == null) {
       group = _getGroup(t, context);
     }
     final dependence = _NopState.getRouteDependence(context);
@@ -127,11 +136,11 @@ class Nop<C> extends StatefulWidget {
   }
 
   static T? _findFromRouteOrCurrent<T>(BuildContext context,
-      {Type? t, Object? group, bool global = false}) {
+      {Type? t, Object? group, bool useNopGroup = true}) {
     final dependence = _NopState.getRouteDependence(context);
     t = NopDependence.getAlias(t ?? T);
 
-    if (!global && group == null) {
+    if (useNopGroup && group == null) {
       group = _getGroup(t, context);
     }
     return Node.defaultFindData<T>(
@@ -149,22 +158,26 @@ class Nop<C> extends StatefulWidget {
 }
 
 class _NopState<C> extends State<Nop<C>> {
-  dynamic getLocal(Object? group, {int? position}) {
+  static T? getLocal<T>(BuildContext context, Object? group, [int? position]) {
     if (group != null) return null;
 
-    assert(() {
-      position = position == null ? null : position! + 1;
-      return true;
-    }());
+    var state = context.dependOnInheritedWidgetOfExactType<_NopScope>()?.state;
 
-    _initOnce(position);
-    return _local?.data;
+    while (state != null) {
+      if (state.isSameType(T)) {
+        return state._getLocal(position);
+      }
+      final context = state.context;
+      state = context.dependOnInheritedWidgetOfExactType<_NopScope>()?.state;
+    }
+    return null;
+  }
+
+  bool isSameType(Type t) {
+    return NopDependence.getAlias(C) == NopDependence.getAlias(t);
   }
 
   bool get isPage => widget.group != null && widget.groupList.isNotEmpty;
-
-  NopListener? _local;
-  bool _shouldClean = false;
 
   static NopDependence? getRouteDependence(BuildContext? context) =>
       Nav.dependenceManager.getRouteDependence(context);
@@ -177,22 +190,12 @@ class _NopState<C> extends State<Nop<C>> {
     _value = widget.value;
   }
 
-  void _initData(dynamic data, int? position) {
-    assert(() {
-      position = position == null ? null : position! + 1;
-      return true;
-    }());
-    final dependence = getRouteDependence(context);
-    final (listener, shouldClean) =
-        NopDependence.createUniqueListener(data, C, dependence, position);
-    _local = listener;
-    _shouldClean = shouldClean;
-  }
-
   bool _init = false;
-  void _initOnce(int? position) {
-    if (_init) return;
+
+  dynamic _getLocal(int? position) {
+    if (_init) return _local?.data;
     _init = true;
+
     assert(() {
       position = position == null ? null : position! + 1;
       return true;
@@ -205,6 +208,23 @@ class _NopState<C> extends State<Nop<C>> {
       assert(data != null);
       _initData(data, position);
     }
+    return _local?.data;
+  }
+
+  NopListener? _local;
+
+  bool _shouldClean = false;
+
+  void _initData(dynamic data, int? position) {
+    assert(() {
+      position = position == null ? null : position! + 1;
+      return true;
+    }());
+    final dependence = getRouteDependence(context);
+    final (listener, shouldClean) =
+        NopDependence.createUniqueListener(data, C, dependence, position);
+    _local = listener;
+    _shouldClean = shouldClean;
   }
 
   @override
@@ -235,7 +255,7 @@ class _NopState<C> extends State<Nop<C>> {
       );
     }
 
-    return _NopScope<C>(state: this, child: child);
+    return _NopScope(state: this, child: child);
   }
 }
 
@@ -255,12 +275,12 @@ class _NopPageScope extends InheritedWidget {
   }
 }
 
-class _NopScope<T> extends InheritedWidget {
+class _NopScope extends InheritedWidget {
   const _NopScope({
     required super.child,
     required this.state,
   });
-  final _NopState<T> state;
+  final _NopState state;
 
   @override
   bool updateShouldNotify(covariant _NopScope oldWidget) {
