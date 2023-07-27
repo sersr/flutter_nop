@@ -111,10 +111,10 @@ mixin Node {
 
     assert(data != null);
 
-    final listener = NopLifeCycle.checkIsNopLisenter(data);
+    final listener = NopLifecycle.checkIsNopLisenter(data);
 
     if (identical(listener?.data, data)) {
-      final singletonEnabled = data is NopLifeCycle && data.singletonEnabled;
+      final singletonEnabled = data is NopLifecycle && data.singletonEnabled;
       if (!singletonEnabled) {
         throw StateError('${data.runtimeType} must be a new object.\n'
             'group: <${listener!.group}> => <$groupName>.\n'
@@ -146,7 +146,7 @@ mixin Node {
       assert(Log.w('${listener.label} ignore group: $groupName.',
           position: position ?? 0));
 
-      if (!popped && listener.popped && data is NopLifeCycle) {
+      if (!popped && listener.popped && data is NopLifecycle) {
         data.reInitSingleton();
       }
 

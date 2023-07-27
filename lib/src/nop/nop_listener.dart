@@ -21,7 +21,7 @@ class NopListenerDefault extends NopListener {
     final dependence = getDependence() as NopDependence?;
     final data = Node.defaultGetData<T>(NopDependence.getAlias(T), dependence,
         NopDependence.globalDependences, group, position);
-    assert(NopLifeCycle.checkIsNopLisenter(data) != null);
+    assert(NopLifecycle.checkIsNopLisenter(data) != null);
 
     return data;
   }
@@ -32,7 +32,7 @@ class NopListenerDefault extends NopListener {
 
     final data = Node.defaultFindData<T>(NopDependence.getAlias(T), dependence,
         NopDependence.globalDependences, group);
-    assert(NopLifeCycle.checkIsNopLisenter(data) != null);
+    assert(NopLifecycle.checkIsNopLisenter(data) != null);
 
     return data;
   }

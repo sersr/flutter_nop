@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'dependences_mixin.dart';
 
 /// 自动管理生命周期
-mixin NopLifeCycle {
+mixin NopLifecycle {
   static final _caches = <Object, NopListener>{};
   Object? get groupId => _listener?.group;
 
@@ -63,7 +63,7 @@ mixin NopLifeCycle {
   static void _autoInit(NopListener listener) {
     final data = listener.data;
 
-    if (data is NopLifeCycle) {
+    if (data is NopLifecycle) {
       assert(data._listener == null);
       data._listener = listener;
       data.nopInit();
@@ -79,7 +79,7 @@ mixin NopLifeCycle {
     final data = listener.data;
     // assert(Log.w(listener.label));
 
-    if (data is NopLifeCycle) {
+    if (data is NopLifecycle) {
       data.nopDispose();
       data._listener = null;
     } else {
@@ -90,13 +90,13 @@ mixin NopLifeCycle {
   static void _autoPop(NopListener listener) {
     // assert(Log.w(listener.label));
     switch (listener.data) {
-      case NopLifeCycle nop:
+      case NopLifecycle nop:
         nop.onPop();
     }
   }
 
   static NopListener? checkIsNopLisenter(dynamic data) {
-    if (data is NopLifeCycle) {
+    if (data is NopLifecycle) {
       return data._listener;
     }
     return _caches[data];
@@ -139,7 +139,7 @@ abstract class NopListener {
     }());
     assert(Log.w('$label created.', position: position ?? 0));
 
-    NopLifeCycle._autoInit(this);
+    NopLifecycle._autoInit(this);
     // try
     onPop();
   }
@@ -206,13 +206,13 @@ abstract class NopListener {
   void _onRemove() {
     assert(!mounted);
 
-    NopLifeCycle._autoDispose(this);
+    NopLifecycle._autoDispose(this);
   }
 
   void onPop() {
     assert(mounted);
     if (!popped) return;
-    NopLifeCycle._autoPop(this);
+    NopLifecycle._autoPop(this);
   }
 
   Node? getDependence() => _dependenceTree.firstOrNull;
@@ -229,6 +229,6 @@ enum NopShareScope {
   /// 不共享，独立的
   unique,
 
-  /// [NopLifeCycle._listener] is null
+  /// [NopLifecycle._listener] is null
   detached,
 }

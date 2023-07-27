@@ -33,7 +33,7 @@ class NopDependence extends RouteNode {
 
   static (NopListener, bool) createUniqueListener(
       dynamic data, Type t, NopDependence? dependence, int? position) {
-    var listener = NopLifeCycle.checkIsNopLisenter(data);
+    var listener = NopLifecycle.checkIsNopLisenter(data);
     if (listener != null) {
       return (listener, false);
     }
