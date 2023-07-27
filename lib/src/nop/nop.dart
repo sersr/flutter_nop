@@ -107,12 +107,19 @@ class Nop<C> extends StatefulWidget {
   }
 
   static Object? _getGroup(Type alias, BuildContext context) {
-    final scope = context.dependOnInheritedWidgetOfExactType<_NopPageScope>();
-    switch (scope) {
-      case _NopPageScope(:final group, :final groupList):
-        if (groupList.contains(alias)) {
-          return group;
-        }
+    if (context is StatefulElement && context.state is _NopState) {
+      final state = context.state as _NopState;
+      if (state.contains(alias)) return state.group;
+    }
+
+    var state = context.findAncestorStateOfType<_NopState>();
+
+    while (state != null) {
+      if (state.contains(alias)) {
+        return state.group;
+      }
+      final context = state.context;
+      state = context.findAncestorStateOfType<_NopState>();
     }
 
     return null;
@@ -161,14 +168,14 @@ class _NopState<C> extends State<Nop<C>> {
   static T? getLocal<T>(BuildContext context, Object? group, [int? position]) {
     if (group != null) return null;
 
-    var state = context.dependOnInheritedWidgetOfExactType<_NopScope>()?.state;
+    var state = context.findAncestorStateOfType<_NopState>();
 
     while (state != null) {
       if (state.isSameType(T)) {
         return state._getLocal(position);
       }
       final context = state.context;
-      state = context.dependOnInheritedWidgetOfExactType<_NopScope>()?.state;
+      state = context.findAncestorStateOfType<_NopState>();
     }
     return null;
   }
@@ -176,6 +183,13 @@ class _NopState<C> extends State<Nop<C>> {
   bool isSameType(Type t) {
     return NopDependence.getAlias(C) == NopDependence.getAlias(t);
   }
+
+  bool contains(Type t) {
+    if (!isPage) return false;
+    return widget.groupList.contains(t);
+  }
+
+  Object? get group => widget.group;
 
   bool get isPage => widget.group != null && widget.groupList.isNotEmpty;
 
@@ -196,10 +210,6 @@ class _NopState<C> extends State<Nop<C>> {
     if (_init) return _local?.data;
     _init = true;
 
-    assert(() {
-      position = position == null ? null : position! + 1;
-      return true;
-    }());
     // init
     if (_value != null) {
       _initData(_value, position);
@@ -217,7 +227,7 @@ class _NopState<C> extends State<Nop<C>> {
 
   void _initData(dynamic data, int? position) {
     assert(() {
-      position = position == null ? null : position! + 1;
+      position = position == null ? null : position! + 3;
       return true;
     }());
     final dependence = getRouteDependence(context);
@@ -239,51 +249,6 @@ class _NopState<C> extends State<Nop<C>> {
 
   @override
   Widget build(BuildContext context) {
-    Widget child = widget.child;
-    if (widget.builders != null) {
-      child = NopPreInit(
-        builders: widget.builders,
-        child: widget.child,
-      );
-    }
-
-    if (isPage) {
-      child = _NopPageScope(
-        group: widget.group,
-        groupList: widget.groupList,
-        child: child,
-      );
-    }
-
-    return _NopScope(state: this, child: child);
-  }
-}
-
-class _NopPageScope extends InheritedWidget {
-  const _NopPageScope({
-    required super.child,
-    this.group,
-    required this.groupList,
-  });
-
-  final Object? group;
-  final List<Type> groupList;
-
-  @override
-  bool updateShouldNotify(covariant _NopPageScope oldWidget) {
-    return group != oldWidget.groupList && groupList != oldWidget.groupList;
-  }
-}
-
-class _NopScope extends InheritedWidget {
-  const _NopScope({
-    required super.child,
-    required this.state,
-  });
-  final _NopState state;
-
-  @override
-  bool updateShouldNotify(covariant _NopScope oldWidget) {
-    return state != oldWidget.state;
+    return widget.child;
   }
 }

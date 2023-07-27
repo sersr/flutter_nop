@@ -80,15 +80,14 @@ class _GreenState<C> extends State<Green<C>> {
       [int? position]) {
     if (group != null) return null;
 
-    var state =
-        context.dependOnInheritedWidgetOfExactType<_GreenScope>()?.state;
+    var state = context.findAncestorStateOfType<_GreenState>();
 
     while (state != null) {
       if (state.isSameType(T, router)) {
         return state._getLocal(position);
       }
       final context = state.context;
-      state = context.dependOnInheritedWidgetOfExactType<_GreenScope>()?.state;
+      state = context.findAncestorStateOfType<_GreenState>();
     }
     return null;
   }
@@ -111,10 +110,6 @@ class _GreenState<C> extends State<Green<C>> {
     if (_init) return _local?.data;
     _init = true;
 
-    assert(() {
-      position = position == null ? null : position! + 1;
-      return true;
-    }());
     // init
     if (_value != null) {
       _initData(_value, position);
@@ -131,10 +126,10 @@ class _GreenState<C> extends State<Green<C>> {
   bool _shouldClean = false;
   void _initData(dynamic data, int? position) {
     assert(() {
-      position = position == null ? null : position! + 1;
+      position = position == null ? null : position! + 3;
       return true;
     }());
-    var listener = NopLifeCycle.checkIsNopLisenter(data);
+    var listener = NopLifecycle.checkIsNopLisenter(data);
     assert(listener == null || listener is RouteListener);
 
     _shouldClean = listener == null;
@@ -162,20 +157,6 @@ class _GreenState<C> extends State<Green<C>> {
 
   @override
   Widget build(BuildContext context) {
-    return _GreenScope(state: this, child: widget.child);
-  }
-}
-
-class _GreenScope extends InheritedWidget {
-  const _GreenScope({
-    Key? key,
-    required Widget child,
-    required this.state,
-  }) : super(key: key, child: child);
-  final _GreenState state;
-
-  @override
-  bool updateShouldNotify(covariant _GreenScope oldWidget) {
-    return state != oldWidget.state;
+    return widget.child;
   }
 }
