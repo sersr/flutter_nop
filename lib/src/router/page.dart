@@ -136,6 +136,7 @@ class NPageMain extends NPage {
 
 mixin RouteQueueEntryPage<T> on Page<T> {
   RouteQueueEntry get entry;
+  Duration get transitionDuration => const Duration(milliseconds: 300);
 }
 
 class MaterialIgnorePage<T> extends MaterialPage<T> with RouteQueueEntryPage {
@@ -187,6 +188,9 @@ class _MaterialIgnorePageRoute<T> extends PageRoute<T>
   MaterialIgnorePage<T> get _page => settings as MaterialIgnorePage<T>;
 
   @override
+  Duration get transitionDuration => _page.transitionDuration;
+
+  @override
   Widget buildContent(BuildContext context) {
     return MaterialIgnorePage.wrap(context, _page.entry, _page.child);
   }
@@ -203,11 +207,8 @@ class _MaterialIgnorePageRoute<T> extends PageRoute<T>
   @override
   Widget buildTransitions(BuildContext context, Animation<double> animation,
       Animation<double> secondaryAnimation, Widget child) {
-    final v = animation.status == AnimationStatus.forward ||
-        secondaryAnimation.status == AnimationStatus.forward ||
-        secondaryAnimation.status == AnimationStatus.reverse;
-
-    child = IgnorePointer(ignoring: v, child: child);
+    final v = animation.status != AnimationStatus.completed;
+    child = IgnorePointer(ignoring: v, ignoringSemantics: v, child: child);
     return super
         .buildTransitions(context, animation, secondaryAnimation, child);
   }

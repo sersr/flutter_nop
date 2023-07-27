@@ -5,8 +5,26 @@ class _RouteQueueObverser extends NavigatorObserver {
   _RouteQueueObverser(this.router);
   final NRouter router;
 
+  Route? _topRoute;
+  Route? get topRoute => _topRoute;
+
+  @override
+  void didPush(Route route, Route? previousRoute) {
+    if (route.isCurrent) _topRoute = route;
+  }
+
+  @override
+  void didReplace({Route? newRoute, Route? oldRoute}) {
+    if (newRoute?.isCurrent == true) {
+      _topRoute = newRoute;
+    }
+  }
+
   @override
   void didPop(Route route, Route? previousRoute) {
+    if (previousRoute?.isCurrent == true) {
+      _topRoute = previousRoute;
+    }
     router.didPop(route);
   }
 
@@ -391,8 +409,7 @@ class RouteQueueEntry with _RouteQueueEntryMixin implements LogPretty {
     required ValueKey<String> pageKey,
     Object? groupId,
     this.queryParams = const {},
-  })  : assert(!nPage.isErrorPage),
-        _pageKey = pageKey,
+  })  : _pageKey = pageKey,
         _groupId = nPage.ignoreToken(groupId),
         _id = nPage._newRouteId,
         _path = path;

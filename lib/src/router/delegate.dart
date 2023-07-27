@@ -183,11 +183,11 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
     return false;
   }
 
-  late final _obverser = _RouteQueueObverser(router);
+  late final _observer = _RouteQueueObverser(router);
 
   @override
   Widget build(BuildContext context) {
-    final navObservers = [_obverser, ...router.observers];
+    final navObservers = [_observer, ...router.observers];
     return RouteRestorable(
       restorationId: restorationId,
       delegate: this,
@@ -279,7 +279,7 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
       {Map<String, dynamic> params = const {},
       Map<String, dynamic>? extra,
       Object? groupId}) {
-    assert(rootPage.contains(page));
+    // assert(rootPage.contains(page));
 
     return RouteQueueEntry(
       params: params,
@@ -351,11 +351,29 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
 
   RouteQueueEntry _goReplacement(RouteQueueEntry entry, Object? result) {
     final queue = _routeQueue;
-    final current = queue.current;
 
-    current?._removeCurrent(result: result, update: false);
+    final topRoute = _observer.topRoute;
+    bool removed = false;
+
+    if (topRoute != null) {
+      final topEntry = queue._getEntry(topRoute);
+      if (topEntry == null) {
+        assert(topRoute.isActive && topRoute.isCurrent);
+
+        // call NavigatorState._updatePages first.
+        SchedulerBinding.instance.addPostFrameCallback((_) {
+          if (topRoute.isActive) {
+            navigatorKey.currentState?.removeRoute(topRoute);
+            // ignore: invalid_use_of_protected_member
+            topRoute.didComplete(result);
+          }
+        });
+        removed = true;
+      }
+    }
+    if (!removed) queue.current?._removeCurrent(result: result, update: false);
     final newEntry = _redirect(entry);
-    queue.insert(newEntry, replace: true);
+    queue.insert(newEntry, replace: !removed);
     return newEntry;
   }
 
@@ -403,14 +421,14 @@ class RouterAction {
       {Map<String, dynamic> params = const {},
       Map<String, dynamic>? extra,
       Object? groupId})
-      : entry = router.routerDelegate
+      : baseEntry = router.routerDelegate
             .createEntry(page, params: params, extra: extra, groupId: groupId);
 
-  final RouteQueueEntry entry;
+  final RouteQueueEntry baseEntry;
   final NRouter router;
 
   RouteQueueEntry go() {
-    return router.routerDelegate._run(entry);
+    return router.routerDelegate._run(baseEntry);
   }
 
   RouteQueueEntry goUntil(UntilFn test) {
@@ -419,6 +437,6 @@ class RouterAction {
   }
 
   RouteQueueEntry goReplacement({Object? result}) {
-    return router.routerDelegate._goReplacement(entry, result);
+    return router.routerDelegate._goReplacement(baseEntry, result);
   }
 }
