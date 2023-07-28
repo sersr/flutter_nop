@@ -1,6 +1,6 @@
 name: flutter_nop
 description: state manager, dependencies manager
-version: 2.1.4
+version: 2.2.0
 repository: https://github.com/sersr/flutter_nop
 
 environment:
@@ -10,7 +10,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  nop: ">=0.0.3+1 <1.0.0"
+  nop: ">=0.1.0"
   equatable: ">=2.0.3 <3.0.0"
   collection: ">=1.15.0 <2.0.0"
 
@@ -18,8 +18,8 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^2.0.0
-  nop_gen: ^0.2.1
-  nop_annotations: ^0.2.0
+  nop_gen: ^0.3.0+1
+  nop_annotations: ^0.3.2
   build_runner: any
 
 dependency_overrides:

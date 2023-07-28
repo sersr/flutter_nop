@@ -14,7 +14,7 @@ example: [router_demo](https://github.com/sersr/router_demo)
 
     final app = MaterialApp(
       ...
-      observers: [
+      navigatorObservers: [
         ...,
         Nav.observer,
       ]
