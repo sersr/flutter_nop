@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../dependence/dependences_mixin.dart';
+import '../dependence/dependence_mixin.dart';
 import '../dependence/factory.dart';
 import '../dependence/nop_listener.dart';
 import '../navigation/navigator_observer.dart';
@@ -24,7 +24,7 @@ class NopDependence extends RouteNode {
 
   @override
   String toString() {
-    return 'NopDependences#${debugName ?? hashCode}';
+    return 'Nopdependence#${debugName ?? hashCode}';
   }
 
   @override
@@ -38,23 +38,23 @@ class NopDependence extends RouteNode {
     if (listener != null) {
       return (listener, false);
     }
-    listener = globalDependences.nopListenerCreater();
+    listener = globalDependence.nopListenerCreater();
     listener.scope = NopShareScope.unique;
     assert(() {
       position = position == null ? null : position! + 1;
       return true;
     }());
     listener.initWithFirstDependence(
-        dependence ?? globalDependences, data, null, t, position);
+        dependence ?? globalDependence, data, null, t, position);
     return (listener, true);
   }
 
-  static final _globalDependences = NopGlobalDependence();
+  static final _globalDependence = NopGlobalDependence();
 
-  static NopGlobalDependence get globalDependences => _globalDependences;
+  static NopGlobalDependence get globalDependence => _globalDependence;
 
   static void clear() {
-    _globalDependences.clear();
+    _globalDependence.clear();
   }
 
   static Type Function(Type t) getAlias = Nav.getAlias;

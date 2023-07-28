@@ -9,7 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:nop/nop.dart';
 
 import '../dependence/dependence_observer.dart';
-import '../dependence/dependences_mixin.dart';
+import '../dependence/dependence_mixin.dart';
 import '../dependence/factory.dart';
 import '../dependence/nop_listener.dart';
 import 'web/history_state.dart';

@@ -1,12 +1,12 @@
-import '../dependence/dependences_mixin.dart';
-import 'nop_dependencies.dart';
+import '../dependence/dependence_mixin.dart';
+import 'nop_dependence.dart';
 import '../dependence/nop_listener.dart';
 
 class NopListenerDefault extends NopListener {
   NopListenerDefault();
 
   @override
-  bool get isGlobal => contains(NopDependence.globalDependences);
+  bool get isGlobal => contains(NopDependence.globalDependence);
 
   @override
   T get<T>({Object? group, int? position = 0}) {
@@ -17,7 +17,7 @@ class NopListenerDefault extends NopListener {
 
     final dependence = getDependence() as NopDependence?;
     final data = Node.defaultGetData<T>(NopDependence.getAlias(T), dependence,
-        NopDependence.globalDependences, group, position);
+        NopDependence.globalDependence, group, position);
     assert(NopLifecycle.checkIsNopLisenter(data) != null);
 
     return data;
@@ -28,7 +28,7 @@ class NopListenerDefault extends NopListener {
     final dependence = getDependence() as NopDependence?;
 
     final data = Node.defaultFindData<T>(NopDependence.getAlias(T), dependence,
-        NopDependence.globalDependences, group);
+        NopDependence.globalDependence, group);
     assert(NopLifecycle.checkIsNopLisenter(data) != null);
 
     return data;

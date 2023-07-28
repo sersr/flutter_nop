@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../dependence/dependences_mixin.dart';
+import '../dependence/dependence_mixin.dart';
 import '../dependence/nop_listener.dart';
 import '../navigation/navigator_observer.dart';
-import 'nop_dependencies.dart';
+import 'nop_dependence.dart';
 import 'nop_pre_init.dart';
 
 extension GetType on BuildContext {
@@ -91,7 +91,7 @@ class Nop<C> extends StatefulWidget {
     return Node.defaultFindData<T>(
         NopDependence.getAlias(T),
         _NopState.getRouteDependence(null),
-        NopDependence.globalDependences,
+        NopDependence.globalDependence,
         group);
   }
 
@@ -139,7 +139,7 @@ class Nop<C> extends StatefulWidget {
     final dependence = _NopState.getRouteDependence(context);
 
     return Node.defaultGetData<T>(
-        t, dependence, NopDependence.globalDependences, group, position);
+        t, dependence, NopDependence.globalDependence, group, position);
   }
 
   static T? _findFromRouteOrCurrent<T>(BuildContext context,
@@ -151,7 +151,7 @@ class Nop<C> extends StatefulWidget {
       group = _getGroup(t, context);
     }
     return Node.defaultFindData<T>(
-        t, dependence, NopDependence.globalDependences, group);
+        t, dependence, NopDependence.globalDependence, group);
   }
 
   /// 链表会自动管理生命周期

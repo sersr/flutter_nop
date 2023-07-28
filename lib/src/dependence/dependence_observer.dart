@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'dependences_mixin.dart';
+import 'dependence_mixin.dart';
 
 abstract mixin class DependenceManager<T extends RouteNode> {
   void didPop(Route route) {

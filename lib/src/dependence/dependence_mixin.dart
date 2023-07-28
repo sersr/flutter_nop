@@ -214,10 +214,10 @@ mixin Node {
   }
 
   static T? defaultFindData<T>(
-      Type t, Node? current, Node globalDependences, Object? groupName) {
+      Type t, Node? current, Node globalDependence, Object? groupName) {
     assert(T != dynamic);
     final listener = current?.findTypeElement(t, groupName) ??
-        globalDependences.findTypeElement(t, groupName);
+        globalDependence.findTypeElement(t, groupName);
     return listener?.data;
   }
 }

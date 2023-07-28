@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:nop/nop.dart';
 
 void main() {
-  test('nop dependences insert', () {
+  test('nop dependence insert', () {
     Zone.root.run(() {
       final first = create('first');
       final second = create('second');
