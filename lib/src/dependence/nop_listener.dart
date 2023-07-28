@@ -104,11 +104,7 @@ mixin NopLifecycle {
 }
 
 abstract class NopListener {
-  NopListener(this.data, this.group, Type t) : _t = t;
-  final dynamic data;
-
-  final Object? group;
-  final Type _t;
+  NopListener();
 
   NopShareScope? _scope;
   NopShareScope get scope => _scope ?? NopShareScope.shared;
@@ -128,9 +124,23 @@ abstract class NopListener {
 
   bool _init = false;
 
-  void initWithFirstDependence(Node dependence, {int? position}) {
+  dynamic _data;
+
+  Object? _group;
+  late Type _t;
+
+  dynamic get data => _data;
+  Object? get group => _group;
+
+  void initWithFirstDependence(
+      Node dependence, dynamic data, Object? group, Type t,
+      [int? position]) {
     assert(!_init && _dependenceTree.isEmpty);
     _init = true;
+
+    _data = data;
+    _group = group;
+    _t = t;
 
     _dependenceTree.add(dependence);
     assert(() {

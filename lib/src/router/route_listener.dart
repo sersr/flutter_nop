@@ -1,10 +1,8 @@
 part of 'router.dart';
 
 class RouteListener extends NopListener {
-  RouteListener(this.router, super.data, super.group, super.t)
-      : isGlobal = false;
-  RouteListener.global(this.router, super.data, super.group, super.t)
-      : isGlobal = true;
+  RouteListener(this.router) : isGlobal = false;
+  RouteListener.global(this.router) : isGlobal = true;
 
   @override
   final bool isGlobal;
@@ -45,8 +43,8 @@ class NRouterDependence extends RouteNode {
   }
 
   @override
-  NopListener nopListenerCreater(data, Object? groupName, Type t) {
-    return RouteListener(router, data, groupName, t);
+  NopListener nopListenerCreater() {
+    return RouteListener(router);
   }
 }
 
@@ -66,8 +64,8 @@ class NRouterGlobalDependence with Node {
   Node? get parent => null;
 
   @override
-  NopListener nopListenerCreater(data, Object? groupName, Type t) {
-    return RouteListener.global(router, data, groupName, t);
+  NopListener nopListenerCreater() {
+    return RouteListener.global(router);
   }
 
   bool _popped = false;

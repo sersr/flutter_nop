@@ -328,7 +328,7 @@ class NPage {
     }
   }
 
-  Object? ignoreToken(Object? groupId) {
+  static Object? ignoreToken(Object? groupId) {
     if (identical(groupId, newGroupKey)) {
       return null;
     }

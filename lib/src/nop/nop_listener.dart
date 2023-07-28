@@ -3,7 +3,8 @@ import 'nop_dependencies.dart';
 import '../dependence/nop_listener.dart';
 
 class NopListenerDefault extends NopListener {
-  NopListenerDefault(super.data, super.group, super.t);
+  NopListenerDefault();
+
   @override
   bool get isGlobal => contains(NopDependence.globalDependences);
 
@@ -14,10 +15,6 @@ class NopListenerDefault extends NopListener {
       return true;
     }());
 
-    assert(() {
-      position = position == null ? null : position! + 1;
-      return true;
-    }());
     final dependence = getDependence() as NopDependence?;
     final data = Node.defaultGetData<T>(NopDependence.getAlias(T), dependence,
         NopDependence.globalDependences, group, position);

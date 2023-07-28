@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../dependence/dependences_mixin.dart';
+import '../dependence/factory.dart';
 import '../dependence/nop_listener.dart';
 import '../navigation/navigator_observer.dart';
 import '../dependence/dependence_observer.dart';
@@ -27,8 +28,8 @@ class NopDependence extends RouteNode {
   }
 
   @override
-  NopListener nopListenerCreater(dynamic data, Object? groupName, Type t) {
-    return NopListenerDefault(data, groupName, t);
+  NopListener nopListenerCreater() {
+    return NopListenerDefault();
   }
 
   static (NopListener, bool) createUniqueListener(
@@ -37,14 +38,14 @@ class NopDependence extends RouteNode {
     if (listener != null) {
       return (listener, false);
     }
-    listener = globalDependences.nopListenerCreater(data, null, t);
+    listener = globalDependences.nopListenerCreater();
     listener.scope = NopShareScope.unique;
     assert(() {
       position = position == null ? null : position! + 1;
       return true;
     }());
-    listener.initWithFirstDependence(dependence ?? globalDependences,
-        position: position);
+    listener.initWithFirstDependence(
+        dependence ?? globalDependences, data, null, t, position);
     return (listener, true);
   }
 
@@ -84,8 +85,8 @@ class NopGlobalDependence with Node {
   Node? get parent => null;
 
   @override
-  NopListener nopListenerCreater(data, Object? groupName, Type t) {
-    return NopListenerDefault(data, groupName, t);
+  NopListener nopListenerCreater() {
+    return NopListenerDefault();
   }
 
   bool _popped = false;

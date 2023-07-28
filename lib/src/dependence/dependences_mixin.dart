@@ -102,7 +102,7 @@ mixin Node {
     return _groupPointers[groupName]?[t];
   }
 
-  NopListener nopListenerCreater(dynamic data, Object? groupName, Type t);
+  NopListener nopListenerCreater();
 
   dynamic build(Type t);
 
@@ -128,9 +128,7 @@ mixin Node {
     }());
 
     if (listener == null) {
-      final listener = nopListenerCreater(data, groupName, t);
-      assert(identical(listener.group, groupName) &&
-          identical(listener.data, data));
+      final listener = nopListenerCreater();
 
       if (groupName != null) {
         listener.scope = NopShareScope.group;
@@ -138,7 +136,7 @@ mixin Node {
         listener.scope = NopShareScope.shared;
       }
 
-      listener.initWithFirstDependence(this, position: position);
+      listener.initWithFirstDependence(this, data, groupName, t, position);
       addListener(t, listener, groupName, position);
 
       return listener;

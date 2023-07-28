@@ -98,21 +98,19 @@ class RouteQueue with ChangeNotifier, _RouteQueueMixin {
   }
 
   void _popRoute(Route route, dynamic result) {
-    final entry = _getEntry(route);
+    final entry = getEntry(route);
 
     if (entry != null) {
       entry._removeCurrent(result: result);
     }
   }
 
-  RouteQueueEntry? _getEntry(Route route) {
+  RouteQueueEntry? getEntry(Route route) {
     return switch (route.settings) {
       RouteQueueEntryPage page => page.entry,
       _ => null,
     };
   }
-
-  RouteQueueEntry? getEntry(Route route) => _getEntry(route);
 
   void _copyFrom(RouteQueue other) {
     if (other == this) return;
@@ -156,7 +154,7 @@ class RouteQueue with ChangeNotifier, _RouteQueueMixin {
     if (update) _updateRouteInfo();
   }
 
-  RouteQueueEntry? removeUntil(UntilFn test, bool ignore) {
+  RouteQueueEntry? _removeUntil(UntilFn test, bool ignore) {
     final current = _current;
     RouteQueueEntry? entry = current;
     while (entry != null) {
@@ -223,10 +221,11 @@ class RouteQueue with ChangeNotifier, _RouteQueueMixin {
     return entry;
   }
 
-  static List? pageList(Object? data) {
-    switch (data) {
-      case {'list': List list}:
-        return list;
+  static RouteQueueEntry? getLast(Object? data, NRouterDelegate delegate) {
+    if (data case {'list': [..., Map last]}) {
+      if (RouteQueueEntry.canParse(last)) {
+        return RouteQueueEntry.fromJson(last, delegate);
+      }
     }
 
     return null;
@@ -410,7 +409,7 @@ class RouteQueueEntry with _RouteQueueEntryMixin implements LogPretty {
     Object? groupId,
     this.queryParams = const {},
   })  : _pageKey = pageKey,
-        _groupId = nPage.ignoreToken(groupId),
+        _groupId = NPage.ignoreToken(groupId),
         _id = nPage._newRouteId,
         _path = path;
 

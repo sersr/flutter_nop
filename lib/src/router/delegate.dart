@@ -71,16 +71,9 @@ class RouteRestorableState extends State<RouteRestorable>
     if (!delegate.updateLocation) return SynchronousFuture(false);
 
     final state = routeInformation.state;
-    final list = RouteQueue.pageList(state) ?? const [];
+    final stateEntry = RouteQueue.getLast(state, delegate);
 
     assert(Log.e('uri: ${routeInformation.location}'));
-
-    RouteQueueEntry? stateEntry;
-    if (list case [..., Map last]) {
-      if (RouteQueueEntry.canParse(last)) {
-        stateEntry = RouteQueueEntry.fromJson(last, delegate);
-      }
-    }
 
     final pre = routeQueue.pre;
     if (stateEntry != null && stateEntry.eq(pre)) {
@@ -146,7 +139,6 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
   bool get updateLocation => router.updateLocation;
 
   void init(
-    String? restorationId,
     Map<String, dynamic> params,
     Map<String, dynamic>? extra,
     Object? groupId,
@@ -356,7 +348,7 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
     bool removed = false;
 
     if (topRoute != null) {
-      final topEntry = queue._getEntry(topRoute);
+      final topEntry = queue.getEntry(topRoute);
       if (topEntry == null) {
         assert(topRoute.isActive && topRoute.isCurrent);
 
@@ -378,7 +370,7 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
   }
 
   void _until(UntilFn test, {bool ignore = false}) {
-    _routeQueue.removeUntil(test, ignore);
+    _routeQueue._removeUntil(test, ignore);
   }
 
   RouteQueueEntry goUntil(String location, UntilFn test) {

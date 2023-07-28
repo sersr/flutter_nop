@@ -10,6 +10,7 @@ import 'package:nop/nop.dart';
 
 import '../dependence/dependence_observer.dart';
 import '../dependence/dependences_mixin.dart';
+import '../dependence/factory.dart';
 import '../dependence/nop_listener.dart';
 import 'web/history_state.dart';
 
@@ -41,7 +42,7 @@ part 'state.dart';
 /// ```
 
 class NRouter
-    with DependenceManager<NRouterDependence>
+    with DependenceManager<NRouterDependence>, BuildFactoryMixin
     implements RouterConfig<RouteQueue> {
   NRouter({
     required this.rootPage,
@@ -54,7 +55,7 @@ class NRouter
   }) {
     routerDelegate = NRouterDelegate(
         restorationId: restorationId, rootPage: rootPage, router: this);
-    routerDelegate.init(restorationId, params, extra, groupId);
+    routerDelegate.init(params, extra, groupId);
   }
   final NPageMain rootPage;
   final bool updateLocation;
@@ -154,43 +155,6 @@ class NRouter
   }
 
   NRouterGlobalDependence get globalDependence => _global;
-
-  /// factroy
-  final _factorys = <Type, BuildFactory>{};
-  void put<T>(BuildFactory<T> factory) {
-    assert(!_alias.containsKey(T) || Log.e('${_alias[T]} already exists.'));
-    _factorys[T] = factory;
-  }
-
-  BuildFactory<T> get<T>() {
-    assert(
-        _factorys.containsKey(T), 'You need to call Routes.router.put<$T>().');
-    return _factorys[T] as BuildFactory<T>;
-  }
-
-  BuildFactory getArg(Type t) {
-    assert(
-        _factorys.containsKey(t), 'You need to call Routes.router.put<$t>().');
-    return _factorys[t] as BuildFactory;
-  }
-
-  final _alias = <Type, Type>{};
-
-  /// 子类可以转化成父类
-  void addAlias<P, C extends P>() {
-    assert(!_factorys.containsKey(P) || Log.e('$P already exists.'));
-    _alias[P] = C; // 可以根据父类类型获取到子类对象
-  }
-
-  Type getAlias(Type t) {
-    return _alias[t] ?? t;
-  }
-
-  void addAliasAll<P extends Type, C extends P>(Iterable<P> parents, C child) {
-    for (var item in parents) {
-      _alias[item] = child;
-    }
-  }
 
   T global<T>({Object? group, int? position}) {
     assert(() {
