@@ -204,5 +204,3 @@ class NRouter
     return NRouterDependence(this);
   }
 }
-
-typedef BuildFactory<T> = T Function();
