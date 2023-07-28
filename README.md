@@ -1,34 +1,65 @@
-状态管理，路由生成
+# state manager & route generator
 
-demo02: [router_demo](https://github.com/sersr/router_demo)
 
-## 状态管理
+example: [router_demo](https://github.com/sersr/router_demo)
 
+## state manager
+
+#### nop version:
 ```dart
-    Class CounterState {
-
-    }
+    class CounterState {}
     //...
     Nav.put(() => CounterState());
-    Nav.put((context) => CounterState());
     //...
-    runApp(MyApp());
-```
 
-获取
+    final app = MaterialApp(
+      ...
+      observers: [
+        ...,
+        Nav.observer,
+      ]
+      ...
+    );
 
-```dart
+    runApp(app);
+
     //...
     Widget build(BuildContext context) {
-        // 需要使用 Nop
         final counter = context.getType<CounterState>();
         //...
     }
 ```
 
-## 路由生成
+#### router version:  
+example: [router_demo](https://github.com/sersr/router_demo)
 
-需要添加依赖：
+```dart
+    class CounterState {}
+
+    final router = NRouter( ... );
+
+    //...
+    router.put(() => CounterState());
+    //...
+    
+    final app = MaterialApp.router(
+      routerConfig: router,
+      // ...
+    );
+    runApp(app);
+
+    //...
+    Widget build(BuildContext context) {
+        final counter = context.grass<CounterState>();
+        //...
+    }
+```
+
+
+
+## route generator
+
+pubspec.yaml:
 
 ```yaml
   dependencies:
@@ -39,11 +70,13 @@ demo02: [router_demo](https://github.com/sersr/router_demo)
     build_runner:
 ```
 
-### 示例
+#### nop version:
 
-file: routes.dart;
+link: [route_gen](./test/src/route_gen.dart)  
 
 ```dart
+//  routes.dart
+
     import 'package:nop_annotations/nop_annotations.dart';
 
     part 'routes.g.dart';
@@ -58,16 +91,18 @@ file: routes.dart;
     class AppRoutes {}
 
     class SecondPage extends StatelessWidget {
-        const SecondPage({Key? key, String? title}): super(key: key);
+        const SecondPage({super.key, String? title});
         //...
     }
 
 ```
 
-run: flutter pub run build_runner build  
-将会生成 routes.g.dart 文件  
+    dart run build_runner build  
+
 
 ```dart
+// 'routes.g.dart'
+
     class Routes {
         //...
       static final _secondPage =  NopRoute(
@@ -78,11 +113,8 @@ run: flutter pub run build_runner build
         ),
       );
     }
-    /// 将默认构造器转换成普通函数
-    class NavRoutes {
 
-      // Navigator.pushNamed(context, Routes._secondPage.fullName, arguments: {'title': 'secondTitle'});
-      // secondPage(title: 'secondTitle').go;
+    class NavRoutes {
       static NopRouteAction<T> secondPage<T>({
         BuildContext? context, String? title,
       }) {
@@ -92,31 +124,8 @@ run: flutter pub run build_runner build
     }
 ```
 
-## NRouter
+#### router version:
 
-[router_demo](https://github.com/sersr/router_demo)
+[router_demo](https://github.com/sersr/router_demo/tree/main/lib/_routes/route.dart)
 
-路由生成注解为 `Nav` 和 `Nop` 提供了支持；路由跳转提供明确的参数(以函数调用提供)
-
-## Nop 状态管理
-
-状态管理依赖于 Nop，而路由生成注解会在每一个页面使用 `Nop.page`,`page` 是一个节点,存储可共享对象，生命周期由`State`管理
-
-```dart
-    void main() {
-        runApp(Nop(child: MyApp()));
-    }
-```
-
-在开始之前使用`Nop`,即可任意使用`context.getType`  
-创建的对象会自动判断是否是全局或页面，局部共享；  
-当共享的对象没有监听者时会被释放
-
-```dart
-    class SomeClass {}
-    Nav.put(() => SomeClass()));
-    // ...
-    context.getType<SomeClass>();
-```
-
-共享对象的生命周期可以被另一个对象延长
+    dart run build_runner build --delete-conflicting-outputs
