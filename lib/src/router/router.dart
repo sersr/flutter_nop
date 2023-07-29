@@ -156,7 +156,7 @@ class NRouter
 
   NRouterGlobalDependence get globalDependence => _global;
 
-  T global<T>({Object? group, int? position}) {
+  T global<T>({Object? group, int? position = 0}) {
     assert(() {
       position = position == null ? null : position! + 1;
       return true;
