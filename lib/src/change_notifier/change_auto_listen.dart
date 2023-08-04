@@ -5,22 +5,22 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:nop/utils.dart';
 
-typedef Cs = ChangeScoop;
+typedef Cs = ChangeScope;
 
-class ChangeScoop extends StatefulWidget {
-  const ChangeScoop(this.builder, {Key? key}) : super(key: key);
+class ChangeScope extends StatefulWidget {
+  const ChangeScope(this.builder, {Key? key}) : super(key: key);
   final Widget Function() builder;
   static bool printEnabled = false;
   @override
-  State<ChangeScoop> createState() => _ChangeScoopState();
+  State<ChangeScope> createState() => _ChangeScopeState();
 }
 
-class _ChangeScoopState extends State<ChangeScoop> {
+class _ChangeScopeState extends State<ChangeScope> {
   final _listenables = <AutoListenChangeNotifierMixin>{};
 
   void addListener(AutoListenChangeNotifierMixin listenable) {
     if (_listenables.contains(listenable)) return;
-    assert(!ChangeScoop.printEnabled ||
+    assert(!ChangeScope.printEnabled ||
         Log.i('${listenable.runtimeType} added', position: 3));
     _listenables.add(listenable);
     listenable.addListener(_listen);
@@ -41,7 +41,7 @@ class _ChangeScoopState extends State<ChangeScoop> {
   }
 
   @override
-  void didUpdateWidget(covariant ChangeScoop oldWidget) {
+  void didUpdateWidget(covariant ChangeScope oldWidget) {
     clear();
     super.didUpdateWidget(oldWidget);
   }
@@ -60,18 +60,18 @@ class _ChangeScoopState extends State<ChangeScoop> {
 
   @override
   Widget build(BuildContext context) {
-    return runZoned(widget.builder, zoneValues: {_ChangeScoopState: this});
+    return runZoned(widget.builder, zoneValues: {_ChangeScopeState: this});
   }
 }
 
-extension ChangeAutoWrapExt<D, T extends ValueNotifier<D>> on T {
-  AutoListenWrapper<D, T> get cs {
+extension ChangeAutoWrapExt<D> on ValueNotifier<D> {
+  AutoListenWrapper<D, ValueNotifier<D>> get cs {
     return AutoListenWrapper(this);
   }
 }
 
-extension ChangeAutoDelegateExt<D, T extends ValueListenable<D>> on T {
-  AutoListenDelegate<D, T> get cs {
+extension ChangeAutoDelegateExt<D> on ValueListenable<D> {
+  AutoListenDelegate<D, ValueListenable<D>> get cs {
     return AutoListenDelegate(this);
   }
 }
@@ -147,7 +147,7 @@ class AutoListenDelegate<T, P extends ValueListenable<T>>
 
 mixin AutoListenChangeNotifierMixin implements Listenable {
   void autoListen() {
-    final state = Zone.current[_ChangeScoopState] as _ChangeScoopState?;
+    final state = Zone.current[_ChangeScopeState] as _ChangeScopeState?;
     if (state != null) {
       state.addListener(this);
     }

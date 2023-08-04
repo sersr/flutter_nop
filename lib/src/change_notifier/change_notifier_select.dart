@@ -14,8 +14,7 @@ extension ValueNotifierSelector<D extends Listenable> on D {
 
 class ChangeNotifierSelector<T, D extends Listenable> extends ChangeNotifier
     implements ValueListenable<T> {
-  ChangeNotifierSelector({required this.parent, required this.notifyValue})
-      : _value = notifyValue(parent);
+  ChangeNotifierSelector({required this.parent, required this.notifyValue});
 
   final D parent;
   final ShouldNotify<T, D> notifyValue;
@@ -27,6 +26,7 @@ class ChangeNotifierSelector<T, D extends Listenable> extends ChangeNotifier
     if (!_add && hasListeners) {
       _add = true;
       parent.addListener(_listener);
+      _value = notifyValue(parent);
     }
   }
 
@@ -49,7 +49,7 @@ class ChangeNotifierSelector<T, D extends Listenable> extends ChangeNotifier
     }
   }
 
-  T _value;
+  T? _value;
 
   @override
   void dispose() {
@@ -58,12 +58,12 @@ class ChangeNotifierSelector<T, D extends Listenable> extends ChangeNotifier
   }
 
   @override
-  T get value => _value;
+  T get value => _value ??= notifyValue(parent);
 }
 
 extension ChangeAutoWrapperSelectorAl<T, D extends ChangeNotifier>
     on ChangeNotifierSelector<T, D> {
-  AutoListenDelegate<T, ChangeNotifierSelector<T, D>> get al {
+  AutoListenDelegate<T, ChangeNotifierSelector<T, D>> get cs {
     return AutoListenDelegate(this);
   }
 }
