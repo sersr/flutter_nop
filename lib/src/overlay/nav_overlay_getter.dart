@@ -81,14 +81,20 @@ class OverlayMixinDelegate<T extends OverlayMixin> extends OverlayDelegate {
   Future<bool> show() async {
     if (closed) return false;
     if (done) return _controller.showAsync();
-    return init().then((_) => _controller.showAsync());
+    return init().then((_) {
+      if (closed) return false;
+      return _controller.showAsync();
+    });
   }
 
   @override
   Future<bool> hide() async {
     if (closed) return false;
     if (done) return _controller.hideAsync();
-    return init().then((_) => _controller.hideAsync());
+    return init().then((_) {
+      if (closed) return true;
+      return _controller.hideAsync();
+    });
   }
 
   @override
