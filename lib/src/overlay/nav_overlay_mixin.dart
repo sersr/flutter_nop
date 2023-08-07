@@ -132,8 +132,8 @@ mixin OverlayMixin {
 
   /// 如果被调用了，对象将不可用
   void close() {
-    if (!active) return;
     _closed = true;
+    if (!_inited) return;
     _observer?.close(this);
     _complete();
     onRemoveOverlayEntry();
