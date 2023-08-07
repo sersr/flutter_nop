@@ -65,7 +65,6 @@ class OverlayMixinDelegate<T extends OverlayMixin> extends OverlayDelegate {
 
   bool _delayInit = false;
 
-  bool get duringDelay => active && !_delayInit;
   @override
   FutureOr<void> initRun(OverlayState state) async {
     if (active || closed) return;
@@ -73,6 +72,7 @@ class OverlayMixinDelegate<T extends OverlayMixin> extends OverlayDelegate {
     if (delayDuration != Duration.zero) {
       await release(delayDuration);
     }
+
     if (_delayInit) return;
     _delayInit = true;
     if (active || closed) return;
