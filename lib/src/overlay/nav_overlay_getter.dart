@@ -63,6 +63,9 @@ class OverlayMixinDelegate<T extends OverlayMixin> extends OverlayDelegate {
   @override
   bool get showStatus => done && _controller.showStatus;
 
+  bool _delayInit = false;
+
+  bool get duringDelay => active && !_delayInit;
   @override
   FutureOr<void> initRun(OverlayState state) async {
     if (active) return;
@@ -72,6 +75,7 @@ class OverlayMixinDelegate<T extends OverlayMixin> extends OverlayDelegate {
     if (delayDuration != Duration.zero) {
       await release(delayDuration);
     }
+    _delayInit = true;
     if (closed) return;
 
     _controller.setObverser(_overlayObserver);
@@ -80,7 +84,7 @@ class OverlayMixinDelegate<T extends OverlayMixin> extends OverlayDelegate {
   @override
   Future<bool> show() async {
     if (closed) return false;
-    if (done) return _controller.showAsync();
+    if (done && _delayInit) return _controller.showAsync();
     return init().then((_) {
       if (closed) return false;
       return _controller.showAsync();
@@ -90,7 +94,7 @@ class OverlayMixinDelegate<T extends OverlayMixin> extends OverlayDelegate {
   @override
   Future<bool> hide() async {
     if (closed) return false;
-    if (done) return _controller.hideAsync();
+    if (done && _delayInit) return _controller.hideAsync();
     return init().then((_) {
       if (closed) return true;
       return _controller.hideAsync();
