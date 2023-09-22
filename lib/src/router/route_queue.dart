@@ -186,7 +186,7 @@ class RouteQueue with ChangeNotifier, _RouteQueueMixin {
 
       SystemNavigator.selectMultiEntryHistory();
       SystemNavigator.routeInformationUpdated(
-          location: _current!.path, state: state, replace: replace);
+          uri: Uri.tryParse(_current!.path), state: state, replace: replace);
     }
   }
 

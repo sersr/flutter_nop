@@ -137,6 +137,10 @@ class NRouter
     routerDelegate.popUntil(test, ignore);
   }
 
+  void popUntilNav(UntilFn test, {bool Function(Route route)? routeTest}) {
+    routerDelegate.popUntilNav(test, routeTest: routeTest);
+  }
+
   void pop([Object? result]) {
     routerDelegate.pop(result);
   }

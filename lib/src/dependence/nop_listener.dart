@@ -1,5 +1,6 @@
-import 'package:nop/nop.dart';
 import 'package:flutter/material.dart';
+import 'package:nop/nop.dart';
+
 import 'dependence_mixin.dart';
 
 /// 自动管理生命周期

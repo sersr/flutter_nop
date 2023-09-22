@@ -73,7 +73,7 @@ class RouteRestorableState extends State<RouteRestorable>
     final state = routeInformation.state;
     final stateEntry = RouteQueue.getLast(state, delegate);
 
-    assert(Log.e('uri: ${routeInformation.location}'));
+    assert(Log.e('uri: ${routeInformation.uri}'));
 
     final pre = routeQueue.pre;
     if (stateEntry != null && stateEntry.eq(pre)) {
@@ -87,8 +87,7 @@ class RouteRestorableState extends State<RouteRestorable>
       RouteQueueEntry? entry = stateEntry;
 
       if (entry == null) {
-        final uri = Uri.tryParse(routeInformation.location ?? '');
-        if (uri == null) return SynchronousFuture(false);
+        final uri = routeInformation.uri;
 
         final realParams = <String, dynamic>{};
 
@@ -371,6 +370,17 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
 
   void _until(UntilFn test, {bool ignore = false}) {
     _routeQueue._removeUntil(test, ignore);
+  }
+
+  void popUntilNav(UntilFn test, {bool Function(Route route)? routeTest}) {
+    final nav = navigatorKey.currentState;
+    if (nav == null) return;
+    nav.popUntil((route) {
+      if (route.settings case RouteQueueEntryPage page) {
+        return test(page.entry);
+      }
+      return routeTest?.call(route) ?? false;
+    });
   }
 
   RouteQueueEntry goUntil(String location, UntilFn test) {

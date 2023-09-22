@@ -208,7 +208,7 @@ class _MaterialIgnorePageRoute<T> extends PageRoute<T>
   Widget buildTransitions(BuildContext context, Animation<double> animation,
       Animation<double> secondaryAnimation, Widget child) {
     final v = animation.status != AnimationStatus.completed;
-    child = IgnorePointer(ignoring: v, ignoringSemantics: v, child: child);
+    child = IgnorePointer(ignoring: v, child: child);
     return super
         .buildTransitions(context, animation, secondaryAnimation, child);
   }
