@@ -117,8 +117,6 @@ class SlidePageTransition extends PageTransitionsBuilder {
 
     if (route.willHandlePopInternally) return false;
 
-    // ignore: invalid_use_of_protected_member
-    if (route.hasScopedWillPopCallback) return false;
     if (route.fullscreenDialog) return false;
     if (route.animation!.status != AnimationStatus.completed) return false;
     if (route.secondaryAnimation!.status != AnimationStatus.dismissed) {

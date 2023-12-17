@@ -135,7 +135,7 @@ class _GreenState<C> extends State<Green<C>> {
     _shouldClean = listener == null;
     if (listener == null) {
       final router = NRouter.of(context);
-      final dependence = router.currentDependence;
+      final dependence = router.getRouteDependence(context);
       listener = RouteListener(router);
       listener.scope = NopShareScope.unique;
       listener.initWithFirstDependence(

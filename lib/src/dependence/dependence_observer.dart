@@ -14,7 +14,6 @@ abstract mixin class DependenceManager<T extends RouteNode> {
   final _caches = <Object, T>{};
 
   T? _currentDependence;
-  T? get currentDependence => _currentDependence;
 
   void clear() {
     _caches.clear();
@@ -43,10 +42,10 @@ abstract mixin class DependenceManager<T extends RouteNode> {
   T createNode(Route route);
 
   T? getRouteDependence(BuildContext? context) {
-    if (context == null) return currentDependence;
+    if (context == null) return _currentDependence;
 
     final route = ModalRoute.of(context);
-    if (route == null) return currentDependence;
+    if (route == null) return _currentDependence;
 
     final value = _caches[route];
     if (value != null) return value;
@@ -59,8 +58,8 @@ abstract mixin class DependenceManager<T extends RouteNode> {
       dependence?.completed();
     });
 
-    if (currentDependence != null) {
-      currentDependence!.insertChild(currentRouteDep);
+    if (_currentDependence != null) {
+      _currentDependence!.insertChild(currentRouteDep);
     }
     return _currentDependence = currentRouteDep;
   }
