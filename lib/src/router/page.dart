@@ -137,6 +137,14 @@ class NPageMain extends NPage {
 mixin RouteQueueEntryPage<T> on Page<T> {
   RouteQueueEntry get entry;
   Duration get transitionDuration => const Duration(milliseconds: 300);
+
+  @override
+  PopInvokedWithResultCallback<T> get onPopInvoked => _popInvoked;
+
+  void _popInvoked(bool didPop, T? result) {
+    if (!didPop) return;
+    entry._removeCurrent(result: result);
+  }
 }
 
 class MaterialIgnorePage<T> extends MaterialPage<T> with RouteQueueEntryPage {
@@ -154,14 +162,6 @@ class MaterialIgnorePage<T> extends MaterialPage<T> with RouteQueueEntryPage {
 
   @override
   final RouteQueueEntry entry;
-
-  @override
-  PopInvokedWithResultCallback<T> get onPopInvoked => _popInvoked;
-
-  void _popInvoked(bool didPop, T? result) {
-    if (!didPop) return;
-    entry._removeCurrent(result: result);
-  }
 
   @override
   Route<T> createRoute(BuildContext context) {
