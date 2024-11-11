@@ -190,7 +190,7 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
             key: navigatorKey,
             observers: navObservers,
             // onPopPage: _onPopPage,
-            // onDidRemovePage: _onDipRemovePage,
+            onDidRemovePage: _onDipRemovePage,
           );
         },
       ),
@@ -206,6 +206,8 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
   //   return true;
   // }
 
+  /// noop
+  static void _onDipRemovePage(Page page) {}
 
   late final _routeQueue = RouteQueue(this);
 
