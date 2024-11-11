@@ -1,6 +1,5 @@
 part of 'router.dart';
 
-/// [RouteQueue]的移除操作并不会触发[Navigator.onPopPage]回调
 class _RouteQueueObverser extends NavigatorObserver {
   _RouteQueueObverser(this.router);
   final NRouter router;
@@ -97,13 +96,13 @@ class RouteQueue with ChangeNotifier, _RouteQueueMixin {
     return list;
   }
 
-  void _popRoute(Route route, dynamic result) {
-    final entry = getEntry(route);
+  // void _popRoute(Route route) {
+  //   final entry = getEntry(route);
 
-    if (entry != null) {
-      entry._removeCurrent(result: result);
-    }
-  }
+  //   if (entry != null) {
+  //     entry._removeCurrent();
+  //   }
+  // }
 
   RouteQueueEntry? getEntry(Route route) {
     return switch (route.settings) {

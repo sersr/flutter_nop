@@ -17,7 +17,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^2.0.0
+  flutter_lints: ^5.0.0
   nop_gen: ^0.3.0+1
   nop_annotations: ^0.3.2
   build_runner: any

@@ -1,5 +1,3 @@
-library flutter_nop;
-
 export 'change_notifier.dart';
 export 'nav.dart';
 export 'overlay.dart';

@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:nop/utils.dart';
 
 import 'nop_listener.dart';
@@ -7,6 +7,8 @@ mixin Node {
   Node? get parent;
   Node? get child;
   bool get popped => false;
+
+  Route? get route => null;
 
   final _groupPointers = <Object?, Map<Type, NopListener>>{};
 
@@ -254,7 +256,7 @@ abstract class RouteNode with Node {
     _child = null;
   }
 
-  void insertChild(RouteNode newChild) {
+  void insertChild(covariant RouteNode newChild) {
     assert(!_popped);
     assert(newChild.child == null && newChild.parent == null);
     newChild._child = _child;

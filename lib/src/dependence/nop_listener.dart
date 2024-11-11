@@ -23,6 +23,9 @@ mixin NopLifecycle {
   /// 当已初始化[nopInit]，还未释放时[nopDispose]，会调用[reInitSingleton]，[_listener]也会被替换。
   void reInitSingleton() {}
 
+  /// 当有新路由依赖此对象时调用
+  void onNewRoute(Route? route) {}
+
   /// [Route.didPop]/[NavigatorObserver.didPop]/[NavigatorObserver.didRemove]
   void onPop() {}
 
@@ -76,6 +79,12 @@ mixin NopLifecycle {
     // assert(Log.w(listener.label));
   }
 
+  static void _autoNewRoute(NopListener listener, Node node) {
+    if (listener.data case NopLifecycle data) {
+      data.onNewRoute(node.route);
+    }
+  }
+
   static void _autoDispose(NopListener listener) {
     final data = listener.data;
     // assert(Log.w(listener.label));
@@ -90,9 +99,8 @@ mixin NopLifecycle {
 
   static void _autoPop(NopListener listener) {
     // assert(Log.w(listener.label));
-    switch (listener.data) {
-      case NopLifecycle nop:
-        nop.onPop();
+    if(listener.data case NopLifecycle data) {
+      data.onPop();
     }
   }
 
@@ -151,6 +159,7 @@ abstract class NopListener {
     assert(Log.w('$label created.', position: position ?? 0));
 
     NopLifecycle._autoInit(this);
+    NopLifecycle._autoNewRoute(this, dependence);
     // try
     onPop();
   }
@@ -191,6 +200,7 @@ abstract class NopListener {
     assert(_init, 'You must call `initWithFirstDependence` first.');
 
     _dependenceTree.add(value);
+    NopLifecycle._autoNewRoute(this, value);
     // assert(Log.w('$label ${_dependenceTree.length}.'));
   }
 

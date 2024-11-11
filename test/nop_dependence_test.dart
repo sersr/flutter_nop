@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_nop/flutter_nop.dart';
+import 'package:flutter_nop/src/nop/nop_listener.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nop/nop.dart';
 
@@ -32,6 +33,23 @@ void forEach(RouteNode root) {
   }
 }
 
-NopDependence create(String name) {
-  return NopDependence(debugName: name);
+TestNode create(String name) {
+  return TestNode(debugName: name);
+}
+
+class TestNode extends RouteNode {
+  TestNode({required this.debugName});
+  final String debugName;
+  @override
+  build(Type t) {}
+
+  @override
+  NopListener nopListenerCreater() {
+    return NopListenerDefault();
+  }
+
+  @override
+  String toString() {
+    return 'TestNode: $debugName';
+  }
 }

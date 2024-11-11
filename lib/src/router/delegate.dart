@@ -189,21 +189,23 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
             pages: _routeQueue.pages,
             key: navigatorKey,
             observers: navObservers,
-            onPopPage: _onPopPage,
+            // onPopPage: _onPopPage,
+            // onDidRemovePage: _onDipRemovePage,
           );
         },
       ),
     );
   }
 
-  bool _onPopPage(Route route, result) {
-    if (!route.didPop(result)) {
-      return false;
-    }
-    _routeQueue._popRoute(route, result);
+  // bool _onPopPage(Route route, result) {
+  //   if (!route.didPop(result)) {
+  //     return false;
+  //   }
+  //   _routeQueue._popRoute(route);
 
-    return true;
-  }
+  //   return true;
+  // }
+
 
   late final _routeQueue = RouteQueue(this);
 

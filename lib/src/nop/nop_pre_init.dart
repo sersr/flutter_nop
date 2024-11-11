@@ -5,10 +5,10 @@ typedef NopWidgetBuilder = Widget Function(BuildContext context, Widget child);
 /// 统一初始化对象
 class NopPreInit extends StatefulWidget {
   const NopPreInit({
-    Key? key,
+    super.key,
     this.builders,
     required this.child,
-  }) : super(key: key);
+  });
 
   final List<NopWidgetBuilder>? builders;
   final Widget child;

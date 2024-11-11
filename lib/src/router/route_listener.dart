@@ -33,8 +33,9 @@ class RouteListener extends NopListener {
 }
 
 class NRouterDependence extends RouteNode {
-  NRouterDependence(this.router);
-
+  NRouterDependence(this.router, this.route);
+  @override
+  final Route route;
   final NRouter router;
 
   @override

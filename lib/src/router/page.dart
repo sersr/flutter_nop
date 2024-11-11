@@ -37,7 +37,7 @@ abstract interface class NRouterJsonTransfrom {
 
   static bool shouldTransfrom(dynamic data) {
     return switch (data) {
-      NRouterJsonTransfrom || Enum _ => true,
+      NRouterJsonTransfrom _ || Enum _ => true,
       Map map => map.values.any(shouldTransfrom),
       List list => list.any(shouldTransfrom),
       _ => _toJsonFns.containsKey(data.runtimeType),
@@ -154,6 +154,14 @@ class MaterialIgnorePage<T> extends MaterialPage<T> with RouteQueueEntryPage {
 
   @override
   final RouteQueueEntry entry;
+
+  @override
+  PopInvokedWithResultCallback<T> get onPopInvoked => _popInvoked;
+
+  void _popInvoked(bool didPop, T? result) {
+    if (!didPop) return;
+    entry._removeCurrent(result: result);
+  }
 
   @override
   Route<T> createRoute(BuildContext context) {

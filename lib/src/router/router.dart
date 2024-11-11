@@ -205,6 +205,6 @@ class NRouter
 
   @override
   NRouterDependence createNode(Route route) {
-    return NRouterDependence(this);
+    return NRouterDependence(this, route);
   }
 }

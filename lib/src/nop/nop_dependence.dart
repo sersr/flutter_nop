@@ -14,14 +14,15 @@ class NopDependenceManager extends DependenceManager<NopDependence> {
 
   @override
   NopDependence createNode(Route route) {
-    return NopDependence(debugName: route.settings.name);
+    return NopDependence(route: route, debugName: route.settings.name);
   }
 }
 
 class NopDependence extends RouteNode {
-  NopDependence({this.debugName});
+  NopDependence({required this.route,this.debugName});
   final String? debugName;
-
+  @override
+  final Route route;
   @override
   String toString() {
     return 'Nopdependence#${debugName ?? hashCode}';

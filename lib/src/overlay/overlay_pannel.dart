@@ -51,13 +51,13 @@ class OverlayVerticalPannels with OverlayMixin, OverlayEvent, OverlayPannel {
 /// [CurvedAnimation]需要调用`dispose`释放资源
 class CurvedAnimationWidget extends StatefulWidget {
   const CurvedAnimationWidget({
-    Key? key,
+    super.key,
     required this.controller,
     required this.builder,
     this.onHide,
     this.curve,
     this.reverseCurve,
-  }) : super(key: key);
+  });
   final AnimationController controller;
   final VoidCallback? onHide;
   final Curve? curve;

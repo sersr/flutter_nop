@@ -86,11 +86,11 @@ mixin OverlayShowOnly on OverlayMixin {
 
 class OverlayDisposeEntry extends OverlayEntry {
   OverlayDisposeEntry({
-    required WidgetBuilder builder,
-    bool opaque = false,
-    bool maintainState = false,
+    required super.builder,
+    super.opaque,
+    super.maintainState,
     required this.overlayMixin,
-  }) : super(builder: builder, opaque: opaque, maintainState: maintainState);
+  });
   final OverlayMixin overlayMixin;
 
   @override
@@ -134,7 +134,7 @@ class OverlayPannelBuilder
 /// Widget
 class OverlaySideGesture extends StatelessWidget {
   const OverlaySideGesture({
-    Key? key,
+    super.key,
     this.left = 0,
     this.right = 0,
     this.top = 0,
@@ -145,7 +145,7 @@ class OverlaySideGesture extends StatelessWidget {
     required this.builder,
     required this.entry,
     this.transition,
-  }) : super(key: key);
+  });
   final double? left;
   final double? right;
   final double? top;
@@ -309,7 +309,7 @@ enum NopOverlayPosition {
 
 class OverlayWidget extends StatelessWidget {
   const OverlayWidget({
-    Key? key,
+    super.key,
     required this.content,
     required this.sizeKey,
     this.color,
@@ -318,7 +318,7 @@ class OverlayWidget extends StatelessWidget {
     this.removeAll = true,
     this.position = NopOverlayPosition.none,
     this.margin,
-  }) : super(key: key);
+  });
 
   final Widget content;
   final bool useMaterial;

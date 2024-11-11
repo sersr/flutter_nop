@@ -8,7 +8,7 @@ import 'package:nop/utils.dart';
 typedef Cs = ChangeScope;
 
 class ChangeScope extends StatefulWidget {
-  const ChangeScope(this.builder, {Key? key}) : super(key: key);
+  const ChangeScope(this.builder, {super.key});
   final Widget Function() builder;
   static bool printEnabled = false;
   @override
@@ -84,7 +84,7 @@ extension AutoListenNotifierExt<T> on T {
 
 class AutoListenNotifier<T> extends ValueNotifier<T>
     with AutoListenChangeNotifierMixin {
-  AutoListenNotifier(T value) : super(value);
+  AutoListenNotifier(super.value);
 
   @override
   T get value {
@@ -105,7 +105,7 @@ class AutoListenNotifier<T> extends ValueNotifier<T>
 
 class AutoListenWrapper<T, P extends ValueNotifier<T>>
     extends AutoListenDelegate<T, P> implements ValueNotifier<T> {
-  AutoListenWrapper(P parent) : super(parent);
+  AutoListenWrapper(super.parent);
 
   @override
   set value(T newValue) {
