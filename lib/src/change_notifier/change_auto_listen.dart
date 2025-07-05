@@ -65,13 +65,13 @@ class _ChangeScopeState extends State<ChangeScope> {
 }
 
 extension ChangeAutoWrapExt<D> on ValueNotifier<D> {
-  AutoListenWrapper<D, ValueNotifier<D>> get cs {
+  AutoListenWrapper<D, ValueNotifier<D>> get csv {
     return AutoListenWrapper(this);
   }
 }
 
 extension ChangeAutoDelegateExt<D> on ValueListenable<D> {
-  AutoListenDelegate<D, ValueListenable<D>> get cs {
+  AutoListenDelegate<D, ValueListenable<D>> get csv {
     return AutoListenDelegate(this);
   }
 }

@@ -10,8 +10,8 @@ extension ChangeList<E> on List<E> {
   }
 }
 
-class ChangeAutoListenList<E> extends ChangeNotifier
-    with ListMixin<E>, AutoListenChangeNotifierMixin {
+class ChangeAutoListenList<E>
+    with ListBase<E>, ChangeNotifier, AutoListenChangeNotifierMixin {
   ChangeAutoListenList(this._value);
   List<E> _value;
   List<E> get value {
@@ -27,6 +27,11 @@ class ChangeAutoListenList<E> extends ChangeNotifier
 
   @override
   int get length => value.length;
+
+  void add(E element) {
+    _value.add(element);
+    notifyListeners();
+  }
 
   @override
   E operator [](int index) {
