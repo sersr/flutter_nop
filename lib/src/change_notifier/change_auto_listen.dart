@@ -65,13 +65,13 @@ class _ChangeScopeState extends State<ChangeScope> {
 }
 
 extension ChangeAutoWrapExt<D> on ValueNotifier<D> {
-  AutoListenWrapper<D, ValueNotifier<D>> get csv {
+  ValueNotifier<D> get csv {
     return AutoListenWrapper(this);
   }
 }
 
 extension ChangeAutoDelegateExt<D> on ValueListenable<D> {
-  AutoListenDelegate<D, ValueListenable<D>> get csv {
+  ValueListenable<D> get csv {
     return AutoListenDelegate(this);
   }
 }
@@ -130,7 +130,7 @@ class AutoListenDelegate<T, P extends ValueListenable<T>>
         AutoListenChangeNotifierMixin,
         AutoListenValueDelegateMixin<T, P>,
         AutoListenAddRemove<T, P>,
-        EquatableMixin
+        Equatable
     implements ValueListenable<T> {
   AutoListenDelegate(this.parent);
 

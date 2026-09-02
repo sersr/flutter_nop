@@ -1,6 +1,7 @@
 part of 'router.dart';
 
-typedef UntilFn = bool Function(RouteQueueEntry entry);
+typedef UntilFn = bool Function(RouteQueueEntry? entry, Route route);
+typedef EntryFn = bool Function(RouteQueueEntry entry);
 
 class RouteRestorable extends StatefulWidget {
   const RouteRestorable({
@@ -189,7 +190,6 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
             pages: _routeQueue.pages,
             key: navigatorKey,
             observers: navObservers,
-            // onPopPage: _onPopPage,
             onDidRemovePage: _onDipRemovePage,
           );
         },
@@ -372,23 +372,19 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
     return newEntry;
   }
 
-  void _until(UntilFn test, {bool ignore = false}) {
-    _routeQueue._removeUntil(test, ignore);
-  }
-
-  void popUntilNav(UntilFn test, {bool Function(Route route)? routeTest}) {
+  void popUntilNav(UntilFn test) {
     final nav = navigatorKey.currentState;
     if (nav == null) return;
     nav.popUntil((route) {
       if (route.settings case RouteQueueEntryPage page) {
-        return test(page.entry);
+        return test(page.entry, route);
       }
-      return routeTest?.call(route) ?? false;
+      return test(null, route);
     });
   }
 
   RouteQueueEntry goUntil(String location, UntilFn test) {
-    _until(test, ignore: true);
+    popUntilNav(test);
     return go(location);
   }
 
@@ -396,7 +392,7 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
       {Map<String, dynamic> params = const {},
       Map<String, dynamic>? extra,
       Object? groupId}) {
-    _until(test, ignore: true);
+    popUntilNav(test);
     return goPage(page, params: params, extra: extra, groupId: groupId);
   }
 
@@ -404,8 +400,8 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
   Future<bool> maybePop() =>
       navigatorKey.currentState?.maybePop() ?? SynchronousFuture(false);
 
-  void popUntil(UntilFn test, bool ignore) {
-    _until(test, ignore: ignore);
+  void popUntil(UntilFn test) {
+    popUntilNav(test);
   }
 
   void pop([Object? result]) {
@@ -423,11 +419,13 @@ class NRouterDelegate extends RouterDelegate<RouteQueue>
 }
 
 class RouterAction {
-  RouterAction(NPage page, this.router,
-      {Map<String, dynamic> params = const {},
-      Map<String, dynamic>? extra,
-      Object? groupId})
-      : baseEntry = router.routerDelegate
+  RouterAction(
+    NPage page,
+    this.router, {
+    Map<String, dynamic> params = const {},
+    Map<String, dynamic>? extra,
+    Object? groupId,
+  }) : baseEntry = router.routerDelegate
             .createEntry(page, params: params, extra: extra, groupId: groupId);
 
   final RouteQueueEntry baseEntry;
@@ -438,7 +436,7 @@ class RouterAction {
   }
 
   RouteQueueEntry goUntil(UntilFn test) {
-    router.routerDelegate._until(test, ignore: true);
+    router.routerDelegate.popUntilNav(test);
     return go();
   }
 

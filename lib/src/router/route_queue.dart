@@ -153,23 +153,23 @@ class RouteQueue with ChangeNotifier, _RouteQueueMixin {
     if (update) _updateRouteInfo();
   }
 
-  RouteQueueEntry? _removeUntil(UntilFn test, bool ignore) {
-    final current = _current;
-    RouteQueueEntry? entry = current;
-    while (entry != null) {
-      if (test(entry)) break;
-      assert(ignore || entry != _root, 'no pages.\nroot page will be removed.');
+  // RouteQueueEntry? _removeUntil(UntilFn test, bool ignore) {
+  //   final current = _current;
+  //   RouteQueueEntry? entry = current;
+  //   while (entry != null) {
+  //     if (test(entry)) break;
+  //     assert(ignore || entry != _root, 'no pages.\nroot page will be removed.');
 
-      final pre = entry.pre;
-      entry._removeCurrent(refresh: false);
-      entry = pre;
-    }
-    if (entry != current) {
-      refresh();
-      return entry;
-    }
-    return null;
-  }
+  //     final pre = entry.pre;
+  //     entry._removeCurrent(refresh: false);
+  //     entry = pre;
+  //   }
+  //   if (entry != current) {
+  //     refresh();
+  //     return entry;
+  //   }
+  //   return null;
+  // }
 
   RouteQueueEntry? _lastInfo;
 
@@ -320,7 +320,7 @@ mixin _RouteQueueMixin {
 
   bool get isSingle => _root == _current && _root != null && _current != null;
 
-  void forEach(UntilFn test, {bool reverse = false}) {
+  void forEach(EntryFn test, {bool reverse = false}) {
     RouteQueueEntry? current;
 
     if (reverse) {

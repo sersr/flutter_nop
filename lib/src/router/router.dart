@@ -133,12 +133,8 @@ class NRouter
     return routerDelegate.goUntil(location, until);
   }
 
-  void popUntil(UntilFn test, {bool ignore = false}) {
-    routerDelegate.popUntil(test, ignore);
-  }
-
-  void popUntilNav(UntilFn test, {bool Function(Route route)? routeTest}) {
-    routerDelegate.popUntilNav(test, routeTest: routeTest);
+  void popUntil(UntilFn test) {
+    routerDelegate.popUntil(test);
   }
 
   void pop([Object? result]) {

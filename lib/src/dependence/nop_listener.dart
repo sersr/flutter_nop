@@ -99,7 +99,7 @@ mixin NopLifecycle {
 
   static void _autoPop(NopListener listener) {
     // assert(Log.w(listener.label));
-    if(listener.data case NopLifecycle data) {
+    if (listener.data case NopLifecycle data) {
       data.onPop();
     }
   }
@@ -164,9 +164,22 @@ abstract class NopListener {
     onPop();
   }
 
-  T get<T>({Object? group, int? position = 0});
+  Node get global;
+  Type getAlias(Type type);
 
-  T? find<T>({Object? group});
+  T get<T>({Object? group, int? position}) {
+    assert(() {
+      position = position == null ? null : position! + 1;
+      return true;
+    }());
+
+    return Node.defaultGetData(
+        getAlias(T), getDependence(), global, group, position);
+  }
+
+  T? find<T>({Object? group}) {
+    return Node.defaultFindData(getAlias(T), getDependence(), global, group);
+  }
 
   String get label {
     String? tag;

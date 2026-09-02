@@ -1,3 +1,6 @@
+# 4.0.0
+* remove Nav.
+
 # 3.1.1
 * Support web
 

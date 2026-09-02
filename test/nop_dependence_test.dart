@@ -1,26 +1,22 @@
-import 'dart:async';
-
 import 'package:flutter_nop/flutter_nop.dart';
-import 'package:flutter_nop/src/nop/nop_listener.dart';
+import 'package:flutter_nop/src/dependence/factory.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nop/nop.dart';
 
 void main() {
   test('nop dependence insert', () {
-    Zone.root.run(() {
-      final first = create('first');
-      final second = create('second');
-      final third = create('third');
-      first.insertChild(second);
-      second.insertChild(third);
-      forEach(first);
-      final four = create('four');
-      first.insertChild(four);
-      forEach(first);
+    final first = create('first');
+    final second = create('second');
+    final third = create('third');
+    first.insertChild(second);
+    second.insertChild(third);
+    forEach(first);
+    final four = create('four');
+    first.insertChild(four);
+    forEach(first);
 
-      second.completed();
-      forEach(first);
-    });
+    second.completed();
+    forEach(first);
   });
 }
 
@@ -45,11 +41,29 @@ class TestNode extends RouteNode {
 
   @override
   NopListener nopListenerCreater() {
-    return NopListenerDefault();
+    return RouteListenerMock(this);
   }
 
   @override
   String toString() {
     return 'TestNode: $debugName';
   }
+}
+
+class RouteListenerMock extends NopListener {
+  final factory = BuildFactoryMixin();
+  RouteListenerMock(this.defaultNode);
+
+  final RouteNode defaultNode;
+
+  @override
+  Type getAlias(Type type) {
+    return factory.getAlias(type);
+  }
+
+  @override
+  bool get isGlobal => false;
+
+  @override
+  Node get global => defaultNode;
 }

@@ -4,7 +4,7 @@ import 'package:nop/nop.dart';
 
 typedef BuildFactory<T> = T Function();
 
-mixin BuildFactoryMixin {
+mixin class BuildFactoryMixin {
   final _factorys = HashMap<Type, BuildFactory>();
   void put<T>(BuildFactory<T> factory) {
     assert(!_alias.containsKey(T) || Log.e('${_alias[T]} already exists.'));
