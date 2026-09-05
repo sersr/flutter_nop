@@ -1,16 +1,7 @@
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 
-import 'change_auto_listen.dart';
-
 typedef ShouldNotify<T, D extends Listenable> = T Function(D parent);
-
-extension ValueNotifierSelector<D extends Listenable> on D {
-  ChangeNotifierSelector<T, D> select<T>(ShouldNotify<T, D> notifyValue,
-      {Object? key}) {
-    return ChangeNotifierSelector(parent: this, notifyValue: notifyValue);
-  }
-}
 
 class ChangeNotifierSelector<T, D extends Listenable> extends ChangeNotifier
     implements ValueListenable<T> {
@@ -59,11 +50,4 @@ class ChangeNotifierSelector<T, D extends Listenable> extends ChangeNotifier
 
   @override
   T get value => _value ??= notifyValue(parent);
-}
-
-extension ChangeAutoWrapperSelectorAl<T, D extends ChangeNotifier>
-    on ChangeNotifierSelector<T, D> {
-  AutoListenDelegate<T, ChangeNotifierSelector<T, D>> get cs {
-    return AutoListenDelegate(this);
-  }
 }

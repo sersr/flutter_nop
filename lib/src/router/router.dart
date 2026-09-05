@@ -165,7 +165,7 @@ class NRouter
     return Node.defaultGetData(T, null, globalDependence, group, position);
   }
 
-  T grass<T>({
+  T getType<T>({
     BuildContext? context,
     Object? group,
     bool useEntryGroup = true,

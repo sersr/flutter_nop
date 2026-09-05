@@ -1,11 +1,13 @@
 import 'dart:async';
 
-import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:nop/utils.dart';
 
 typedef Cs = ChangeScope;
+typedef AV<T> = AutoListenNotifier<T>;
+
+typedef AVN<T, P extends ValueNotifier<T>> = AutoListenWrapper<T, P>;
 
 class ChangeScope extends StatefulWidget {
   const ChangeScope(this.builder, {super.key});
@@ -64,24 +66,6 @@ class _ChangeScopeState extends State<ChangeScope> {
   }
 }
 
-extension ChangeAutoWrapExt<D> on ValueNotifier<D> {
-  ValueNotifier<D> get csv {
-    return AutoListenWrapper(this);
-  }
-}
-
-extension ChangeAutoDelegateExt<D> on ValueListenable<D> {
-  ValueListenable<D> get csv {
-    return AutoListenDelegate(this);
-  }
-}
-
-extension AutoListenNotifierExt<T> on T {
-  AutoListenNotifier<T> get cs {
-    return AutoListenNotifier(this);
-  }
-}
-
 class AutoListenNotifier<T> extends ValueNotifier<T>
     with AutoListenChangeNotifierMixin {
   AutoListenNotifier(super.value);
@@ -104,9 +88,15 @@ class AutoListenNotifier<T> extends ValueNotifier<T>
 }
 
 class AutoListenWrapper<T, P extends ValueNotifier<T>>
-    extends AutoListenDelegate<T, P> implements ValueNotifier<T> {
-  AutoListenWrapper(super.parent);
+    with
+        AutoListenChangeNotifierMixin,
+        AutoListenValueDelegateMixin<T, P>,
+        AutoListenAddRemove<T, P>
+    implements ValueNotifier<T> {
+  AutoListenWrapper(this.parent);
 
+  @override
+  final P parent;
   @override
   set value(T newValue) {
     parent.value = newValue;
@@ -125,24 +115,54 @@ class AutoListenWrapper<T, P extends ValueNotifier<T>>
   }
 }
 
-class AutoListenDelegate<T, P extends ValueListenable<T>>
+class AutoListenValueListenable<T, P extends ValueListenable<T>>
+    with
+        AutoListenChangeNotifierMixin,
+        AutoListenValueDelegateMixin<T, P>,
+        AutoListenAddRemove<T, P>
+    implements ValueListenable<T> {
+  AutoListenValueListenable(this.parent);
+  @override
+  final P parent;
+}
+
+class AutoListenFnWrapper<T, P extends ValueListenable<T>>
     with
         AutoListenChangeNotifierMixin,
         AutoListenValueDelegateMixin<T, P>,
         AutoListenAddRemove<T, P>,
-        Equatable
-    implements ValueListenable<T> {
-  AutoListenDelegate(this.parent);
+        ChangeNotifier
+    implements ValueNotifier<T> {
+  AutoListenFnWrapper(this.parent, this.updateValue);
 
+  final void Function(T newValue) updateValue;
   @override
   final P parent;
+  @override
+  set value(T newValue) {
+    updateValue(newValue);
+  }
 
-  void updateParent(void Function(P parent) update) {
-    update(parent);
+  ChangeNotifier? get _changeNotifier {
+    if (parent case ChangeNotifier p) {
+      return p;
+    }
+    return null;
   }
 
   @override
-  List<Object?> get props => [parent];
+  bool get hasListeners => _changeNotifier?.hasListeners ?? super.hasListeners;
+
+  @override
+  void notifyListeners() =>
+      _changeNotifier?.hasListeners ?? super.notifyListeners();
+
+  @override
+  void dispose() {
+    _changeNotifier?.dispose();
+    autoDispose();
+    super.dispose();
+  }
 }
 
 mixin AutoListenChangeNotifierMixin implements Listenable {

@@ -4,11 +4,8 @@ import 'package:flutter/material.dart';
 
 import '../../change_notifier.dart';
 
-extension AutoMap<K, V> on Map<K, V> {
-  AutoListenMap<K, V> get cs {
-    return AutoListenMap(this);
-  }
-}
+typedef AMap<K, V> = AutoListenMap<K, V>;
+
 
 class AutoListenMap<K, V> extends ChangeNotifier
     with MapMixin<K, V>, AutoListenChangeNotifierMixin {

@@ -4,15 +4,13 @@ import 'package:flutter/material.dart';
 
 import '../../change_notifier.dart';
 
-extension ChangeList<E> on List<E> {
-  ChangeAutoListenList<E> get cs {
-    return ChangeAutoListenList(this);
-  }
-}
 
-class ChangeAutoListenList<E>
+typedef ChangeAutoListenList<E> = AutoListenList<E>;
+typedef AList<E> = AutoListenList<E>;
+
+class AutoListenList<E>
     with ListBase<E>, ChangeNotifier, AutoListenChangeNotifierMixin {
-  ChangeAutoListenList(this._value);
+  AutoListenList(this._value);
   List<E> _value;
   List<E> get value {
     autoListen();

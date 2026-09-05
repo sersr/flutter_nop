@@ -2,7 +2,7 @@ part of 'router.dart';
 
 extension Grass on BuildContext {
   /// [group] shared group
-  T grass<T>({
+  T getType<T>({
     Object? group,
     bool useEntryGroup = true,
     int? position = 1,
@@ -19,7 +19,7 @@ extension Grass on BuildContext {
     return RouteQueueEntry.of(this)?.groupId;
   }
 
-  T? findGrass<T>({Object? group, bool useEntryGroup = true}) {
+  T? find<T>({Object? group, bool useEntryGroup = true}) {
     return Green.find(this, group: group, useEntryGroup: useEntryGroup);
   }
 }
@@ -55,7 +55,7 @@ class Green<C> extends StatefulWidget {
 
     final router = NRouter.of(context);
     return _GreenState.getLocal<T>(context, group, router, position) ??
-        router.grass<T>(
+        router.getType<T>(
             context: context,
             group: group,
             useEntryGroup: useEntryGroup,
