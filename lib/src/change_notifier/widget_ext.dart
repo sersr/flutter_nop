@@ -56,13 +56,13 @@ extension AutoListenNotifierExt<T> on T {
 }
 
 extension ChangeList<E> on List<E> {
-  List<E> get al {
+  AutoListenList<E> get al {
     return AutoListenList(this);
   }
 }
 
 extension AutoMap<K, V> on Map<K, V> {
-  Map<K, V> get al {
+  AutoListenMap<K, V> get al {
     return AutoListenMap(this);
   }
 }
