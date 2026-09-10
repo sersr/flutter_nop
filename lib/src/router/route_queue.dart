@@ -548,7 +548,9 @@ class RouteQueueEntry with _RouteQueueEntryMixin implements LogPretty {
           'index': int _,
           'id': int _,
           'pageKey': String _,
-        }) return true;
+        }) {
+      return true;
+    }
 
     return false;
   }

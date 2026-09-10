@@ -40,7 +40,7 @@ extension ChangeAutoWrapListenableExt<D> on ValueListenable<D> {
 }
 
 extension AutoListenNotifierExt<T> on T {
-  ValueNotifier<T> get al {
+  AutoListenNotifier<T> get al {
     return AutoListenNotifier(this);
   }
 
