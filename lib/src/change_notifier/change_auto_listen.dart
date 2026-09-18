@@ -10,8 +10,12 @@ typedef AV<T> = AutoListenNotifier<T>;
 typedef AVN<T, P extends ValueNotifier<T>> = AutoListenWrapper<T, P>;
 
 class ChangeScope extends StatefulWidget {
-  const ChangeScope(this.builder, {super.key});
-  final Widget Function() builder;
+  const ChangeScope(Widget Function() this.builder, {super.key});
+  const ChangeScope.context(Widget Function(BuildContext context) this.builder,
+      {super.key});
+  const ChangeScope.dynamic(Widget Function(dynamic context) this.builder,
+      {super.key});
+  final Function builder;
   static bool printEnabled = false;
   @override
   State<ChangeScope> createState() => _ChangeScopeState();
@@ -62,7 +66,18 @@ class _ChangeScopeState extends State<ChangeScope> {
 
   @override
   Widget build(BuildContext context) {
-    return runZoned(widget.builder, zoneValues: {_ChangeScopeState: this});
+    switch (widget.builder) {
+      case Widget Function(dynamic context) builder:
+        return runZoned(() => builder(context),
+            zoneValues: {_ChangeScopeState: this});
+      case Widget Function(BuildContext context) builder:
+        return runZoned(() => builder(context),
+            zoneValues: {_ChangeScopeState: this});
+    }
+
+    assert(widget.builder is Widget Function());
+    return runZoned(widget.builder as Widget Function(),
+        zoneValues: {_ChangeScopeState: this});
   }
 }
 

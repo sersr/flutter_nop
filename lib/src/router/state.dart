@@ -1,6 +1,30 @@
 part of 'router.dart';
 
-extension Grass on BuildContext {
+extension GetTypeStateExt on State<StatefulWidget> {
+  /// [group] shared group
+  T getType<T>({
+    Object? group,
+    bool useEntryGroup = true,
+    int? position = 1,
+  }) {
+    return Green.of(
+      context,
+      group: group,
+      useEntryGroup: useEntryGroup,
+      position: position,
+    );
+  }
+
+  Object? get groupId {
+    return RouteQueueEntry.of(context)?.groupId;
+  }
+
+  T? find<T>({Object? group, bool useEntryGroup = true}) {
+    return Green.find(context, group: group, useEntryGroup: useEntryGroup);
+  }
+}
+
+extension GetTypeExt on BuildContext {
   /// [group] shared group
   T getType<T>({
     Object? group,

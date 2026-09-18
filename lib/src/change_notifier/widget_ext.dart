@@ -73,6 +73,18 @@ extension CsExt on Widget Function() {
   }
 }
 
+extension CsContextExt on Widget Function(BuildContext context) {
+  Cs get cs {
+    return Cs.context(this);
+  }
+}
+
+extension CsContextDyExt on Widget Function(dynamic context) {
+  Cs get cs {
+    return Cs.dynamic(this);
+  }
+}
+
 extension ValueNotifierSelector<D extends Listenable> on D {
   ValueListenable<T> select<T>(ShouldNotify<T, D> notifyValue, {Object? key}) {
     return ChangeNotifierSelector(parent: this, notifyValue: notifyValue);
