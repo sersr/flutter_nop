@@ -4,28 +4,35 @@ import 'package:flutter/material.dart';
 
 import '../../change_notifier.dart';
 
-
-typedef ChangeAutoListenList<E> = AutoListenList<E>;
 typedef AList<E> = AutoListenList<E>;
 
-class AutoListenList<E>
-    with ListBase<E>, ChangeNotifier, AutoListenChangeNotifierMixin {
-  AutoListenList(this._value);
-  List<E> _value;
+class AutoListenList<E> extends ValueNotifier<List<E>> with ListBase<E> {
+  AutoListenList(super._value, {this._notifierDelegate});
+  List<E> get _value => value;
+  final ValueNotifier<List<E>>? _notifierDelegate;
+  @override
   List<E> get value {
-    autoListen();
-    return _value;
+    if (_notifierDelegate case ValueNotifier v) {
+      v.autoListen();
+    } else {
+      autoListen();
+    }
+    return super.value;
   }
 
-  set value(List<E> list) {
-    if (_value == list) return;
-    _value = list;
-    notifyListeners();
+  @override
+  void notifyListeners() {
+    if (_notifierDelegate case ValueNotifier v) {
+      v.notifyListeners();
+    } else {
+      super.notifyListeners();
+    }
   }
 
   @override
   int get length => value.length;
 
+  @override
   void add(E element) {
     _value.add(element);
     notifyListeners();

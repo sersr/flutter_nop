@@ -5,16 +5,18 @@ import 'package:flutter/material.dart';
 import 'package:nop/utils.dart';
 
 typedef Cs = ChangeScope;
-typedef AV<T> = AutoListenNotifier<T>;
-
-typedef AVN<T, P extends ValueNotifier<T>> = AutoListenWrapper<T, P>;
+typedef AV<T> = AutoValueNotifier<T>;
 
 class ChangeScope extends StatefulWidget {
   const ChangeScope(Widget Function() this.builder, {super.key});
-  const ChangeScope.context(Widget Function(BuildContext context) this.builder,
-      {super.key});
-  const ChangeScope.dynamic(Widget Function(dynamic context) this.builder,
-      {super.key});
+  const ChangeScope.context(
+    Widget Function(BuildContext context) this.builder, {
+    super.key,
+  });
+  const ChangeScope.dynamic(
+    Widget Function(dynamic context) this.builder, {
+    super.key,
+  });
   final Function builder;
   static bool printEnabled = false;
   @override
@@ -22,12 +24,14 @@ class ChangeScope extends StatefulWidget {
 }
 
 class _ChangeScopeState extends State<ChangeScope> {
-  final _listenables = <AutoListenChangeNotifierMixin>{};
+  final _listenables = <Listenable>{};
 
-  void addListener(AutoListenChangeNotifierMixin listenable) {
+  void addListener(Listenable listenable) {
     if (_listenables.contains(listenable)) return;
-    assert(!ChangeScope.printEnabled ||
-        Log.i('${listenable.runtimeType} added', position: 3));
+    assert(
+      !ChangeScope.printEnabled ||
+          Log.i('${listenable.runtimeType} added', position: 3),
+    );
     _listenables.add(listenable);
     listenable.addListener(_listen);
   }
@@ -36,8 +40,7 @@ class _ChangeScopeState extends State<ChangeScope> {
     if (mounted) setState(() {});
   }
 
-  void removeListener(AutoListenChangeNotifierMixin listenable) {
-    if (listenable.disposed) return;
+  void removeListener(Listenable listenable) {
     listenable.removeListener(_listen);
   }
 
@@ -68,153 +71,47 @@ class _ChangeScopeState extends State<ChangeScope> {
   Widget build(BuildContext context) {
     switch (widget.builder) {
       case Widget Function(dynamic context) builder:
-        return runZoned(() => builder(context),
-            zoneValues: {_ChangeScopeState: this});
+        return runZoned(
+          () => builder(context),
+          zoneValues: {_ChangeScopeState: this},
+        );
       case Widget Function(BuildContext context) builder:
-        return runZoned(() => builder(context),
-            zoneValues: {_ChangeScopeState: this});
+        return runZoned(
+          () => builder(context),
+          zoneValues: {_ChangeScopeState: this},
+        );
     }
 
     assert(widget.builder is Widget Function());
-    return runZoned(widget.builder as Widget Function(),
-        zoneValues: {_ChangeScopeState: this});
+    return runZoned(
+      widget.builder as Widget Function(),
+      zoneValues: {_ChangeScopeState: this},
+    );
   }
 }
 
-class AutoListenNotifier<T> extends ValueNotifier<T>
-    with AutoListenChangeNotifierMixin {
-  AutoListenNotifier(super.value);
+extension type AutoValueNotifier<T>(ValueNotifier<T> target)
+    implements ValueNotifier<T> {
+  factory AutoValueNotifier.val(T v) => .new(.new(v));
 
-  @override
   T get value {
     autoListen();
-    return super.value;
-  }
-
-  void update() {
-    notifyListeners();
-  }
-
-  @override
-  void dispose() {
-    autoDispose();
-    super.dispose();
+    return target.value;
   }
 }
-
-class AutoListenWrapper<T, P extends ValueNotifier<T>>
-    with
-        AutoListenChangeNotifierMixin,
-        AutoListenValueDelegateMixin<T, P>,
-        AutoListenAddRemove<T, P>
-    implements ValueNotifier<T> {
-  AutoListenWrapper(this.parent);
-
-  @override
-  final P parent;
-  @override
-  set value(T newValue) {
-    parent.value = newValue;
-  }
-
-  @override
-  bool get hasListeners => parent.hasListeners;
-
-  @override
-  void notifyListeners() => parent.notifyListeners();
-
-  @override
-  void dispose() {
-    parent.dispose();
-    autoDispose();
-  }
-}
-
-class AutoListenValueListenable<T, P extends ValueListenable<T>>
-    with
-        AutoListenChangeNotifierMixin,
-        AutoListenValueDelegateMixin<T, P>,
-        AutoListenAddRemove<T, P>
+extension type AutoValueListenable<T>(ValueListenable<T> target)
     implements ValueListenable<T> {
-  AutoListenValueListenable(this.parent);
-  @override
-  final P parent;
-}
-
-class AutoListenFnWrapper<T, P extends ValueListenable<T>>
-    with
-        AutoListenChangeNotifierMixin,
-        AutoListenValueDelegateMixin<T, P>,
-        AutoListenAddRemove<T, P>,
-        ChangeNotifier
-    implements ValueNotifier<T> {
-  AutoListenFnWrapper(this.parent, this.updateValue);
-
-  final void Function(T newValue) updateValue;
-  @override
-  final P parent;
-  @override
-  set value(T newValue) {
-    updateValue(newValue);
-  }
-
-  ChangeNotifier? get _changeNotifier {
-    if (parent case ChangeNotifier p) {
-      return p;
-    }
-    return null;
-  }
-
-  @override
-  bool get hasListeners => _changeNotifier?.hasListeners ?? super.hasListeners;
-
-  @override
-  void notifyListeners() =>
-      _changeNotifier?.hasListeners ?? super.notifyListeners();
-
-  @override
-  void dispose() {
-    _changeNotifier?.dispose();
-    autoDispose();
-    super.dispose();
+  T get value {
+    autoListen();
+    return target.value;
   }
 }
 
-mixin AutoListenChangeNotifierMixin implements Listenable {
+extension AutoListenableExt on Listenable {
   void autoListen() {
     final state = Zone.current[_ChangeScopeState] as _ChangeScopeState?;
     if (state != null) {
       state.addListener(this);
     }
-  }
-
-  bool _disposed = false;
-  bool get disposed => _disposed;
-
-  void autoDispose() {
-    _disposed = true;
-  }
-}
-mixin AutoListenValueDelegateMixin<T, P extends ValueListenable<T>>
-    on AutoListenChangeNotifierMixin {
-  P get parent;
-
-  T get value {
-    autoListen();
-    return parent.value;
-  }
-}
-mixin AutoListenAddRemove<T, P extends Listenable>
-    on AutoListenChangeNotifierMixin {
-  P get parent;
-
-  @override
-  void addListener(VoidCallback listener) {
-    parent.addListener(listener);
-  }
-
-  @override
-  void removeListener(VoidCallback listener) {
-    parent.removeListener(listener);
   }
 }
