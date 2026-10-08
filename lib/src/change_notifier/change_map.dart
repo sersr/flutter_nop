@@ -3,10 +3,12 @@ import 'dart:collection';
 import 'package:flutter/material.dart';
 
 import '../../change_notifier.dart';
+import 'value_notifier_delegate.dart';
 
 typedef AMap<K, V> = AutoListenMap<K, V>;
 
-class AutoListenMap<K, V> extends ValueNotifier<Map<K, V>> with MapMixin<K, V> {
+class AutoListenMap<K, V> extends ValueNotifier<Map<K, V>>
+    with MapMixin<K, V>, ValueNotifierDelegate {
   AutoListenMap(super._parent, {this._notifierDelegate});
 
   Map<K, V> get _parent => value;
@@ -14,23 +16,7 @@ class AutoListenMap<K, V> extends ValueNotifier<Map<K, V>> with MapMixin<K, V> {
   final ValueNotifier<Map<K, V>>? _notifierDelegate;
 
   @override
-  Map<K, V> get value {
-    if (_notifierDelegate case ValueNotifier v) {
-      v.autoListen();
-    } else {
-      autoListen();
-    }
-    return super.value;
-  }
-
-  @override
-  void notifyListeners() {
-    if (_notifierDelegate case ValueNotifier v) {
-      v.notifyListeners();
-    } else {
-      super.notifyListeners();
-    }
-  }
+  ValueNotifier<Map<K, V>>? get notifierDelegate => _notifierDelegate;
 
   @override
   V? operator [](Object? key) {

@@ -1,33 +1,19 @@
 import 'dart:collection';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 
-import '../../change_notifier.dart';
+import 'value_notifier_delegate.dart';
 
 typedef AList<E> = AutoListenList<E>;
 
-class AutoListenList<E> extends ValueNotifier<List<E>> with ListBase<E> {
+class AutoListenList<E> extends ValueNotifier<List<E>>
+    with ListBase<E>, ValueNotifierDelegate<List<E>> {
   AutoListenList(super._value, {this._notifierDelegate});
   List<E> get _value => value;
   final ValueNotifier<List<E>>? _notifierDelegate;
-  @override
-  List<E> get value {
-    if (_notifierDelegate case ValueNotifier v) {
-      v.autoListen();
-    } else {
-      autoListen();
-    }
-    return super.value;
-  }
 
   @override
-  void notifyListeners() {
-    if (_notifierDelegate case ValueNotifier v) {
-      v.notifyListeners();
-    } else {
-      super.notifyListeners();
-    }
-  }
+  ValueNotifier<List<E>>? get notifierDelegate => _notifierDelegate;
 
   @override
   int get length => value.length;

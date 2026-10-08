@@ -35,13 +35,13 @@ extension ListenableWidgetValue<V extends Object> on ValueListenable<V> {
   }
 }
 
-extension AutoWrapExt<D> on ValueNotifier<D> {
+extension AutoWrapExt<D extends Object?> on ValueNotifier<D> {
   AutoValueNotifier<D> get al {
     return .new(this);
   }
 }
 
-extension AutoWrapListenableExt<D> on ValueListenable<D> {
+extension AutoWrapListenableExt<D extends Object?> on ValueListenable<D> {
   AutoValueListenable<D> get al {
     return .new(this);
   }
@@ -63,7 +63,7 @@ extension AutoListenNotifierExt<T> on T {
   }
 }
 
-extension AutoWrapLExt<D> on ValueNotifier<List<D>> {
+extension AutoWrapLExt<D extends Object?> on ValueNotifier<List<D>> {
   AList<D> get al {
     return .new(value, notifierDelegate: this);
   }
