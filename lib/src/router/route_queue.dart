@@ -401,16 +401,14 @@ mixin _RouteQueueMixin {
 
 class RouteQueueEntry with _RouteQueueEntryMixin implements LogPretty {
   RouteQueueEntry({
-    String? path,
+    this._path,
     required this.params,
     required this.nPage,
-    required ValueKey<String> pageKey,
+    required this._pageKey,
     Object? groupId,
     this.queryParams = const {},
-  })  : _pageKey = pageKey,
-        _groupId = NPage.ignoreToken(groupId),
-        _id = nPage._newRouteId,
-        _path = path;
+  })  : _groupId = NPage.ignoreToken(groupId),
+        _id = nPage._newRouteId;
 
   static RouteQueueEntry error({
     required String path,
@@ -432,17 +430,14 @@ class RouteQueueEntry with _RouteQueueEntryMixin implements LogPretty {
   }
 
   RouteQueueEntry._internal({
-    String? path,
+    this._path,
     required this.params,
     required this.nPage,
-    Object? groupId,
-    required int id,
-    required ValueKey<String> pageKey,
+    this._groupId,
+    required this._id,
+    required this._pageKey,
     this.queryParams = const {},
-  })  : _pageKey = pageKey,
-        _id = id,
-        _groupId = groupId,
-        _path = path;
+  });
 
   final String? _path;
   String? _cachePath;

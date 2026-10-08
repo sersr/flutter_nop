@@ -47,7 +47,7 @@ extension AutoWrapListenableExt<D extends Object?> on ValueListenable<D> {
   }
 }
 
-extension AutoListenNotifierExt<T> on T {
+extension AutoListenNotifierExt<T extends Object?> on T {
   AV<T> get al {
     return .val(this);
   }
@@ -63,26 +63,62 @@ extension AutoListenNotifierExt<T> on T {
   }
 }
 
+extension AutoListenNotifierAExt<T extends Object?> on AV<T> {
+  AV<T> get al => this;
+  AV<T?> get alN => this;
+  AV<T?> get alInitNull => this;
+}
+
 extension AutoWrapLExt<D extends Object?> on ValueNotifier<List<D>> {
   AList<D> get al {
+    if (this case AList<D> v) {
+      return v;
+    }
     return .new(value, notifierDelegate: this);
+  }
+}
+
+extension AutoWrapLAExt<D extends Object?> on AV<List<D>> {
+  AList<D> get al {
+    if (this case AList<D> v) {
+      return v;
+    }
+    return .new(target.value, notifierDelegate: target);
   }
 }
 
 extension AutoWrapMExt<K, V> on ValueNotifier<Map<K, V>> {
   AMap<K, V> get al {
+    if (this case AMap<K, V> v) {
+      return v;
+    }
     return .new(value, notifierDelegate: this);
+  }
+}
+
+extension AutoWrapMAExt<K, V> on AV<Map<K, V>> {
+  AMap<K, V> get al {
+    if (this case AMap<K, V> v) {
+      return v;
+    }
+    return .new(target.value, notifierDelegate: target);
   }
 }
 
 extension AutoListExt<E> on List<E> {
   AList<E> get al {
+    if (this case AList<E> v) {
+      return v;
+    }
     return .new(this);
   }
 }
 
 extension AutoMapExt<K, V> on Map<K, V> {
   AMap<K, V> get al {
+    if (this case AMap<K, V> v) {
+      return v;
+    }
     return .new(this);
   }
 }

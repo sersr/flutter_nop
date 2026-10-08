@@ -95,7 +95,7 @@ extension type AutoValueNotifier<T>(ValueNotifier<T> target)
   factory AutoValueNotifier.val(T v) => .new(.new(v));
 
   T get value {
-    autoListen();
+    target.autoListen();
     return target.value;
   }
 }
