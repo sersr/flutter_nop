@@ -1,6 +1,6 @@
 import 'dart:collection';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../change_notifier.dart';
 import 'value_notifier_delegate.dart';
@@ -47,11 +47,21 @@ class AutoListenMap<K, V> extends ValueNotifier<Map<K, V>>
   }
 
   @override
+  Iterable<V> get values {
+    autoListen();
+    return super.values;
+  }
+
+  @override
   V? remove(Object? key) {
     final value = _parent.remove(key);
     if (value != null) {
       notifyListeners();
     }
     return value;
+  }
+
+  void refresh() {
+    notifyListeners();
   }
 }

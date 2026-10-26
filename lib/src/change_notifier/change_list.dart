@@ -58,4 +58,8 @@ class AutoListenList<E> extends ValueNotifier<List<E>>
     _value.sort(compare);
     notifyListeners();
   }
+
+  void refresh() {
+    notifyListeners();
+  }
 }

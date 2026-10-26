@@ -1,4 +1,4 @@
-import 'package:flutter/cupertino.dart';
+import 'package:cupertino_ui/cupertino_ui.dart';
 
 abstract class ChangeNotifierBase extends ChangeNotifier
     with ChangeNotifierMixin {}
