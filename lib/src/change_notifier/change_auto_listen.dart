@@ -58,8 +58,13 @@ extension type AutoValueNotifier<T>(ValueNotifier<T> target)
   factory AutoValueNotifier.val(T v) => .new(.new(v));
 
   T get value {
-    target.autoListen();
-    return target.value;
+    final v = target.value;
+    if (v case ValueNotifier v) {
+      v.autoListen();
+    } else {
+      target.autoListen();
+    }
+    return v;
   }
 
   void refresh() {
@@ -71,7 +76,7 @@ extension type AutoValueNotifier<T>(ValueNotifier<T> target)
 extension type AutoValueListenable<T>(ValueListenable<T> target)
     implements ValueListenable<T> {
   T get value {
-    autoListen();
+    target.autoListen();
     return target.value;
   }
 }
