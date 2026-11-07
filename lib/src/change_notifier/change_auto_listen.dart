@@ -11,7 +11,10 @@ typedef AV<T> = AutoValueNotifier<T>;
 mixin _ChangeMixin {
   final _listenables = <Listenable>{};
 
-  void addListener(Listenable listenable) {
+  bool get enabled;
+
+  void addListenerItem(Listenable listenable) {
+    if (!enabled) return;
     if (_listenables.contains(listenable)) return;
     _listenables.add(listenable);
     listenable.addListener(markDirty);
@@ -19,37 +22,105 @@ mixin _ChangeMixin {
 
   void markDirty();
 
-  void removeListener(Listenable listenable) {
+  void removeListenerItem(Listenable listenable) {
     listenable.removeListener(markDirty);
   }
 
   void clear() {
-    _listenables.forEach(removeListener);
+    _listenables.forEach(removeListenerItem);
     _listenables.clear();
   }
 
   Function get builder;
-  Widget buildWith(BuildContext context) {
+  T buildWith<T>(BuildContext context) {
     switch (builder) {
-      case Widget Function(dynamic context) builder:
+      case T Function(dynamic context) builder:
         return runScope(() => builder(context));
-      case Widget Function(BuildContext context) builder:
+      case T Function(BuildContext context) builder:
         return runScope(() => builder(context));
     }
 
     assert(builder is Widget Function());
-    return runScope(builder as Widget Function());
+    return runScope<T>(builder as T Function());
   }
 
-  Widget runScope(Widget Function() builder) {
+  T runScope<T>(T Function() builder) {
     return runZoned(builder, zoneValues: {_ChangeMixin: this});
   }
 
   static void startListen(Listenable listenable) {
     final state = Zone.current[_ChangeMixin] as _ChangeMixin?;
     if (state != null) {
-      state.addListener(listenable);
+      state.addListenerItem(listenable);
     }
+  }
+}
+
+final class AlScope<T> extends ValueListenable<T>
+    with ChangeNotifier, _ChangeMixin {
+  AlScope(this.builder);
+
+  AlScopeManager? _manager;
+
+  set manager(AlScopeManager manager) {
+    if (_manager == manager) return;
+    _manager?._unmountScope(this);
+    _manager = manager;
+    manager._mountScope(this);
+    _value = null;
+    _value = runScope<T>(builder);
+  }
+
+  @override
+  void markDirty() {
+    if (_closed) return;
+    _value = null;
+    notifyListeners();
+  }
+
+  @override
+  final T Function() builder;
+
+  T? _value;
+  @override
+  T get value {
+    autoListen();
+    return _value ??= runScope<T>(builder);
+  }
+
+  var _closed = false;
+  @override
+  void dispose() {
+    _closed = true;
+    super.dispose();
+  }
+
+  @override
+  bool get enabled => !_closed && _manager?._disposed != true;
+}
+
+mixin AlScopeManager {
+  final _scopes = <AlScope>[];
+  void _unmountScope(AlScope alScope) {
+    _scopes.remove(alScope);
+  }
+
+  void _mountScope(AlScope alScope) {
+    if (_scopes.contains(alScope)) return;
+    _scopes.add(alScope);
+  }
+
+  void closeScope() {
+    for (var scope in _scopes) {
+      scope.dispose();
+    }
+    _scopes.clear();
+  }
+
+  var _disposed = false;
+  void disposeScope() {
+    _disposed = true;
+    closeScope();
   }
 }
 
@@ -131,4 +202,7 @@ class AlChangeScopeElement extends ComponentElement with _ChangeMixin {
     clear();
     super.unmount();
   }
+
+  @override
+  bool get enabled => mounted;
 }

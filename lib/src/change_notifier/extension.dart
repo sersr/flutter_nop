@@ -141,8 +141,40 @@ extension CsContextDyExt on Widget Function(dynamic context) {
   }
 }
 
+/// ```dart
+///  final valid = false.al;
+///  final searchText = ''.al;
+///
+/// final value = () {
+///   final isValid = valid.value;
+///   final text = searchText.value;
+///   if (isValid) {
+///     return '';
+///   }
+///
+///   return text;
+/// }.al;
+///```
+extension AlScopeExt<T> on T Function() {
+  AlScope<T> get al {
+    return .new(this);
+  }
+
+  AlScope<T> mount(AlScopeManager manager) {
+    return .new(this)..manager = manager;
+  }
+}
+
+typedef ShouldNotify<T, D extends Listenable> = T Function(D parent);
+
 extension ValueNotifierSelector<D extends Listenable> on D {
-  ValueListenable<T> select<T>(ShouldNotify<T, D> notifyValue, {Object? key}) {
-    return ChangeNotifierSelector(parent: this, notifyValue: notifyValue);
+
+  @Deprecated('use (){...}.al instead.')
+  AlScope<T> select<T>(ShouldNotify<T, D> notifyValue) {
+    final scope = AlScope<T>(() {
+      autoListen();
+      return notifyValue(this);
+    });
+    return scope;
   }
 }

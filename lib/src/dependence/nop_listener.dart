@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:nop/nop.dart';
 
 import 'dependence_mixin.dart';
+import '../change_notifier/change_auto_listen.dart';
 
 /// 自动管理生命周期
 mixin NopLifecycle {
@@ -28,6 +29,9 @@ mixin NopLifecycle {
 
   /// [Route.didPop]/[NavigatorObserver.didPop]/[NavigatorObserver.didRemove]
   void onPop() {}
+
+  /// [AlScopeManager]
+  void disposeScope() {}
 
   /// 在页面不可用时调用。
   ///
@@ -91,6 +95,7 @@ mixin NopLifecycle {
 
     if (data is NopLifecycle) {
       data.nopDispose();
+      data.disposeScope();
       data._listener = null;
     } else {
       _caches.remove(data);
@@ -142,8 +147,12 @@ abstract class NopListener {
   Object? get group => _group;
 
   void initWithFirstDependence(
-      Node dependence, dynamic data, Object? group, Type t,
-      [int? position]) {
+    Node dependence,
+    dynamic data,
+    Object? group,
+    Type t, [
+    int? position,
+  ]) {
     assert(!_init && _dependenceTree.isEmpty);
     _init = true;
 
@@ -174,7 +183,12 @@ abstract class NopListener {
     }());
 
     return Node.defaultGetData(
-        getAlias(T), getDependence(), global, group, position);
+      getAlias(T),
+      getDependence(),
+      global,
+      group,
+      position,
+    );
   }
 
   T? find<T>({Object? group}) {
