@@ -63,17 +63,22 @@ final class AlScope<T> extends ValueListenable<T>
   AlScopeManager? _manager;
 
   set manager(AlScopeManager manager) {
+    if (!enabled) return;
     if (_manager == manager) return;
     _manager?._unmountScope(this);
     _manager = manager;
     manager._mountScope(this);
     _value = null;
+    _isDirty = false;
     _value = runScope<T>(builder);
   }
 
+  var _isDirty = true;
   @override
   void markDirty() {
     if (_closed) return;
+    if (_isDirty) return;
+    _isDirty = true;
     _value = null;
     notifyListeners();
   }
@@ -85,6 +90,11 @@ final class AlScope<T> extends ValueListenable<T>
   @override
   T get value {
     autoListen();
+    if (_value case T v when !_isDirty) {
+      return v;
+    }
+
+    _isDirty = false;
     return _value ??= runScope<T>(builder);
   }
 
