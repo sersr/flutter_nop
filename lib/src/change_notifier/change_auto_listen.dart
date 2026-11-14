@@ -79,7 +79,21 @@ final class AlScope<T> extends ValueListenable<T>
     if (_closed) return;
     if (_isDirty) return;
     _isDirty = true;
-    _value = null;
+    if (_scheduled) return;
+    _scheduled = true;
+    scheduleMicrotask(_scheduleTask);
+  }
+
+  var _scheduled = false;
+  void _scheduleTask() {
+    _scheduled = false;
+    if (!_isDirty) return;
+    _isDirty = false;
+
+    if (!enabled) return;
+    final value = runScope<T>(builder);
+    if (_value == value) return;
+    _value = value;
     notifyListeners();
   }
 
@@ -95,7 +109,7 @@ final class AlScope<T> extends ValueListenable<T>
     }
 
     _isDirty = false;
-    return _value ??= runScope<T>(builder);
+    return _value = runScope<T>(builder);
   }
 
   var _closed = false;
