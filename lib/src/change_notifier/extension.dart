@@ -63,6 +63,17 @@ extension AutoListenNotifierExt<T extends Object?> on T {
   }
 }
 
+extension AutoListenableAlExt<T extends Listenable> on T {
+  T get alisten {
+    autoListen();
+    return this;
+  }
+
+  T get al => alisten;
+  T get alN => alisten;
+  T get alInitNull => alisten;
+}
+
 extension AutoListenNotifierAExt<T extends Object?> on AV<T> {
   AV<T> get al => this;
   AV<T?> get alN => this;
@@ -70,56 +81,26 @@ extension AutoListenNotifierAExt<T extends Object?> on AV<T> {
 }
 
 extension AutoWrapLExt<D extends Object?> on ValueNotifier<List<D>> {
-  AList<D> get al {
-    if (this case AList<D> v) {
-      return v;
-    }
-    return .new(value, notifierDelegate: this);
+  AList<D> get aList {
+    return .new(this);
   }
 }
 
 extension AutoWrapLAExt<D extends Object?> on AV<List<D>> {
-  AList<D> get al {
-    if (this case AList<D> v) {
-      return v;
-    }
-    return .new(target.value, notifierDelegate: target);
+  AList<D> get aList {
+    return .new(target);
   }
 }
 
 extension AutoWrapMExt<K, V> on ValueNotifier<Map<K, V>> {
-  AMap<K, V> get al {
-    if (this case AMap<K, V> v) {
-      return v;
-    }
-    return .new(value, notifierDelegate: this);
+  AMap<K, V> get aMap {
+    return .new(this);
   }
 }
 
 extension AutoWrapMAExt<K, V> on AV<Map<K, V>> {
-  AMap<K, V> get al {
-    if (this case AMap<K, V> v) {
-      return v;
-    }
-    return .new(target.value, notifierDelegate: target);
-  }
-}
-
-extension AutoListExt<E> on List<E> {
-  AList<E> get al {
-    if (this case AList<E> v) {
-      return v;
-    }
-    return .new(this);
-  }
-}
-
-extension AutoMapExt<K, V> on Map<K, V> {
-  AMap<K, V> get al {
-    if (this case AMap<K, V> v) {
-      return v;
-    }
-    return .new(this);
+  AMap<K, V> get aMap {
+    return .new(target);
   }
 }
 
@@ -166,15 +147,3 @@ extension AlScopeExt<T> on T Function() {
 }
 
 typedef ShouldNotify<T, D extends Listenable> = T Function(D parent);
-
-extension ValueNotifierSelector<D extends Listenable> on D {
-
-  @Deprecated('use (){...}.al instead.')
-  AlScope<T> select<T>(ShouldNotify<T, D> notifyValue) {
-    final scope = AlScope<T>(() {
-      autoListen();
-      return notifyValue(this);
-    });
-    return scope;
-  }
-}
