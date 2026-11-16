@@ -104,6 +104,18 @@ extension AutoWrapMAExt<K, V> on AV<Map<K, V>> {
   }
 }
 
+extension AutoListExt<E> on List<E> {
+  AList<E> get aList {
+    return .val(this);
+  }
+}
+
+extension AutoMapExt<K, V> on Map<K, V> {
+  AMap<K, V> get aMap {
+    return .val(this);
+  }
+}
+
 extension CsExt on Widget Function() {
   Cs get cs {
     return .new(this);
