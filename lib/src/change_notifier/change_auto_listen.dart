@@ -91,15 +91,7 @@ final class AlScope<T> extends ValueListenable<T>
     _isDirty = false;
 
     if (!enabled) return;
-    final value = runScope<T>(builder);
-
-    if (_value == value &&
-        value is! List &&
-        value is! Map &&
-        value is! Listenable) {
-      return;
-    }
-    _value = value;
+    _value = runScope<T>(builder);
     notifyListeners();
   }
 

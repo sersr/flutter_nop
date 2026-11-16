@@ -105,13 +105,13 @@ extension AutoWrapMAExt<K, V> on AV<Map<K, V>> {
 }
 
 extension AutoListExt<E> on List<E> {
-  AList<E> get aList {
+  AList<E> get val {
     return .val(this);
   }
 }
 
 extension AutoMapExt<K, V> on Map<K, V> {
-  AMap<K, V> get aMap {
+  AMap<K, V> get val {
     return .val(this);
   }
 }
