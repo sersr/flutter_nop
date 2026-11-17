@@ -58,7 +58,7 @@ mixin _ChangeMixin {
 
 final class AlScope<T> extends ValueListenable<T>
     with ChangeNotifier, _ChangeMixin {
-  AlScope(this.builder);
+  AlScope.val(this.builder);
 
   AlScopeManager? _manager;
 
